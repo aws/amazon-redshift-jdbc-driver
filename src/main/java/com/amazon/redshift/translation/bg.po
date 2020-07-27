@@ -1,0 +1,1803 @@
+# Bulgarian language translation for the PostgreSQL JDBC driver
+# This file is distributed under the same license as the package.
+# First author: Viktor Usunov <usun0v@mail.bg>, 2009.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: JDBC Driver for PostgreSQL 8.x\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2009-12-28 00:01+0100\n"
+"Last-Translator: <usun0v@mail.bg>\n"
+"Language-Team: <bg@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Bulgarian\n"
+"X-Poedit-Country: BULGARIA\n"
+
+#: com.amazon.redshift/Driver.java:221
+msgid "Error loading default settings from driverconfig.properties"
+msgstr ""
+"Грешка при зареждане на настройките по подразбиране от файла driverconfig."
+"properties"
+
+#: com.amazon.redshift/Driver.java:233
+msgid "Properties for the driver contains a non-string value for the key "
+msgstr ""
+
+#: com.amazon.redshift/Driver.java:276
+msgid ""
+"Your security policy has prevented the connection from being attempted.  You "
+"probably need to grant the connect java.net.SocketPermission to the database "
+"server host and port that you wish to connect to."
+msgstr ""
+"Връзката не бе осъществена, поради вашите настройки за сигурност. Може би "
+"трябва да предоставите java.net.SocketPermission права на сървъра и порта с "
+"базата данни, към който искате да се свържете."
+
+#: com.amazon.redshift/Driver.java:282 com.amazon.redshift/Driver.java:414
+msgid ""
+"Something unusual has occurred to cause the driver to fail. Please report "
+"this exception."
+msgstr ""
+"Възникна неочаквана грешка с драйвъра. Моля докадвайте това изключение. "
+
+#: com.amazon.redshift/Driver.java:422
+msgid "Connection attempt timed out."
+msgstr "Времето за осъществяване на връзката изтече (таймаут)."
+
+#: com.amazon.redshift/Driver.java:435
+msgid "Interrupted while attempting to connect."
+msgstr "Опита за осъществяване на връзка бе своевременно прекъснат. "
+
+#: com.amazon.redshift/Driver.java:691
+#, java-format
+msgid "Method {0} is not yet implemented."
+msgstr "Методът {0} все още не е функционален."
+
+#: com.amazon.redshift/PGProperty.java:553 com.amazon.redshift/PGProperty.java:573
+#, fuzzy, java-format
+msgid "{0} parameter value must be an integer but was: {1}"
+msgstr "Стойността на параметъра unknownLength трябва да бъде цяло число"
+
+#: com.amazon.redshift/copy/CopyManager.java:49
+#, java-format
+msgid "Requested CopyIn but got {0}"
+msgstr "Зададено CopyIn но получено {0}"
+
+#: com.amazon.redshift/copy/CopyManager.java:60
+#, java-format
+msgid "Requested CopyOut but got {0}"
+msgstr "Зададено CopyOut но получено {0}"
+
+#: com.amazon.redshift/copy/CopyManager.java:71
+#, fuzzy, java-format
+msgid "Requested CopyDual but got {0}"
+msgstr "Зададено CopyOut но получено {0}"
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:51
+#, java-format
+msgid "Copying from database failed: {0}"
+msgstr "Копирането от базата данни бе неуспешно: {0}"
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:67
+#: com.amazon.redshift/copy/PGCopyOutputStream.java:94
+msgid "This copy stream is closed."
+msgstr "Потока за копиране на данните е затворен."
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:109
+msgid "Read from copy failed."
+msgstr "Четене от копието неуспешно."
+
+#: com.amazon.redshift/copy/PGCopyOutputStream.java:71
+#, java-format
+msgid "Cannot write to copy a byte of value {0}"
+msgstr "Няма пишещи права, за да копира байтова стойност {0}"
+
+#: com.amazon.redshift/core/CommandCompleteParser.java:71
+#, fuzzy, java-format
+msgid "Unable to parse the count in command completion tag: {0}."
+msgstr ""
+"Не може да осъществи актуализация на брояча при командно допълнение: {0}."
+
+#: com.amazon.redshift/core/ConnectionFactory.java:57
+#, java-format
+msgid "A connection could not be made using the requested protocol {0}."
+msgstr "Не може да осъществи връзка, ползвайки искания протокол {0}."
+
+#: com.amazon.redshift/core/Oid.java:128
+#, java-format
+msgid "oid type {0} not known and not a number"
+msgstr ""
+
+#: com.amazon.redshift/core/PGStream.java:512
+#, java-format
+msgid "Premature end of input stream, expected {0} bytes, but only read {1}."
+msgstr ""
+"Преждевременен край на входящ поток на данни, очаквани {0} байта, но "
+"прочетени само {1}."
+
+#: com.amazon.redshift/core/PGStream.java:554
+#, java-format
+msgid "Expected an EOF from server, got: {0}"
+msgstr "Очакван край на файла от сървъра, но получено: {0}"
+
+#: com.amazon.redshift/core/Parser.java:1052
+#, java-format
+msgid "Malformed function or procedure escape syntax at offset {0}."
+msgstr "Непозволен синтаксис на функция или процедура при офсет {0}."
+
+#: com.amazon.redshift/core/SetupQueryRunner.java:64
+msgid "An unexpected result was returned by a query."
+msgstr "Заявката върна неочакван резултат."
+
+#: com.amazon.redshift/core/SocketFactoryFactory.java:43
+#, fuzzy, java-format
+msgid "The SocketFactory class provided {0} could not be instantiated."
+msgstr "Класът SSLSocketFactory връща {0} и не може да бъде инстанцииран."
+
+#: com.amazon.redshift/core/SocketFactoryFactory.java:68
+#, java-format
+msgid "The SSLSocketFactory class provided {0} could not be instantiated."
+msgstr "Класът SSLSocketFactory връща {0} и не може да бъде инстанцииран."
+
+#: com.amazon.redshift/core/UTF8Encoding.java:28
+#, java-format
+msgid ""
+"Illegal UTF-8 sequence: byte {0} of {1} byte sequence is not 10xxxxxx: {2}"
+msgstr ""
+"Невалидна UTF-8 последователност: байта {0} от байтова последователност {1} "
+"не е 10xxxxxx: {2}"
+
+#: com.amazon.redshift/core/UTF8Encoding.java:66
+#, java-format
+msgid "Illegal UTF-8 sequence: {0} bytes used to encode a {1} byte value: {2}"
+msgstr ""
+"Невалидна UTF-8 последователност: {0} байта използвани за кодирането на {1} "
+"байтова стойност: {2}"
+
+#: com.amazon.redshift/core/UTF8Encoding.java:102
+#: com.amazon.redshift/core/UTF8Encoding.java:129
+#, java-format
+msgid "Illegal UTF-8 sequence: initial byte is {0}: {1}"
+msgstr "Невалидна UTF-8 последователност: първоначален байт е {0}: {1}"
+
+#: com.amazon.redshift/core/UTF8Encoding.java:135
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is out of range: {0}"
+msgstr ""
+"Невалидна UTF-8 последователност: крайната стойност е извън стойностните "
+"граници: {0}"
+
+#: com.amazon.redshift/core/UTF8Encoding.java:151
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is a surrogate value: {0}"
+msgstr ""
+"Невалидна UTF-8 последователност: крайната стойност е заместителна стойност: "
+"{0}"
+
+#: com.amazon.redshift/core/Utils.java:93 com.amazon.redshift/core/Utils.java:110
+msgid "Zero bytes may not occur in string parameters."
+msgstr "Не може да има нула байта в низ параметрите."
+
+#: com.amazon.redshift/core/Utils.java:120 com.amazon.redshift/core/Utils.java:170
+msgid "No IOException expected from StringBuffer or StringBuilder"
+msgstr ""
+
+#: com.amazon.redshift/core/Utils.java:159
+msgid "Zero bytes may not occur in identifiers."
+msgstr "Не може да има нула байта в идентификаторите."
+
+#: com.amazon.redshift/core/v3/CompositeParameterList.java:33
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:53
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:64
+#: com.amazon.redshift/jdbc/PgResultSet.java:2710
+#: com.amazon.redshift/jdbc/PgResultSetMetaData.java:389
+#, java-format
+msgid "The column index is out of range: {0}, number of columns: {1}."
+msgstr "Индексът на колоната е извън стойностен обхват: {0}, брой колони: {1}."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:157
+#, fuzzy, java-format
+msgid "Invalid targetServerType value: {0}"
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:281
+#, fuzzy, java-format
+msgid ""
+"Connection to {0} refused. Check that the hostname and port are correct and "
+"that the postmaster is accepting TCP/IP connections."
+msgstr ""
+"Връзката отказана. Проверете дали името на хоста и порта са верни и дали "
+"postmaster приема ТСР / IP връзки."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:292
+#: com.amazon.redshift/core/v3/replication/V3ReplicationProtocol.java:135
+msgid "The connection attempt failed."
+msgstr "Опита за връзка бе неуспешен."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:307
+#, java-format
+msgid "Could not find a server with specified targetServerType: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:418
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:431
+msgid "The server does not support SSL."
+msgstr "Сървърът не поддържа SSL."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:445
+msgid "An error occurred while setting up the SSL connection."
+msgstr "Възникна грешка при осъществяване на SSL връзката."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:541
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:568
+msgid ""
+"The server requested password-based authentication, but no password was "
+"provided."
+msgstr "Сървърът изисква идентифициране с парола, но парола не бе въведена."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:674
+msgid ""
+"SCRAM authentication is not supported by this driver. You need JDK >= 8 and "
+"pgjdbc >= 42.2.0 (not \".jre\" versions)"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:700
+#, java-format
+msgid ""
+"The authentication type {0} is not supported. Check that you have configured "
+"the pg_hba.conf file to include the client''s IP address or subnet, and that "
+"it is using an authentication scheme supported by the driver."
+msgstr ""
+"Тип на удостоверяване {0} не се поддържа. Проверете дали сте конфигурирали "
+"pg_hba.conf файла, да включва IP адреса на клиента или подмрежата, и че се "
+"използва схема за удостоверяване, поддържана от драйвъра."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:707
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2571
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2604
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2608
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2676
+#: com.amazon.redshift/gss/GssAction.java:124
+msgid "Protocol error.  Session setup failed."
+msgstr "Грешка в протокола. Неуспешна настройка на сесията."
+
+#: com.amazon.redshift/core/v3/CopyInImpl.java:49
+msgid "CopyIn copy direction can't receive data"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/CopyOperationImpl.java:54
+msgid "CommandComplete expected COPY but got: "
+msgstr "Очаквано командно допълнение COPY но получено: "
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:164
+msgid "Tried to obtain lock while already holding it"
+msgstr "Опит за получаване на заключване/резервация докато вече е получено"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:180
+msgid "Tried to break lock on database connection"
+msgstr ""
+"Опит за премахване на заключването/резервацията при връзка към базата данни"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:198
+msgid "Interrupted while waiting to obtain lock on database connection"
+msgstr ""
+"Прекъсване при чакане да получи заключване/резервация при връзка към базата "
+"данни"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:330
+msgid "Unable to bind parameter values for statement."
+msgstr "Не може да подготви параметрите на командата."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:336
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:515
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:589
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:632
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:759
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2405
+#: com.amazon.redshift/util/StreamWrapper.java:130
+#, fuzzy
+msgid "An I/O error occurred while sending to the backend."
+msgstr "Входно/изходна грешка при изпращане към backend."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:390
+msgid "Error releasing savepoint"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:564
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:606
+#, java-format
+msgid "Expected command status BEGIN, got {0}."
+msgstr "Очаквана команда BEGIN, получена {0}."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:611
+#: com.amazon.redshift/jdbc/PgResultSet.java:1718
+#, java-format
+msgid "Unexpected command status: {0}."
+msgstr "Неочакван статус на команда: {0}."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:717
+#, fuzzy
+msgid "An error occurred while trying to get the socket timeout."
+msgstr "Входно/изходна грешка при изпращане към backend."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:752
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:828
+#, java-format
+msgid "Unknown Response Type {0}."
+msgstr "Неизвестен тип на отговор {0}."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:775
+#, fuzzy
+msgid "An error occurred while trying to reset the socket timeout."
+msgstr "Входно/изходна грешка при изпращане към backend."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:873
+msgid "Database connection failed when starting copy"
+msgstr "Неосъществена връзка към базата данни при започване на копирането"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:908
+msgid "Tried to cancel an inactive copy operation"
+msgstr "Опит за прекъсване на неактивно копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:947
+msgid "Database connection failed when canceling copy operation"
+msgstr "Неосъществена връзка към базата данни при прекъсване на копирането"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:963
+msgid "Missing expected error response to copy cancel request"
+msgstr "Липсва очакван отговор при грешка да прекъсне копирането"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:967
+#, java-format
+msgid "Got {0} error responses to single copy cancel request"
+msgstr ""
+"Получени {0} отговори за грешка при единствено искане да се прекъсне "
+"копирането"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:982
+msgid "Tried to end inactive copy"
+msgstr "Опит за прекъсване на неактивно копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:997
+msgid "Database connection failed when ending copy"
+msgstr "Неосъществена връзка към базата данни при завършване на копирането"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1015
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1035
+msgid "Tried to write to an inactive copy operation"
+msgstr "Опит за писане при неактивна операция за копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1028
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1043
+msgid "Database connection failed when writing to copy"
+msgstr "Неосъществена връзка към базата данни при опит за копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1058
+msgid "Tried to read from inactive copy"
+msgstr "Опит за четене при неактивно копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1065
+msgid "Database connection failed when reading from copy"
+msgstr "Неосъществена връзка към базата данни при четене от копие"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1131
+#, java-format
+msgid "Received CommandComplete ''{0}'' without an active copy operation"
+msgstr "Получено командно допълнение ''{0}'' без активна команда за копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1156
+#, java-format
+msgid "Got CopyInResponse from server during an active {0}"
+msgstr "Получен CopyInResponse отговор от сървъра при активно {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1170
+#, java-format
+msgid "Got CopyOutResponse from server during an active {0}"
+msgstr "Получен CopyOutResponse отговор от сървъра при активно {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1184
+#, fuzzy, java-format
+msgid "Got CopyBothResponse from server during an active {0}"
+msgstr "Получен CopyOutResponse отговор от сървъра при активно {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1200
+msgid "Got CopyData without an active copy operation"
+msgstr "Получено CopyData без наличие на активна операция за копиране"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1204
+#, java-format
+msgid "Unexpected copydata from server for {0}"
+msgstr "Неочаквано CopyData от сървъра за {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1264
+#, java-format
+msgid "Unexpected packet type during copy: {0}"
+msgstr "Неочакван тип пакет при копиране: {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1554
+#, java-format
+msgid ""
+"Bind message length {0} too long.  This can be caused by very large or "
+"incorrect length specifications on InputStream parameters."
+msgstr ""
+"Прекалено голяма дължина {0} на съобщението. Това може да е причинено от "
+"прекалено голяма или неправилно зададена дължина на InputStream параметри."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2178
+msgid "Ran out of memory retrieving query results."
+msgstr "Недостатъчна памет при представяна на резултатите от заявката."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2346
+msgid "The driver currently does not support COPY operations."
+msgstr "За момента драйвъра не поддържа COPY команди."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2633
+#, fuzzy, java-format
+msgid ""
+"The server''s client_encoding parameter was changed to {0}. The JDBC driver "
+"requires client_encoding to be UTF8 for correct operation."
+msgstr ""
+"Параметърът client_encoding при сървъра бе променен на {0}. JDBC драйвъра "
+"изисква client_encoding да бъде UNICODE за да функционира правилно."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2643
+#, java-format
+msgid ""
+"The server''s DateStyle parameter was changed to {0}. The JDBC driver "
+"requires DateStyle to begin with ISO for correct operation."
+msgstr ""
+"Параметърът DateStyle при сървъра бе променен на {0}. JDBC драйвъра изисква "
+"DateStyle започва с ISO за да функционира правилно."
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2656
+#, java-format
+msgid ""
+"The server''s standard_conforming_strings parameter was reported as {0}. The "
+"JDBC driver expected on or off."
+msgstr ""
+"Параметърът standard_conforming_strings при сървъра бе докладван като {0}. "
+"JDBC драйвъра очаква този параметър да бъде on или off."
+
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:264
+#, java-format
+msgid "No value specified for parameter {0}."
+msgstr "Няма стойност, определена за параметър {0}."
+
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:437
+#, fuzzy, java-format
+msgid "Added parameters index out of range: {0}, number of columns: {1}."
+msgstr "Параметърният индекс е извън обхват: {0}, брой параметри: {1}."
+
+#: com.amazon.redshift/core/v3/replication/V3PGReplicationStream.java:144
+#, fuzzy, java-format
+msgid "Unexpected packet type during replication: {0}"
+msgstr "Неочакван тип пакет при копиране: {0}"
+
+#: com.amazon.redshift/core/v3/replication/V3PGReplicationStream.java:269
+#, fuzzy
+msgid "This replication stream has been closed."
+msgstr "Връзката бе прекъсната."
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:118
+msgid "This PooledConnection has already been closed."
+msgstr "Тази PooledConnection връзка бе вече прекъсната."
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:314
+msgid ""
+"Connection has been closed automatically because a new connection was opened "
+"for the same PooledConnection or the PooledConnection has been closed."
+msgstr ""
+"Връзката бе автоматично прекъсната, защото нова връзка за същата беше "
+"осъществена или PooledConnection връзката е вече прекъсната."
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:315
+msgid "Connection has been closed."
+msgstr "Връзката бе прекъсната."
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:420
+msgid "Statement has been closed."
+msgstr "Командата е завършена."
+
+#: com.amazon.redshift/ds/PGPoolingDataSource.java:269
+msgid "Failed to setup DataSource."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPoolingDataSource.java:371
+msgid "DataSource has been closed."
+msgstr "Източникът на данни е прекъснат."
+
+#: com.amazon.redshift/ds/common/BaseDataSource.java:1157
+#: com.amazon.redshift/ds/common/BaseDataSource.java:1167
+#, fuzzy, java-format
+msgid "Unsupported property name: {0}"
+msgstr "Неподдържана стойност за тип: {0}"
+
+#: com.amazon.redshift/fastpath/Fastpath.java:84
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a numeric."
+msgstr "Извикване на {0} - няма резултати и а бе очаквано цяло число."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:161
+#, java-format
+msgid "Fastpath call {0} - No result was returned and we expected an integer."
+msgstr "Извикване на {0} - няма резултати и а бе очаквано цяло число."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:169
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting an "
+"integer."
+msgstr "Извикване на {0} - няма резултати и а бе очаквано цяло число."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:186
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a long."
+msgstr "Извикване на {0} - няма резултати и а бе очаквано цяло число."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:194
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting a "
+"long."
+msgstr "Извикване на {0} - няма резултати и а бе очаквано цяло число."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:297
+#, java-format
+msgid "The fastpath function {0} is unknown."
+msgstr "Функцията {0} е неизвестна."
+
+#: com.amazon.redshift/geometric/PGbox.java:77
+#: com.amazon.redshift/geometric/PGcircle.java:74
+#: com.amazon.redshift/geometric/PGcircle.java:82
+#: com.amazon.redshift/geometric/PGline.java:107
+#: com.amazon.redshift/geometric/PGline.java:116
+#: com.amazon.redshift/geometric/PGlseg.java:70
+#: com.amazon.redshift/geometric/PGpoint.java:76
+#, java-format
+msgid "Conversion to type {0} failed: {1}."
+msgstr "Неуспешно преобразуване към тип {0}: {1}."
+
+#: com.amazon.redshift/geometric/PGpath.java:70
+#, java-format
+msgid "Cannot tell if path is open or closed: {0}."
+msgstr "Не може да определи дали адреса е отворен или затворен: {0}."
+
+#: com.amazon.redshift/gss/GssAction.java:135 com.amazon.redshift/gss/MakeGSS.java:65
+#: com.amazon.redshift/gss/MakeGSS.java:73
+msgid "GSS Authentication failed"
+msgstr "GSS удостоверяването бе неуспешно"
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:77
+msgid ""
+"Truncation of large objects is only implemented in 8.3 and later servers."
+msgstr "Скъсяване на големи обекти LOB е осъществено само във версии след 8.3."
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:82
+msgid "Cannot truncate LOB to a negative length."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:89
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:231
+#, java-format
+msgid "PostgreSQL LOBs can only index to: {0}"
+msgstr "PostgreSQL индексира големи обекти LOB само до: {0}"
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:227
+msgid "LOB positioning offsets start at 1."
+msgstr "Позиционалният офсет при големи обекти LOB започва от 1."
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:243
+msgid "free() was called on this LOB previously"
+msgstr "Функцията free() бе вече извикана за този голям обект LOB"
+
+#: com.amazon.redshift/jdbc/BatchResultHandler.java:92
+msgid "Too many update results were returned."
+msgstr "Твърде много резултати бяха получени при актуализацията."
+
+#: com.amazon.redshift/jdbc/BatchResultHandler.java:146
+#, fuzzy, java-format
+msgid ""
+"Batch entry {0} {1} was aborted: {2}  Call getNextException to see other "
+"errors in the batch."
+msgstr ""
+"Партида {0} {1} беше прекратена. Изпълнете функция getNextException за да "
+"видите причината."
+
+#: com.amazon.redshift/jdbc/BooleanTypeUtil.java:99
+#, java-format
+msgid "Cannot cast to boolean: \"{0}\""
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:238
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:168
+#, java-format
+msgid "{0} function takes four and only four argument."
+msgstr "Функцията {0} може да приеме четири и само четири аргумента."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:268
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:335
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:737
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:197
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:264
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:665
+#, java-format
+msgid "{0} function takes two and only two arguments."
+msgstr "Функцията {0} може да приеме два и само два аргумента."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:286
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:439
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:465
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:524
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:725
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:212
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:356
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:382
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:441
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:654
+#, java-format
+msgid "{0} function takes one and only one argument."
+msgstr "Функцията {0} може да приеме само един единствен аргумент."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:310
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:384
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:239
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:308
+#, java-format
+msgid "{0} function takes two or three arguments."
+msgstr "Функцията {0} може да приеме два или три аргумента."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:409
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:424
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:690
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:716
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:645
+#, java-format
+msgid "{0} function doesn''t take any argument."
+msgstr "Функцията {0} не може да приема аргументи."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:584
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:636
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:501
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:571
+#, java-format
+msgid "{0} function takes three and only three arguments."
+msgstr "Функцията {0} може да приеме три и само три аргумента."
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:597
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:618
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:621
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:653
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:666
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:669
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:511
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:528
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:585
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:597
+#, java-format
+msgid "Interval {0} not yet implemented"
+msgstr "Интервалът {0} не е валиден все още."
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:38
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:53
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:71
+msgid "Cannot reference a savepoint after it has been released."
+msgstr "Не може да референцира savepoint, след като е била освободена."
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:43
+msgid "Cannot retrieve the id of a named savepoint."
+msgstr "Не може да определи ID на спомената savepoint."
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:58
+msgid "Cannot retrieve the name of an unnamed savepoint."
+msgstr "Не може да определи името на неупомената savepoint."
+
+#: com.amazon.redshift/jdbc/PgArray.java:155 com.amazon.redshift/jdbc/PgArray.java:841
+#, java-format
+msgid "The array index is out of range: {0}"
+msgstr "Индексът на масив е извън обхвата: {0}"
+
+#: com.amazon.redshift/jdbc/PgArray.java:176 com.amazon.redshift/jdbc/PgArray.java:858
+#, java-format
+msgid "The array index is out of range: {0}, number of elements: {1}."
+msgstr "Индексът на масив е извън обхвата: {0}, брой елементи: {1}."
+
+#: com.amazon.redshift/jdbc/PgArray.java:208
+#: com.amazon.redshift/jdbc/PgResultSet.java:1871
+#: com.amazon.redshift/util/HStoreConverter.java:43
+#: com.amazon.redshift/util/HStoreConverter.java:74
+msgid ""
+"Invalid character data was found.  This is most likely caused by stored data "
+"containing characters that are invalid for the character set the database "
+"was created in.  The most common example of this is storing 8bit data in a "
+"SQL_ASCII database."
+msgstr ""
+"Бяха намерени невалидни данни. Това най-вероятно се дължи на съхранявани "
+"данни, съдържащи символи, които са невалидни за набора от знаци при "
+"създаване на базата данни. Чест пример за това е съхраняване на 8bit данни в "
+"SQL_ASCII бази данни."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:85
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:95
+msgid "A CallableStatement was executed with nothing returned."
+msgstr "CallableStatement функция бе обработена, но няма резултати."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:106
+msgid "A CallableStatement was executed with an invalid number of parameters"
+msgstr ""
+"CallableStatement функция бе обработена, но с непозволен брой параметри."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:144
+#, java-format
+msgid ""
+"A CallableStatement function was executed and the out parameter {0} was of "
+"type {1} however type {2} was registered."
+msgstr ""
+"CallableStatement функция бе обработена и изходния параметър {0} бе от тип "
+"{1}, обаче тип {2} бе използван."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:206
+msgid ""
+"This statement does not declare an OUT parameter.  Use '{' ?= call ... '}' "
+"to declare one."
+msgstr ""
+"Тази заявка не декларира изходен параметър. Ползвайте '{' ?= call ... '}' за "
+"да декларирате такъв."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:229
+msgid "wasNull cannot be call before fetching a result."
+msgstr "wasNull не може да бьде изпълнен, преди наличието на резултата."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:367
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:386
+#, java-format
+msgid ""
+"Parameter of type {0} was registered, but call to get{1} (sqltype={2}) was "
+"made."
+msgstr ""
+"Отчетен параметър от тип {0}, но обработено като get{1} (sqltype={2}). "
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:407
+msgid ""
+"A CallableStatement was declared, but no call to registerOutParameter(1, "
+"<some type>) was made."
+msgstr ""
+"CallableStatement функция бе декларирана, но обработена като "
+"registerOutParameter(1, <some type>) "
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:413
+msgid "No function outputs were registered."
+msgstr "Резултати от функцията не бяха регистрирани."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:419
+msgid ""
+"Results cannot be retrieved from a CallableStatement before it is executed."
+msgstr ""
+"Резултати от CallableStatement функция не могат да бъдат получени, преди тя "
+"да бъде обработена."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:686
+#, fuzzy, java-format
+msgid "Unsupported type conversion to {1}."
+msgstr "Неподдържана стойност за тип: {0}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:241
+#, java-format
+msgid "Unsupported value for stringtype parameter: {0}"
+msgstr "Непозволена стойност за StringType параметър: {0}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:424
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:109
+#: com.amazon.redshift/jdbc/PgStatement.java:226
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:226
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:371
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:411
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:484
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:489
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:526
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:531
+msgid "No results were returned by the query."
+msgstr "Няма намерени резултати за заявката."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:442
+#: com.amazon.redshift/jdbc/PgStatement.java:256
+msgid "A result was returned when none was expected."
+msgstr "Бе получен резултат, когато такъв не бе очакван."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:547
+msgid "Custom type maps are not supported."
+msgstr "Специфични типови съответствия не се поддържат."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:589
+#, java-format
+msgid "Failed to create object for: {0}."
+msgstr "Неуспешно създаване на обект за: {0}."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:643
+#, java-format
+msgid "Unable to load the class {0} responsible for the datatype {1}"
+msgstr "Невъзможно е зареждането на клас {0}, отговарящ за типа данни {1}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:704
+msgid ""
+"Cannot change transaction read-only property in the middle of a transaction."
+msgstr ""
+"Не може да променяте правата на транзакцията по време на нейното извършване."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:771
+msgid "Cannot commit when autoCommit is enabled."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:782
+#: com.amazon.redshift/jdbc/PgConnection.java:1397
+#: com.amazon.redshift/jdbc/PgConnection.java:1441
+#, fuzzy
+msgid "This connection has been closed."
+msgstr "Връзката бе прекъсната."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:792
+msgid "Cannot rollback when autoCommit is enabled."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:842
+msgid ""
+"Cannot change transaction isolation level in the middle of a transaction."
+msgstr ""
+"Не може да променяте изолационното ниво на транзакцията по време на нейното "
+"извършване."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:848
+#, java-format
+msgid "Transaction isolation level {0} not supported."
+msgstr "Изолационно ниво на транзакциите {0} не се поддържа."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:893
+msgid "Finalizing a Connection that was never closed:"
+msgstr "Приключване на връзка, която не бе прекъсната:"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:960
+msgid "Unable to translate data into the desired encoding."
+msgstr "Невъзможно преобразуване на данни в желаното кодиране."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1023
+#: com.amazon.redshift/jdbc/PgResultSet.java:1756
+#: com.amazon.redshift/jdbc/PgStatement.java:921
+msgid "Fetch size must be a value greater to or equal to 0."
+msgstr "Размера за fetch size трябва да бъде по-голям или равен на 0."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1302
+#: com.amazon.redshift/jdbc/PgConnection.java:1343
+#, java-format
+msgid "Unable to find server array type for provided name {0}."
+msgstr "Не може да се намери типа на сървърен масив за зададеното име {0}."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1325
+#, fuzzy, java-format
+msgid "Invalid elements {0}"
+msgstr "Невалидни флагове {0}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1361
+#, fuzzy, java-format
+msgid "Invalid timeout ({0}<0)."
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1385
+msgid "Validating connection."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1418
+#, fuzzy, java-format
+msgid "Failed to set ClientInfo property: {0}"
+msgstr "Неуспешно създаване на обект за: {0}."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1428
+msgid "ClientInfo property not supported."
+msgstr "Информацията за ClientInfo не се поддържа."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1454
+msgid "One or more ClientInfo failed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1554
+#, fuzzy
+msgid "Network timeout must be a value greater than or equal to 0."
+msgstr ""
+"Времето за изпълнение на заявката трябва да бъде стойност по-голяма или "
+"равна на 0."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1566
+msgid "Unable to set network timeout."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1577
+msgid "Unable to get network timeout."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1594
+#, java-format
+msgid "Unknown ResultSet holdability setting: {0}."
+msgstr "Неизвестна ResultSet holdability настройка: {0}."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1612
+#: com.amazon.redshift/jdbc/PgConnection.java:1633
+msgid "Cannot establish a savepoint in auto-commit mode."
+msgstr "Не може да се установи savepoint в auto-commit модус."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1702
+msgid "Returning autogenerated keys is not supported."
+msgstr "Автоматично генерирани ключове не се поддържат."
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:59
+msgid ""
+"Unable to determine a value for MaxIndexKeys due to missing system catalog "
+"data."
+msgstr ""
+"Невъзможно е да се определи стойността за MaxIndexKeys поради липса на "
+"системния каталог с данни."
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:82
+msgid "Unable to find name datatype in the system catalogs."
+msgstr "Не може да се намери името на типа данни в системните каталози."
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:321
+#, fuzzy
+msgid "Unable to find keywords in the system catalogs."
+msgstr "Не може да се намери името на типа данни в системните каталози."
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1094
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2698
+msgid "oid"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1094
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2698
+msgid "proname"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1096
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1550
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2700
+msgid "typtype"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1099
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2703
+msgid "proargtypes"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1568
+msgid "adsrc"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1581
+msgid "attidentity"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1679
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1755
+msgid "rolname"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1680
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1756
+msgid "relacl"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1686
+msgid "attacl"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgParameterMetaData.java:88
+#, java-format
+msgid "The parameter index is out of range: {0}, number of parameters: {1}."
+msgstr "Параметърният индекс е извън обхват: {0}, брой параметри: {1}."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:95
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:118
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:132
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1016
+msgid ""
+"Can''t use query methods that take a query string on a PreparedStatement."
+msgstr ""
+"Не може да се употребяват методи за заявка, които ползват низове на "
+"PreparedStatement."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:243
+msgid "Unknown Types value."
+msgstr "Стойност от неизвестен тип."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:370
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:427
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1173
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1480
+#, java-format
+msgid "Invalid stream length {0}."
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:399
+#, java-format
+msgid "The JVM claims not to support the {0} encoding."
+msgstr "JVM не поддържа за момента {0} кодовата таблица."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:402
+#: com.amazon.redshift/jdbc/PgResultSet.java:1100
+#: com.amazon.redshift/jdbc/PgResultSet.java:1132
+msgid "Provided InputStream failed."
+msgstr "Зададения InputStream поток е неуспешен."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:448
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1078
+#, java-format
+msgid "Unknown type {0}."
+msgstr "Неизвестен тип {0}."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:465
+msgid "No hstore extension installed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:607
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:630
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:640
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:652
+#, java-format
+msgid "Cannot cast an instance of {0} to type {1}"
+msgstr "Не може да преобразува инстанция на {0} към тип {1}"
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:670
+#, java-format
+msgid "Unsupported Types value: {0}"
+msgstr "Неподдържана стойност за тип: {0}"
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:882
+#, java-format
+msgid "Cannot convert an instance of {0} to type {1}"
+msgstr "Не може да преобразува инстанцията на {0} във вида {1}"
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:956
+#, java-format
+msgid ""
+"Can''t infer the SQL type to use for an instance of {0}. Use setObject() "
+"with an explicit Types value to specify the type to use."
+msgstr ""
+"Не може да се определи SQL тип, който да се използва за инстанцията на {0}. "
+"Ползвайте метода setObject() с точни стойности, за да определите типа."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1115
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1216
+msgid "Unexpected error writing large object to database."
+msgstr "Неочаквана грешка при записване на голям обект LOB в базата данни."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1160
+#: com.amazon.redshift/jdbc/PgResultSet.java:1182
+msgid "Provided Reader failed."
+msgstr "Грешка с ползвания четец."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1439
+#: com.amazon.redshift/util/StreamWrapper.java:56
+msgid "Object is too large to send over the protocol."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:278
+msgid ""
+"Operation requires a scrollable ResultSet, but this ResultSet is "
+"FORWARD_ONLY."
+msgstr ""
+"Операцията изисква резултатите да са scrollable, но този ResultSet е "
+"FORWARD_ONLY."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:484
+#: com.amazon.redshift/jdbc/PgResultSet.java:523
+#: com.amazon.redshift/jdbc/PgResultSet.java:547
+#: com.amazon.redshift/jdbc/PgResultSet.java:584
+#: com.amazon.redshift/jdbc/PgResultSet.java:614
+#: com.amazon.redshift/jdbc/PgResultSet.java:2967
+#: com.amazon.redshift/jdbc/PgResultSet.java:3012
+#, fuzzy, java-format
+msgid "Cannot convert the column of type {0} to requested type {1}."
+msgstr "Не може да преобразува инстанцията на {0} във вида {1}"
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:819
+#: com.amazon.redshift/jdbc/PgResultSet.java:840
+#: com.amazon.redshift/jdbc/PgResultSet.java:1772
+msgid "Can''t use relative move methods while on the insert row."
+msgstr ""
+"Не може да се използват относителни методи за движение, когато се намираме "
+"при редицата на въвеждане."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:863
+#: com.amazon.redshift/jdbc/PgStatement.java:913
+#, java-format
+msgid "Invalid fetch direction constant: {0}."
+msgstr "Невалидна константа за fetch посоката: {0}."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:873
+msgid "Cannot call cancelRowUpdates() when on the insert row."
+msgstr ""
+"Не може да се изпълни cancelRowUpdates() метода, когато се намираме при "
+"редицата на въвеждане."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:888
+msgid "Cannot call deleteRow() when on the insert row."
+msgstr ""
+"Не може да се изпълни deleteRow() метода, когато се намираме при редицата на "
+"въвеждане."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:895
+msgid ""
+"Currently positioned before the start of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+"В момента се намираме в началото на ResultSet. Тук не може да се изпълни "
+"deleteRow() метода."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:901
+msgid ""
+"Currently positioned after the end of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+"В момента се намираме преди края на ResultSet. Тук не може да се изпълни "
+"deleteRow() метода."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:905
+msgid "There are no rows in this ResultSet."
+msgstr "В този ResultSet няма редове."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:946
+msgid "Not on the insert row."
+msgstr "Не сме в редицата на въвеждане."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:948
+msgid "You must specify at least one column value to insert a row."
+msgstr "Трябва да посочите поне една стойност за колона, за да вмъкнете ред."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1097
+#: com.amazon.redshift/jdbc/PgResultSet.java:1694
+#: com.amazon.redshift/jdbc/PgResultSet.java:2374
+#: com.amazon.redshift/jdbc/PgResultSet.java:2395
+#, java-format
+msgid "The JVM claims not to support the encoding: {0}"
+msgstr "JVM не поддържа тази кодова таблица за момента: {0}"
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1225
+msgid "Can''t refresh the insert row."
+msgstr "Не може да обнови въведения ред."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1292
+msgid "Cannot call updateRow() when on the insert row."
+msgstr ""
+"Не може да се изпълни updateRow() метода, когато се намираме при редицата на "
+"въвеждане."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1299
+#: com.amazon.redshift/jdbc/PgResultSet.java:3029
+msgid ""
+"Cannot update the ResultSet because it is either before the start or after "
+"the end of the results."
+msgstr ""
+"Не може да се обнови ResultSet, когато се намираме преди началото или след "
+"края на резултатите."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1476
+msgid "ResultSets with concurrency CONCUR_READ_ONLY cannot be updated."
+msgstr ""
+"ResultSets с concurrency CONCUR_READ_ONLY не могат да бъдат актуализирани."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1544
+#, java-format
+msgid "No primary key found for table {0}."
+msgstr "Няма първичен ключ за таблица {0}."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1958
+#: com.amazon.redshift/jdbc/PgResultSet.java:1963
+#: com.amazon.redshift/jdbc/PgResultSet.java:2762
+#: com.amazon.redshift/jdbc/PgResultSet.java:2768
+#: com.amazon.redshift/jdbc/PgResultSet.java:2793
+#: com.amazon.redshift/jdbc/PgResultSet.java:2799
+#: com.amazon.redshift/jdbc/PgResultSet.java:2823
+#: com.amazon.redshift/jdbc/PgResultSet.java:2828
+#: com.amazon.redshift/jdbc/PgResultSet.java:2844
+#: com.amazon.redshift/jdbc/PgResultSet.java:2865
+#: com.amazon.redshift/jdbc/PgResultSet.java:2876
+#: com.amazon.redshift/jdbc/PgResultSet.java:2889
+#: com.amazon.redshift/jdbc/PgResultSet.java:3017
+#, java-format
+msgid "Bad value for type {0} : {1}"
+msgstr "Невалидна стойност за тип {0} : {1}"
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2548
+#, java-format
+msgid "The column name {0} was not found in this ResultSet."
+msgstr "Името на колоната {0} не бе намерено в този ResultSet."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2684
+msgid ""
+"ResultSet is not updateable.  The query that generated this result set must "
+"select only one table, and must select all primary keys from that table. See "
+"the JDBC 2.1 API Specification, section 5.6 for more details."
+msgstr ""
+"ResultSet не може да се обновява. Заявката генерираща този резултат трябва "
+"да селектира само една таблица, както и всички първични ключове в нея. За "
+"повече информация, вижте раздел 5.6 на JDBC 2.1 API Specification."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2696
+msgid "This ResultSet is closed."
+msgstr "Операциите по този ResultSet са били прекратени."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2727
+msgid "ResultSet not positioned properly, perhaps you need to call next."
+msgstr ""
+"ResultSet не е референциран правилно. Вероятно трябва да придвижите курсора "
+"посредством next."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:3049
+msgid "Invalid UUID data."
+msgstr "Невалидни UUID данни."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:3138
+#: com.amazon.redshift/jdbc/PgResultSet.java:3145
+#: com.amazon.redshift/jdbc/PgResultSet.java:3156
+#: com.amazon.redshift/jdbc/PgResultSet.java:3167
+#: com.amazon.redshift/jdbc/PgResultSet.java:3178
+#: com.amazon.redshift/jdbc/PgResultSet.java:3189
+#: com.amazon.redshift/jdbc/PgResultSet.java:3200
+#: com.amazon.redshift/jdbc/PgResultSet.java:3211
+#: com.amazon.redshift/jdbc/PgResultSet.java:3222
+#: com.amazon.redshift/jdbc/PgResultSet.java:3229
+#: com.amazon.redshift/jdbc/PgResultSet.java:3236
+#: com.amazon.redshift/jdbc/PgResultSet.java:3247
+#: com.amazon.redshift/jdbc/PgResultSet.java:3264
+#: com.amazon.redshift/jdbc/PgResultSet.java:3271
+#: com.amazon.redshift/jdbc/PgResultSet.java:3278
+#: com.amazon.redshift/jdbc/PgResultSet.java:3289
+#: com.amazon.redshift/jdbc/PgResultSet.java:3296
+#: com.amazon.redshift/jdbc/PgResultSet.java:3303
+#: com.amazon.redshift/jdbc/PgResultSet.java:3341
+#: com.amazon.redshift/jdbc/PgResultSet.java:3348
+#: com.amazon.redshift/jdbc/PgResultSet.java:3355
+#: com.amazon.redshift/jdbc/PgResultSet.java:3375
+#: com.amazon.redshift/jdbc/PgResultSet.java:3388
+#, fuzzy, java-format
+msgid "conversion to {0} from {1} not supported"
+msgstr "Изолационно ниво на транзакциите {0} не се поддържа."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:151
+msgid "Unable to decode xml data."
+msgstr "Не може да декодира XML данните."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:154
+#, java-format
+msgid "Unknown XML Source class: {0}"
+msgstr "Неизвестен XML входящ клас: {0}"
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:201
+msgid "Unable to create SAXResult for SQLXML."
+msgstr "Не може да се създаде SAXResult за SQLXML."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:216
+msgid "Unable to create StAXResult for SQLXML"
+msgstr "Не може да се създаде StAXResult за SQLXML."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:221
+#, java-format
+msgid "Unknown XML Result class: {0}"
+msgstr "Неизвестен XML изходящ клас: {0}"
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:234
+msgid "This SQLXML object has already been freed."
+msgstr "Този SQLXML обект вече е освободен."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:243
+msgid ""
+"This SQLXML object has not been initialized, so you cannot retrieve data "
+"from it."
+msgstr ""
+"Този SQLXML обект не е инициализиран, така че не могат да се извличат данни "
+"от него."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:256
+#, java-format
+msgid "Failed to convert binary xml data to encoding: {0}."
+msgstr ""
+"Неуспешно преобразуване на двоични XML данни за кодиране съгласно: {0}."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:282
+msgid "Unable to convert DOMResult SQLXML data to a string."
+msgstr "Не може да преобразува DOMResult SQLXML данни в низ."
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:295
+msgid ""
+"This SQLXML object has already been initialized, so you cannot manipulate it "
+"further."
+msgstr "Този SQLXML обект вече е инициализиран и не може да бъде променен."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:236
+msgid "Multiple ResultSets were returned by the query."
+msgstr "Заявката върна няколко ResultSets."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:320
+msgid "Can''t use executeWithFlags(int) on a Statement."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:514
+msgid "Maximum number of rows must be a value grater than or equal to 0."
+msgstr ""
+"Максималният брой редове трябва да бъде стойност по-голяма или равна на 0."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:560
+msgid "Query timeout must be a value greater than or equals to 0."
+msgstr ""
+"Времето за изпълнение на заявката трябва да бъде стойност по-голяма или "
+"равна на 0."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:602
+msgid "The maximum field size must be a value greater than or equal to 0."
+msgstr ""
+"Максималният размер на полето трябва да бъде стойност по-голяма или равна на "
+"0."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:705
+msgid "This statement has been closed."
+msgstr "Командата е извършена."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:1163
+#: com.amazon.redshift/jdbc/PgStatement.java:1191
+msgid "Returning autogenerated keys by column index is not supported."
+msgstr ""
+"Автоматично генерирани ключове спрямо индекс на колона не се поддържат."
+
+#: com.amazon.redshift/jdbc/SslMode.java:78
+#, fuzzy, java-format
+msgid "Invalid sslmode value: {0}"
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/jdbc/TimestampUtils.java:364
+#: com.amazon.redshift/jdbc/TimestampUtils.java:432
+#, fuzzy, java-format
+msgid "Bad value for type timestamp/date/time: {1}"
+msgstr "Невалидна стойност за тип {0} : {1}"
+
+#: com.amazon.redshift/jdbc/TimestampUtils.java:912
+#: com.amazon.redshift/jdbc/TimestampUtils.java:969
+#: com.amazon.redshift/jdbc/TimestampUtils.java:1014
+#: com.amazon.redshift/jdbc/TimestampUtils.java:1063
+#, fuzzy, java-format
+msgid "Unsupported binary encoding of {0}."
+msgstr "Неподдържана стойност за тип: {0}"
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:67
+msgid "No SCRAM mechanism(s) advertised by the server"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:80
+msgid "Invalid or unsupported by client SCRAM mechanisms"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:118
+#, fuzzy, java-format
+msgid "Invalid server-first-message: {0}"
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:150
+#, fuzzy, java-format
+msgid "Invalid server-final-message: {0}"
+msgstr "Невалидна дължина {0} на потока данни."
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:156
+#, java-format
+msgid "SCRAM authentication failed, server returned error: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:163
+msgid "Invalid server SCRAM signature"
+msgstr ""
+
+#: com.amazon.redshift/largeobject/LargeObjectManager.java:249
+#: com.amazon.redshift/largeobject/LargeObjectManager.java:290
+msgid "Large Objects may not be used in auto-commit mode."
+msgstr "Големи обекти LOB не могат да се използват в auto-commit модус."
+
+#: com.amazon.redshift/osgi/PGDataSourceFactory.java:82
+#, fuzzy, java-format
+msgid "Unsupported properties: {0}"
+msgstr "Неподдържана стойност за тип: {0}"
+
+#: com.amazon.redshift/replication/fluent/AbstractCreateSlotBuilder.java:38
+msgid "Server does not support temporary replication slots"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:63
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:49
+msgid "slot_name"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:65
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:51
+msgid "consistent_point"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:66
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:52
+msgid "snapshot_name"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:67
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:53
+msgid "output_plugin"
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:132
+msgid ""
+"Could not find a java cryptographic algorithm: X.509 CertificateFactory not "
+"available."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:142
+#, java-format
+msgid "Could not open SSL certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:147
+#, java-format
+msgid "Loading the SSL certificate {0} into a KeyManager failed."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:211
+msgid "Enter SSL password: "
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:218
+msgid "Could not read password for SSL key file, console is not available."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:223
+#, java-format
+msgid "Could not read password for SSL key file by callbackhandler {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:243
+#, java-format
+msgid "Could not decrypt SSL key file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:250
+#, java-format
+msgid "Could not read SSL key file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:253
+#: com.amazon.redshift/ssl/LibPQFactory.java:162
+#, java-format
+msgid "Could not find a java cryptographic algorithm: {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:83
+#, fuzzy, java-format
+msgid "The password callback class provided {0} could not be instantiated."
+msgstr "Класът SSLSocketFactory връща {0} и не може да бъде инстанцииран."
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:120
+#, java-format
+msgid "Could not open SSL root certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:135
+#, java-format
+msgid "Could not read SSL root certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:139
+#, java-format
+msgid "Loading the SSL root certificate {0} into a TrustManager failed."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:156
+msgid "Could not initialize SSL context."
+msgstr ""
+
+#: com.amazon.redshift/ssl/MakeSSL.java:42
+#, java-format
+msgid "SSL error: {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/MakeSSL.java:69
+#, fuzzy, java-format
+msgid "The HostnameVerifier class provided {0} could not be instantiated."
+msgstr "Класът SSLSocketFactory връща {0} и не може да бъде инстанцииран."
+
+#: com.amazon.redshift/ssl/MakeSSL.java:80
+#, java-format
+msgid "The hostname {0} could not be verified by hostnameverifier {1}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:84
+#, fuzzy, java-format
+msgid "Unable to parse X509Certificate for hostname {0}"
+msgstr "Не може да се намери типа на сървърен масив за зададеното име {0}."
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:89
+#, fuzzy, java-format
+msgid "No certificates found for hostname {0}"
+msgstr "Няма първичен ключ за таблица {0}."
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:108
+#, java-format
+msgid "Hostname {0} is invalid"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:125
+#, fuzzy, java-format
+msgid "Unable to parse certificates for hostname {0}"
+msgstr "Не може да подготви параметрите на командата."
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:156
+#, java-format
+msgid "Server name validation pass for {0}, subjectAltName {1}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:172
+#, java-format
+msgid ""
+"Server name validation failed: certificate for host {0} dNSName entries "
+"subjectAltName, but none of them match. Assuming server name validation "
+"failed"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:183
+#, java-format
+msgid ""
+"Server name validation failed: unable to extract common name from "
+"X509Certificate for hostname {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:196
+#, java-format
+msgid ""
+"Server name validation failed: certificate for hostname {0} has no DNS "
+"subjectAltNames, and it CommonName is missing as well"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:216
+#, java-format
+msgid ""
+"Server name validation failed: hostname {0} does not match common name {1}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:90
+msgid "The sslfactoryarg property may not be empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:106
+msgid ""
+"The environment variable containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:114
+msgid ""
+"The system property containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:121
+msgid ""
+"The sslfactoryarg property must start with the prefix file:, classpath:, "
+"env:, sys:, or -----BEGIN CERTIFICATE-----."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:133
+#, fuzzy
+msgid "An error occurred reading the certificate"
+msgstr "Възникна грешка при осъществяване на SSL връзката."
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:166
+msgid "No X509TrustManager found"
+msgstr ""
+
+#: com.amazon.redshift/util/PGInterval.java:152
+msgid "Conversion of interval failed"
+msgstr "Неуспешно преобразуване на интервал"
+
+#: com.amazon.redshift/util/PGmoney.java:61
+msgid "Conversion of money failed."
+msgstr "Неуспешно валутно преобразуване."
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:44
+#, java-format
+msgid ""
+" (pgjdbc: autodetected server-encoding to be {0}, if the message is not "
+"readable, please check database logs and/or host, port, dbname, user, "
+"password, pg_hba.conf)"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:175
+#, java-format
+msgid "Detail: {0}"
+msgstr "Подробност: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:180
+#, java-format
+msgid "Hint: {0}"
+msgstr "Забележка: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:184
+#, java-format
+msgid "Position: {0}"
+msgstr "Позиция: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:188
+#, java-format
+msgid "Where: {0}"
+msgstr "Където: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:194
+#, java-format
+msgid "Internal Query: {0}"
+msgstr "Вътрешна заявка: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:198
+#, java-format
+msgid "Internal Position: {0}"
+msgstr "Вътрешна позиция: {0}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:205
+#, java-format
+msgid "Location: File: {0}, Routine: {1}, Line: {2}"
+msgstr "Местоположение: Файл: {0}, Функция: {1}, Ред: {2}"
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:210
+#, java-format
+msgid "Server SQLState: {0}"
+msgstr "SQL статус на сървъра: {0}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:128
+msgid ""
+"Transaction control methods setAutoCommit(true), commit, rollback and "
+"setSavePoint not allowed while an XA transaction is active."
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:186
+#: com.amazon.redshift/xa/PGXAConnection.java:272
+#: com.amazon.redshift/xa/PGXAConnection.java:381
+#, java-format
+msgid "Invalid flags {0}"
+msgstr "Невалидни флагове {0}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:190
+#: com.amazon.redshift/xa/PGXAConnection.java:276
+#: com.amazon.redshift/xa/PGXAConnection.java:491
+msgid "xid must not be null"
+msgstr "xid не може да бъде null"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:194
+msgid "Connection is busy with another transaction"
+msgstr "Връзката е заета с друга транзакция"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:203
+#: com.amazon.redshift/xa/PGXAConnection.java:286
+msgid "suspend/resume not implemented"
+msgstr "спиране / започване не се поддържа за момента"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:211
+#: com.amazon.redshift/xa/PGXAConnection.java:218
+#: com.amazon.redshift/xa/PGXAConnection.java:222
+#, java-format
+msgid ""
+"Invalid protocol state requested. Attempted transaction interleaving is not "
+"supported. xid={0}, currentXid={1}, state={2}, flags={3}"
+msgstr ""
+"Транзакция в транзакция не се поддържа за момента. xid={0}, currentXid={1}, "
+"state={2}, flags={3}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:233
+msgid "Error disabling autocommit"
+msgstr "Грешка при изключване на autocommit"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:280
+#, java-format
+msgid ""
+"tried to call end without corresponding start call. state={0}, start "
+"xid={1}, currentXid={2}, preparedXid={3}"
+msgstr ""
+"опита да извика end без съответстващо извикване на start. state={0}, start "
+"xid={1}, currentXid={2}, preparedXid={3}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:326
+#, fuzzy, java-format
+msgid ""
+"Preparing already prepared transaction, the prepared xid {0}, prepare xid={1}"
+msgstr ""
+"Грешка при възстановяване на състоянието преди подготвена транзакция. "
+"rollback xid={0}, preparedXid={1}, currentXid={2}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:329
+#, java-format
+msgid "Current connection does not have an associated xid. prepare xid={0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:336
+#, java-format
+msgid ""
+"Not implemented: Prepare must be issued using the same connection that "
+"started the transaction. currentXid={0}, prepare xid={1}"
+msgstr ""
+"Невъзможна комбинация: Prepare трябва да бъде издадено чрез използване на "
+"същата връзка, при която е започната транзакцията. currentXid={0}, prepare "
+"xid={1}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:340
+#, java-format
+msgid "Prepare called before end. prepare xid={0}, state={1}"
+msgstr "Prepare извикано преди края. prepare xid={0}, state={1}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:360
+#, java-format
+msgid "Error preparing transaction. prepare xid={0}"
+msgstr "Грешка при подготвяне на транзакция. prepare xid={0}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:416
+msgid "Error during recover"
+msgstr "Грешка при възстановяване"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:480
+#, java-format
+msgid ""
+"Error rolling back prepared transaction. rollback xid={0}, preparedXid={1}, "
+"currentXid={2}"
+msgstr ""
+"Грешка при възстановяване на състоянието преди подготвена транзакция. "
+"rollback xid={0}, preparedXid={1}, currentXid={2}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:521
+#, java-format
+msgid ""
+"One-phase commit called for xid {0} but connection was prepared with xid {1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:529
+msgid ""
+"Not implemented: one-phase commit must be issued using the same connection "
+"that was used to start it"
+msgstr ""
+"Невъзможна комбинация: едно-фазов commit трябва да бъде издаден чрез "
+"използване на същата връзка, при която е започнал"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:533
+#, java-format
+msgid "One-phase commit with unknown xid. commit xid={0}, currentXid={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:537
+#, java-format
+msgid "commit called before end. commit xid={0}, state={1}"
+msgstr "commit извикан преди end. commit xid={0}, state={1}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:548
+#, java-format
+msgid "Error during one-phase commit. commit xid={0}"
+msgstr "Грешка при едно-фазов commit. commit xid={0}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:576
+#, java-format
+msgid ""
+"Not implemented: 2nd phase commit must be issued using an idle connection. "
+"commit xid={0}, currentXid={1}, state={2}, transactionState={3}"
+msgstr ""
+"Невъзможна комбинация: втората фаза на commit задължително трябва да бъде "
+"издадена при свободна връзка. commit xid={0}, currentXid={1}, state={2}, "
+"transactionState={3}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:609
+#, fuzzy, java-format
+msgid ""
+"Error committing prepared transaction. commit xid={0}, preparedXid={1}, "
+"currentXid={2}"
+msgstr ""
+"Грешка при възстановяване на състоянието преди подготвена транзакция. commit "
+"xid={0}, preparedXid={1}, currentXid={2}"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:626
+#, java-format
+msgid "Heuristic commit/rollback not supported. forget xid={0}"
+msgstr "Евристичен commit или rollback не се поддържа. forget xid={0}"

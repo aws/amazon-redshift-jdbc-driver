@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2003, PostgreSQL Global Development Group
+ * See the LICENSE file in the project root for more information.
+ */
+
+package com.amazon.redshift.osgi;
+
+import com.amazon.redshift.Driver;
+
+import org.osgi.framework.BundleActivator;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.jdbc.DataSourceFactory;
+
+import java.util.Dictionary;
+import java.util.Hashtable;
+
+/**
+ * This class is an OSGi Bundle Activator and should only be used internally by the OSGi Framework.
+ */
+public class RedshiftBundleActivator implements BundleActivator {
+  private ServiceRegistration<?> registration;
+
+  public void start(BundleContext context) throws Exception {
+    Dictionary<String, Object> properties = new Hashtable<String, Object>();
+    properties.put(DataSourceFactory.OSGI_JDBC_DRIVER_CLASS, Driver.class.getName());
+    properties.put(DataSourceFactory.OSGI_JDBC_DRIVER_NAME, com.amazon.redshift.util.DriverInfo.DRIVER_NAME);
+    properties.put(DataSourceFactory.OSGI_JDBC_DRIVER_VERSION, com.amazon.redshift.util.DriverInfo.DRIVER_VERSION);
+    try {
+      registration = context.registerService(DataSourceFactory.class.getName(),
+          new RedshiftDataSourceFactory(), properties);
+    } catch (NoClassDefFoundError e) {
+      String msg = e.getMessage();
+      if (msg != null && msg.contains("org/osgi/service/jdbc/DataSourceFactory")) {
+        if (!Boolean.getBoolean("rsjdbc.osgi.debug")) {
+          return;
+        }
+
+        new IllegalArgumentException("Unable to load DataSourceFactory. "
+            + "Will ignore DataSourceFactory registration. If you need one, "
+            + "ensure org.osgi.enterprise is on the classpath", e).printStackTrace();
+        // just ignore. Assume OSGi-enterprise is not loaded
+        return;
+      }
+      throw e;
+    }
+  }
+
+  public void stop(BundleContext context) throws Exception {
+    if (registration != null) {
+      registration.unregister();
+      registration = null;
+    }
+
+    if (Driver.isRegistered()) {
+      Driver.deregister();
+    }
+  }
+}

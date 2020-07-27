@@ -1,0 +1,1718 @@
+# Dutch message translation for the PostgreSQL JDBC driver
+# This file is distributed under the same license as the package.
+#
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PostgreSQL JDBC Driver 8.0\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2004-10-11 23:55-0700\n"
+"Last-Translator: Arnout Kuiper <ajkuiper@wxs.nl>\n"
+"Language-Team: Dutch <ajkuiper@wxs.nl>\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-1\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: com.amazon.redshift/Driver.java:221
+msgid "Error loading default settings from driverconfig.properties"
+msgstr ""
+
+#: com.amazon.redshift/Driver.java:233
+msgid "Properties for the driver contains a non-string value for the key "
+msgstr ""
+
+#: com.amazon.redshift/Driver.java:276
+msgid ""
+"Your security policy has prevented the connection from being attempted.  You "
+"probably need to grant the connect java.net.SocketPermission to the database "
+"server host and port that you wish to connect to."
+msgstr ""
+
+#: com.amazon.redshift/Driver.java:282 com.amazon.redshift/Driver.java:414
+msgid ""
+"Something unusual has occurred to cause the driver to fail. Please report "
+"this exception."
+msgstr ""
+"Iets ongewoons is opgetreden, wat deze driver doet falen. Rapporteer deze "
+"fout AUB: {0}"
+
+#: com.amazon.redshift/Driver.java:422
+#, fuzzy
+msgid "Connection attempt timed out."
+msgstr "De poging om verbinding the maken faalde omdat {0}"
+
+#: com.amazon.redshift/Driver.java:435
+#, fuzzy
+msgid "Interrupted while attempting to connect."
+msgstr "Een fout trad op tijdens het ophalen van het authenticatie verzoek."
+
+#: com.amazon.redshift/Driver.java:691
+#, fuzzy, java-format
+msgid "Method {0} is not yet implemented."
+msgstr "Deze methode is nog niet geimplementeerd"
+
+#: com.amazon.redshift/PGProperty.java:553 com.amazon.redshift/PGProperty.java:573
+#, java-format
+msgid "{0} parameter value must be an integer but was: {1}"
+msgstr ""
+
+#: com.amazon.redshift/copy/CopyManager.java:49
+#, java-format
+msgid "Requested CopyIn but got {0}"
+msgstr ""
+
+#: com.amazon.redshift/copy/CopyManager.java:60
+#, java-format
+msgid "Requested CopyOut but got {0}"
+msgstr ""
+
+#: com.amazon.redshift/copy/CopyManager.java:71
+#, java-format
+msgid "Requested CopyDual but got {0}"
+msgstr ""
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:51
+#, fuzzy, java-format
+msgid "Copying from database failed: {0}"
+msgstr "Conversie van lseg faalde - {0}"
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:67
+#: com.amazon.redshift/copy/PGCopyOutputStream.java:94
+msgid "This copy stream is closed."
+msgstr ""
+
+#: com.amazon.redshift/copy/PGCopyInputStream.java:109
+msgid "Read from copy failed."
+msgstr ""
+
+#: com.amazon.redshift/copy/PGCopyOutputStream.java:71
+#, java-format
+msgid "Cannot write to copy a byte of value {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/CommandCompleteParser.java:71
+#, java-format
+msgid "Unable to parse the count in command completion tag: {0}."
+msgstr ""
+
+#: com.amazon.redshift/core/ConnectionFactory.java:57
+#, java-format
+msgid "A connection could not be made using the requested protocol {0}."
+msgstr ""
+
+#: com.amazon.redshift/core/Oid.java:128
+#, java-format
+msgid "oid type {0} not known and not a number"
+msgstr ""
+
+#: com.amazon.redshift/core/PGStream.java:512
+#, java-format
+msgid "Premature end of input stream, expected {0} bytes, but only read {1}."
+msgstr ""
+
+#: com.amazon.redshift/core/PGStream.java:554
+#, java-format
+msgid "Expected an EOF from server, got: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/Parser.java:1052
+#, java-format
+msgid "Malformed function or procedure escape syntax at offset {0}."
+msgstr ""
+
+#: com.amazon.redshift/core/SetupQueryRunner.java:64
+msgid "An unexpected result was returned by a query."
+msgstr "Een onverwacht resultaat werd teruggegeven door een query"
+
+#: com.amazon.redshift/core/SocketFactoryFactory.java:43
+#, java-format
+msgid "The SocketFactory class provided {0} could not be instantiated."
+msgstr ""
+
+#: com.amazon.redshift/core/SocketFactoryFactory.java:68
+#, java-format
+msgid "The SSLSocketFactory class provided {0} could not be instantiated."
+msgstr ""
+
+#: com.amazon.redshift/core/UTF8Encoding.java:28
+#, java-format
+msgid ""
+"Illegal UTF-8 sequence: byte {0} of {1} byte sequence is not 10xxxxxx: {2}"
+msgstr ""
+
+#: com.amazon.redshift/core/UTF8Encoding.java:66
+#, java-format
+msgid "Illegal UTF-8 sequence: {0} bytes used to encode a {1} byte value: {2}"
+msgstr ""
+
+#: com.amazon.redshift/core/UTF8Encoding.java:102
+#: com.amazon.redshift/core/UTF8Encoding.java:129
+#, java-format
+msgid "Illegal UTF-8 sequence: initial byte is {0}: {1}"
+msgstr ""
+
+#: com.amazon.redshift/core/UTF8Encoding.java:135
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is out of range: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/UTF8Encoding.java:151
+#, java-format
+msgid "Illegal UTF-8 sequence: final value is a surrogate value: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/Utils.java:93 com.amazon.redshift/core/Utils.java:110
+msgid "Zero bytes may not occur in string parameters."
+msgstr ""
+
+#: com.amazon.redshift/core/Utils.java:120 com.amazon.redshift/core/Utils.java:170
+msgid "No IOException expected from StringBuffer or StringBuilder"
+msgstr ""
+
+#: com.amazon.redshift/core/Utils.java:159
+msgid "Zero bytes may not occur in identifiers."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/CompositeParameterList.java:33
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:53
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:64
+#: com.amazon.redshift/jdbc/PgResultSet.java:2710
+#: com.amazon.redshift/jdbc/PgResultSetMetaData.java:389
+#, fuzzy, java-format
+msgid "The column index is out of range: {0}, number of columns: {1}."
+msgstr "De kolom index is buiten bereik."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:157
+#, fuzzy, java-format
+msgid "Invalid targetServerType value: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:281
+#, fuzzy, java-format
+msgid ""
+"Connection to {0} refused. Check that the hostname and port are correct and "
+"that the postmaster is accepting TCP/IP connections."
+msgstr ""
+"Verbinding geweigerd. Controleer dat de hostnaam en poort correct zijn, en "
+"dat de postmaster is opgestart met de -i vlag, welke TCP/IP networking "
+"aanzet."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:292
+#: com.amazon.redshift/core/v3/replication/V3ReplicationProtocol.java:135
+#, fuzzy
+msgid "The connection attempt failed."
+msgstr "De poging om verbinding the maken faalde omdat {0}"
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:307
+#, java-format
+msgid "Could not find a server with specified targetServerType: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:418
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:431
+msgid "The server does not support SSL."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:445
+#, fuzzy
+msgid "An error occurred while setting up the SSL connection."
+msgstr "Een fout trad op tijdens het ophalen van het authenticatie verzoek."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:541
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:568
+msgid ""
+"The server requested password-based authentication, but no password was "
+"provided."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:674
+msgid ""
+"SCRAM authentication is not supported by this driver. You need JDK >= 8 and "
+"pgjdbc >= 42.2.0 (not \".jre\" versions)"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:700
+#, fuzzy, java-format
+msgid ""
+"The authentication type {0} is not supported. Check that you have configured "
+"the pg_hba.conf file to include the client''s IP address or subnet, and that "
+"it is using an authentication scheme supported by the driver."
+msgstr ""
+"Het authenticatie type {0} wordt niet ondersteund. Controleer dat het IP "
+"adres of subnet van de client is geconfigureerd in de pg_hba.conf file, en "
+"dat het een authenticatie protocol gebruikt dat door de driver ondersteund "
+"wordt."
+
+#: com.amazon.redshift/core/v3/ConnectionFactoryImpl.java:707
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2571
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2604
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2608
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2676
+#: com.amazon.redshift/gss/GssAction.java:124
+msgid "Protocol error.  Session setup failed."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/CopyInImpl.java:49
+msgid "CopyIn copy direction can't receive data"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/CopyOperationImpl.java:54
+msgid "CommandComplete expected COPY but got: "
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:164
+msgid "Tried to obtain lock while already holding it"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:180
+msgid "Tried to break lock on database connection"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:198
+msgid "Interrupted while waiting to obtain lock on database connection"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:330
+msgid "Unable to bind parameter values for statement."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:336
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:515
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:589
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:632
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:759
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2405
+#: com.amazon.redshift/util/StreamWrapper.java:130
+#, fuzzy
+msgid "An I/O error occurred while sending to the backend."
+msgstr "Een I/O fout trad op tijdens het zenden naar de achterkant - {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:390
+msgid "Error releasing savepoint"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:564
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:606
+#, java-format
+msgid "Expected command status BEGIN, got {0}."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:611
+#: com.amazon.redshift/jdbc/PgResultSet.java:1718
+#, java-format
+msgid "Unexpected command status: {0}."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:717
+#, fuzzy
+msgid "An error occurred while trying to get the socket timeout."
+msgstr "Een I/O fout trad op tijdens het zenden naar de achterkant - {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:752
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:828
+#, fuzzy, java-format
+msgid "Unknown Response Type {0}."
+msgstr "Onbekend antwoord type {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:775
+#, fuzzy
+msgid "An error occurred while trying to reset the socket timeout."
+msgstr "Een I/O fout trad op tijdens het zenden naar de achterkant - {0}"
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:873
+msgid "Database connection failed when starting copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:908
+msgid "Tried to cancel an inactive copy operation"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:947
+msgid "Database connection failed when canceling copy operation"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:963
+msgid "Missing expected error response to copy cancel request"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:967
+#, java-format
+msgid "Got {0} error responses to single copy cancel request"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:982
+msgid "Tried to end inactive copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:997
+msgid "Database connection failed when ending copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1015
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1035
+msgid "Tried to write to an inactive copy operation"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1028
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1043
+msgid "Database connection failed when writing to copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1058
+msgid "Tried to read from inactive copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1065
+msgid "Database connection failed when reading from copy"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1131
+#, java-format
+msgid "Received CommandComplete ''{0}'' without an active copy operation"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1156
+#, java-format
+msgid "Got CopyInResponse from server during an active {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1170
+#, java-format
+msgid "Got CopyOutResponse from server during an active {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1184
+#, java-format
+msgid "Got CopyBothResponse from server during an active {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1200
+msgid "Got CopyData without an active copy operation"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1204
+#, java-format
+msgid "Unexpected copydata from server for {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1264
+#, java-format
+msgid "Unexpected packet type during copy: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:1554
+#, java-format
+msgid ""
+"Bind message length {0} too long.  This can be caused by very large or "
+"incorrect length specifications on InputStream parameters."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2178
+msgid "Ran out of memory retrieving query results."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2346
+msgid "The driver currently does not support COPY operations."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2633
+#, java-format
+msgid ""
+"The server''s client_encoding parameter was changed to {0}. The JDBC driver "
+"requires client_encoding to be UTF8 for correct operation."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2643
+#, java-format
+msgid ""
+"The server''s DateStyle parameter was changed to {0}. The JDBC driver "
+"requires DateStyle to begin with ISO for correct operation."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/QueryExecutorImpl.java:2656
+#, java-format
+msgid ""
+"The server''s standard_conforming_strings parameter was reported as {0}. The "
+"JDBC driver expected on or off."
+msgstr ""
+
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:264
+#, fuzzy, java-format
+msgid "No value specified for parameter {0}."
+msgstr "Geen waarde opgegeven voor parameter {0}."
+
+#: com.amazon.redshift/core/v3/SimpleParameterList.java:437
+#, fuzzy, java-format
+msgid "Added parameters index out of range: {0}, number of columns: {1}."
+msgstr "De kolom index is buiten bereik."
+
+#: com.amazon.redshift/core/v3/replication/V3PGReplicationStream.java:144
+#, java-format
+msgid "Unexpected packet type during replication: {0}"
+msgstr ""
+
+#: com.amazon.redshift/core/v3/replication/V3PGReplicationStream.java:269
+#, fuzzy
+msgid "This replication stream has been closed."
+msgstr "De poging om verbinding the maken faalde omdat {0}"
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:118
+msgid "This PooledConnection has already been closed."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:314
+msgid ""
+"Connection has been closed automatically because a new connection was opened "
+"for the same PooledConnection or the PooledConnection has been closed."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:315
+msgid "Connection has been closed."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPooledConnection.java:420
+msgid "Statement has been closed."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPoolingDataSource.java:269
+msgid "Failed to setup DataSource."
+msgstr ""
+
+#: com.amazon.redshift/ds/PGPoolingDataSource.java:371
+msgid "DataSource has been closed."
+msgstr ""
+
+#: com.amazon.redshift/ds/common/BaseDataSource.java:1157
+#: com.amazon.redshift/ds/common/BaseDataSource.java:1167
+#, fuzzy, java-format
+msgid "Unsupported property name: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:84
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a numeric."
+msgstr ""
+"Fastpath aanroep {0} - Geen resultaat werd teruggegeven, terwijl we een "
+"integer verwacht hadden."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:161
+#, java-format
+msgid "Fastpath call {0} - No result was returned and we expected an integer."
+msgstr ""
+"Fastpath aanroep {0} - Geen resultaat werd teruggegeven, terwijl we een "
+"integer verwacht hadden."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:169
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting an "
+"integer."
+msgstr ""
+"Fastpath aanroep {0} - Geen resultaat werd teruggegeven, terwijl we een "
+"integer verwacht hadden."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:186
+#, fuzzy, java-format
+msgid "Fastpath call {0} - No result was returned and we expected a long."
+msgstr ""
+"Fastpath aanroep {0} - Geen resultaat werd teruggegeven, terwijl we een "
+"integer verwacht hadden."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:194
+#, fuzzy, java-format
+msgid ""
+"Fastpath call {0} - No result was returned or wrong size while expecting a "
+"long."
+msgstr ""
+"Fastpath aanroep {0} - Geen resultaat werd teruggegeven, terwijl we een "
+"integer verwacht hadden."
+
+#: com.amazon.redshift/fastpath/Fastpath.java:297
+#, java-format
+msgid "The fastpath function {0} is unknown."
+msgstr "De fastpath functie {0} is onbekend."
+
+#: com.amazon.redshift/geometric/PGbox.java:77
+#: com.amazon.redshift/geometric/PGcircle.java:74
+#: com.amazon.redshift/geometric/PGcircle.java:82
+#: com.amazon.redshift/geometric/PGline.java:107
+#: com.amazon.redshift/geometric/PGline.java:116
+#: com.amazon.redshift/geometric/PGlseg.java:70
+#: com.amazon.redshift/geometric/PGpoint.java:76
+#, fuzzy, java-format
+msgid "Conversion to type {0} failed: {1}."
+msgstr "Conversie van line faalde - {0}"
+
+#: com.amazon.redshift/geometric/PGpath.java:70
+#, fuzzy, java-format
+msgid "Cannot tell if path is open or closed: {0}."
+msgstr "Kan niet zeggen of path open of gesloten is."
+
+#: com.amazon.redshift/gss/GssAction.java:135 com.amazon.redshift/gss/MakeGSS.java:65
+#: com.amazon.redshift/gss/MakeGSS.java:73
+msgid "GSS Authentication failed"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:77
+msgid ""
+"Truncation of large objects is only implemented in 8.3 and later servers."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:82
+msgid "Cannot truncate LOB to a negative length."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:89
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:231
+#, java-format
+msgid "PostgreSQL LOBs can only index to: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:227
+msgid "LOB positioning offsets start at 1."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/AbstractBlobClob.java:243
+msgid "free() was called on this LOB previously"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/BatchResultHandler.java:92
+#, fuzzy
+msgid "Too many update results were returned."
+msgstr "Geen resultaten werden teruggegeven door de query."
+
+#: com.amazon.redshift/jdbc/BatchResultHandler.java:146
+#, fuzzy, java-format
+msgid ""
+"Batch entry {0} {1} was aborted: {2}  Call getNextException to see other "
+"errors in the batch."
+msgstr "Batch invoer {0} {1} werd afgebroken."
+
+#: com.amazon.redshift/jdbc/BooleanTypeUtil.java:99
+#, java-format
+msgid "Cannot cast to boolean: \"{0}\""
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:238
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:168
+#, java-format
+msgid "{0} function takes four and only four argument."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:268
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:335
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:737
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:197
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:264
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:665
+#, java-format
+msgid "{0} function takes two and only two arguments."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:286
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:439
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:465
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:524
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:725
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:212
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:356
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:382
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:441
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:654
+#, java-format
+msgid "{0} function takes one and only one argument."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:310
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:384
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:239
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:308
+#, java-format
+msgid "{0} function takes two or three arguments."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:409
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:424
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:690
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:716
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:645
+#, java-format
+msgid "{0} function doesn''t take any argument."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:584
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:636
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:501
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:571
+#, java-format
+msgid "{0} function takes three and only three arguments."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:597
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:618
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:621
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:653
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:666
+#: com.amazon.redshift/jdbc/EscapedFunctions.java:669
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:511
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:528
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:585
+#: com.amazon.redshift/jdbc/EscapedFunctions2.java:597
+#, fuzzy, java-format
+msgid "Interval {0} not yet implemented"
+msgstr "Deze methode is nog niet geimplementeerd"
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:38
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:53
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:71
+msgid "Cannot reference a savepoint after it has been released."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:43
+msgid "Cannot retrieve the id of a named savepoint."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PSQLSavepoint.java:58
+msgid "Cannot retrieve the name of an unnamed savepoint."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgArray.java:155 com.amazon.redshift/jdbc/PgArray.java:841
+#, fuzzy, java-format
+msgid "The array index is out of range: {0}"
+msgstr "De kolom index is buiten bereik."
+
+#: com.amazon.redshift/jdbc/PgArray.java:176 com.amazon.redshift/jdbc/PgArray.java:858
+#, java-format
+msgid "The array index is out of range: {0}, number of elements: {1}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgArray.java:208
+#: com.amazon.redshift/jdbc/PgResultSet.java:1871
+#: com.amazon.redshift/util/HStoreConverter.java:43
+#: com.amazon.redshift/util/HStoreConverter.java:74
+msgid ""
+"Invalid character data was found.  This is most likely caused by stored data "
+"containing characters that are invalid for the character set the database "
+"was created in.  The most common example of this is storing 8bit data in a "
+"SQL_ASCII database."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:85
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:95
+#, fuzzy
+msgid "A CallableStatement was executed with nothing returned."
+msgstr "Callable Statements worden op dit moment niet ondersteund."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:106
+#, fuzzy
+msgid "A CallableStatement was executed with an invalid number of parameters"
+msgstr "Callable Statements worden op dit moment niet ondersteund."
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:144
+#, java-format
+msgid ""
+"A CallableStatement function was executed and the out parameter {0} was of "
+"type {1} however type {2} was registered."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:206
+msgid ""
+"This statement does not declare an OUT parameter.  Use '{' ?= call ... '}' "
+"to declare one."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:229
+msgid "wasNull cannot be call before fetching a result."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:367
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:386
+#, java-format
+msgid ""
+"Parameter of type {0} was registered, but call to get{1} (sqltype={2}) was "
+"made."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:407
+msgid ""
+"A CallableStatement was declared, but no call to registerOutParameter(1, "
+"<some type>) was made."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:413
+msgid "No function outputs were registered."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:419
+msgid ""
+"Results cannot be retrieved from a CallableStatement before it is executed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgCallableStatement.java:686
+#, fuzzy, java-format
+msgid "Unsupported type conversion to {1}."
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:241
+#, java-format
+msgid "Unsupported value for stringtype parameter: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:424
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:109
+#: com.amazon.redshift/jdbc/PgStatement.java:226
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:226
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:371
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:411
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:484
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:489
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:526
+#: com.amazon.redshift/jdbc/TypeInfoCache.java:531
+msgid "No results were returned by the query."
+msgstr "Geen resultaten werden teruggegeven door de query."
+
+#: com.amazon.redshift/jdbc/PgConnection.java:442
+#: com.amazon.redshift/jdbc/PgStatement.java:256
+msgid "A result was returned when none was expected."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:547
+msgid "Custom type maps are not supported."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:589
+#, fuzzy, java-format
+msgid "Failed to create object for: {0}."
+msgstr "Kon geen object aanmaken voor  {0} {1}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:643
+#, java-format
+msgid "Unable to load the class {0} responsible for the datatype {1}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:704
+msgid ""
+"Cannot change transaction read-only property in the middle of a transaction."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:771
+msgid "Cannot commit when autoCommit is enabled."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:782
+#: com.amazon.redshift/jdbc/PgConnection.java:1397
+#: com.amazon.redshift/jdbc/PgConnection.java:1441
+#, fuzzy
+msgid "This connection has been closed."
+msgstr "De poging om verbinding the maken faalde omdat {0}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:792
+msgid "Cannot rollback when autoCommit is enabled."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:842
+msgid ""
+"Cannot change transaction isolation level in the middle of a transaction."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:848
+#, java-format
+msgid "Transaction isolation level {0} not supported."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:893
+msgid "Finalizing a Connection that was never closed:"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:960
+msgid "Unable to translate data into the desired encoding."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1023
+#: com.amazon.redshift/jdbc/PgResultSet.java:1756
+#: com.amazon.redshift/jdbc/PgStatement.java:921
+msgid "Fetch size must be a value greater to or equal to 0."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1302
+#: com.amazon.redshift/jdbc/PgConnection.java:1343
+#, java-format
+msgid "Unable to find server array type for provided name {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1325
+#, java-format
+msgid "Invalid elements {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1361
+#, java-format
+msgid "Invalid timeout ({0}<0)."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1385
+msgid "Validating connection."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1418
+#, fuzzy, java-format
+msgid "Failed to set ClientInfo property: {0}"
+msgstr "Kon geen object aanmaken voor  {0} {1}"
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1428
+msgid "ClientInfo property not supported."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1454
+msgid "One or more ClientInfo failed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1554
+msgid "Network timeout must be a value greater than or equal to 0."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1566
+msgid "Unable to set network timeout."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1577
+msgid "Unable to get network timeout."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1594
+#, java-format
+msgid "Unknown ResultSet holdability setting: {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1612
+#: com.amazon.redshift/jdbc/PgConnection.java:1633
+msgid "Cannot establish a savepoint in auto-commit mode."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgConnection.java:1702
+msgid "Returning autogenerated keys is not supported."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:59
+msgid ""
+"Unable to determine a value for MaxIndexKeys due to missing system catalog "
+"data."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:82
+msgid "Unable to find name datatype in the system catalogs."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:321
+msgid "Unable to find keywords in the system catalogs."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1094
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2698
+msgid "oid"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1094
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2698
+msgid "proname"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1096
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1550
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2700
+msgid "typtype"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1099
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:2703
+msgid "proargtypes"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1568
+msgid "adsrc"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1581
+msgid "attidentity"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1679
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1755
+msgid "rolname"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1680
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1756
+msgid "relacl"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgDatabaseMetaData.java:1686
+msgid "attacl"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgParameterMetaData.java:88
+#, fuzzy, java-format
+msgid "The parameter index is out of range: {0}, number of parameters: {1}."
+msgstr "De kolom index is buiten bereik."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:95
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:118
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:132
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1016
+msgid ""
+"Can''t use query methods that take a query string on a PreparedStatement."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:243
+msgid "Unknown Types value."
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:370
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:427
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1173
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1480
+#, java-format
+msgid "Invalid stream length {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:399
+#, java-format
+msgid "The JVM claims not to support the {0} encoding."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:402
+#: com.amazon.redshift/jdbc/PgResultSet.java:1100
+#: com.amazon.redshift/jdbc/PgResultSet.java:1132
+msgid "Provided InputStream failed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:448
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1078
+#, fuzzy, java-format
+msgid "Unknown type {0}."
+msgstr "Onbekend antwoord type {0}"
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:465
+msgid "No hstore extension installed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:607
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:630
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:640
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:652
+#, java-format
+msgid "Cannot cast an instance of {0} to type {1}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:670
+#, fuzzy, java-format
+msgid "Unsupported Types value: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:882
+#, java-format
+msgid "Cannot convert an instance of {0} to type {1}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:956
+#, java-format
+msgid ""
+"Can''t infer the SQL type to use for an instance of {0}. Use setObject() "
+"with an explicit Types value to specify the type to use."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1115
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1216
+msgid "Unexpected error writing large object to database."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1160
+#: com.amazon.redshift/jdbc/PgResultSet.java:1182
+msgid "Provided Reader failed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgPreparedStatement.java:1439
+#: com.amazon.redshift/util/StreamWrapper.java:56
+msgid "Object is too large to send over the protocol."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:278
+msgid ""
+"Operation requires a scrollable ResultSet, but this ResultSet is "
+"FORWARD_ONLY."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:484
+#: com.amazon.redshift/jdbc/PgResultSet.java:523
+#: com.amazon.redshift/jdbc/PgResultSet.java:547
+#: com.amazon.redshift/jdbc/PgResultSet.java:584
+#: com.amazon.redshift/jdbc/PgResultSet.java:614
+#: com.amazon.redshift/jdbc/PgResultSet.java:2967
+#: com.amazon.redshift/jdbc/PgResultSet.java:3012
+#, java-format
+msgid "Cannot convert the column of type {0} to requested type {1}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:819
+#: com.amazon.redshift/jdbc/PgResultSet.java:840
+#: com.amazon.redshift/jdbc/PgResultSet.java:1772
+msgid "Can''t use relative move methods while on the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:863
+#: com.amazon.redshift/jdbc/PgStatement.java:913
+#, java-format
+msgid "Invalid fetch direction constant: {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:873
+msgid "Cannot call cancelRowUpdates() when on the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:888
+msgid "Cannot call deleteRow() when on the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:895
+msgid ""
+"Currently positioned before the start of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:901
+msgid ""
+"Currently positioned after the end of the ResultSet.  You cannot call "
+"deleteRow() here."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:905
+#, fuzzy
+msgid "There are no rows in this ResultSet."
+msgstr "De kolom naam {0} is niet gevonden."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:946
+msgid "Not on the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:948
+msgid "You must specify at least one column value to insert a row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1097
+#: com.amazon.redshift/jdbc/PgResultSet.java:1694
+#: com.amazon.redshift/jdbc/PgResultSet.java:2374
+#: com.amazon.redshift/jdbc/PgResultSet.java:2395
+#, java-format
+msgid "The JVM claims not to support the encoding: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1225
+msgid "Can''t refresh the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1292
+msgid "Cannot call updateRow() when on the insert row."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1299
+#: com.amazon.redshift/jdbc/PgResultSet.java:3029
+msgid ""
+"Cannot update the ResultSet because it is either before the start or after "
+"the end of the results."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1476
+msgid "ResultSets with concurrency CONCUR_READ_ONLY cannot be updated."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1544
+#, java-format
+msgid "No primary key found for table {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:1958
+#: com.amazon.redshift/jdbc/PgResultSet.java:1963
+#: com.amazon.redshift/jdbc/PgResultSet.java:2762
+#: com.amazon.redshift/jdbc/PgResultSet.java:2768
+#: com.amazon.redshift/jdbc/PgResultSet.java:2793
+#: com.amazon.redshift/jdbc/PgResultSet.java:2799
+#: com.amazon.redshift/jdbc/PgResultSet.java:2823
+#: com.amazon.redshift/jdbc/PgResultSet.java:2828
+#: com.amazon.redshift/jdbc/PgResultSet.java:2844
+#: com.amazon.redshift/jdbc/PgResultSet.java:2865
+#: com.amazon.redshift/jdbc/PgResultSet.java:2876
+#: com.amazon.redshift/jdbc/PgResultSet.java:2889
+#: com.amazon.redshift/jdbc/PgResultSet.java:3017
+#, java-format
+msgid "Bad value for type {0} : {1}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2548
+#, fuzzy, java-format
+msgid "The column name {0} was not found in this ResultSet."
+msgstr "De kolom naam {0} is niet gevonden."
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2684
+msgid ""
+"ResultSet is not updateable.  The query that generated this result set must "
+"select only one table, and must select all primary keys from that table. See "
+"the JDBC 2.1 API Specification, section 5.6 for more details."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2696
+msgid "This ResultSet is closed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:2727
+msgid "ResultSet not positioned properly, perhaps you need to call next."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:3049
+msgid "Invalid UUID data."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgResultSet.java:3138
+#: com.amazon.redshift/jdbc/PgResultSet.java:3145
+#: com.amazon.redshift/jdbc/PgResultSet.java:3156
+#: com.amazon.redshift/jdbc/PgResultSet.java:3167
+#: com.amazon.redshift/jdbc/PgResultSet.java:3178
+#: com.amazon.redshift/jdbc/PgResultSet.java:3189
+#: com.amazon.redshift/jdbc/PgResultSet.java:3200
+#: com.amazon.redshift/jdbc/PgResultSet.java:3211
+#: com.amazon.redshift/jdbc/PgResultSet.java:3222
+#: com.amazon.redshift/jdbc/PgResultSet.java:3229
+#: com.amazon.redshift/jdbc/PgResultSet.java:3236
+#: com.amazon.redshift/jdbc/PgResultSet.java:3247
+#: com.amazon.redshift/jdbc/PgResultSet.java:3264
+#: com.amazon.redshift/jdbc/PgResultSet.java:3271
+#: com.amazon.redshift/jdbc/PgResultSet.java:3278
+#: com.amazon.redshift/jdbc/PgResultSet.java:3289
+#: com.amazon.redshift/jdbc/PgResultSet.java:3296
+#: com.amazon.redshift/jdbc/PgResultSet.java:3303
+#: com.amazon.redshift/jdbc/PgResultSet.java:3341
+#: com.amazon.redshift/jdbc/PgResultSet.java:3348
+#: com.amazon.redshift/jdbc/PgResultSet.java:3355
+#: com.amazon.redshift/jdbc/PgResultSet.java:3375
+#: com.amazon.redshift/jdbc/PgResultSet.java:3388
+#, java-format
+msgid "conversion to {0} from {1} not supported"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:151
+msgid "Unable to decode xml data."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:154
+#, java-format
+msgid "Unknown XML Source class: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:201
+#, fuzzy
+msgid "Unable to create SAXResult for SQLXML."
+msgstr "Kon geen object aanmaken voor  {0} {1}"
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:216
+msgid "Unable to create StAXResult for SQLXML"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:221
+#, java-format
+msgid "Unknown XML Result class: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:234
+msgid "This SQLXML object has already been freed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:243
+msgid ""
+"This SQLXML object has not been initialized, so you cannot retrieve data "
+"from it."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:256
+#, java-format
+msgid "Failed to convert binary xml data to encoding: {0}."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:282
+msgid "Unable to convert DOMResult SQLXML data to a string."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgSQLXML.java:295
+msgid ""
+"This SQLXML object has already been initialized, so you cannot manipulate it "
+"further."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:236
+#, fuzzy
+msgid "Multiple ResultSets were returned by the query."
+msgstr "Geen resultaten werden teruggegeven door de query."
+
+#: com.amazon.redshift/jdbc/PgStatement.java:320
+msgid "Can''t use executeWithFlags(int) on a Statement."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:514
+msgid "Maximum number of rows must be a value grater than or equal to 0."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:560
+msgid "Query timeout must be a value greater than or equals to 0."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:602
+msgid "The maximum field size must be a value greater than or equal to 0."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:705
+msgid "This statement has been closed."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/PgStatement.java:1163
+#: com.amazon.redshift/jdbc/PgStatement.java:1191
+msgid "Returning autogenerated keys by column index is not supported."
+msgstr ""
+
+#: com.amazon.redshift/jdbc/SslMode.java:78
+#, java-format
+msgid "Invalid sslmode value: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/TimestampUtils.java:364
+#: com.amazon.redshift/jdbc/TimestampUtils.java:432
+#, java-format
+msgid "Bad value for type timestamp/date/time: {1}"
+msgstr ""
+
+#: com.amazon.redshift/jdbc/TimestampUtils.java:912
+#: com.amazon.redshift/jdbc/TimestampUtils.java:969
+#: com.amazon.redshift/jdbc/TimestampUtils.java:1014
+#: com.amazon.redshift/jdbc/TimestampUtils.java:1063
+#, java-format
+msgid "Unsupported binary encoding of {0}."
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:67
+msgid "No SCRAM mechanism(s) advertised by the server"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:80
+msgid "Invalid or unsupported by client SCRAM mechanisms"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:118
+#, fuzzy, java-format
+msgid "Invalid server-first-message: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:150
+#, fuzzy, java-format
+msgid "Invalid server-final-message: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:156
+#, java-format
+msgid "SCRAM authentication failed, server returned error: {0}"
+msgstr ""
+
+#: com.amazon.redshift/jre8/sasl/ScramAuthenticator.java:163
+msgid "Invalid server SCRAM signature"
+msgstr ""
+
+#: com.amazon.redshift/largeobject/LargeObjectManager.java:249
+#: com.amazon.redshift/largeobject/LargeObjectManager.java:290
+msgid "Large Objects may not be used in auto-commit mode."
+msgstr ""
+
+#: com.amazon.redshift/osgi/PGDataSourceFactory.java:82
+#, fuzzy, java-format
+msgid "Unsupported properties: {0}"
+msgstr "Onbekende Types waarde."
+
+#: com.amazon.redshift/replication/fluent/AbstractCreateSlotBuilder.java:38
+msgid "Server does not support temporary replication slots"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:63
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:49
+msgid "slot_name"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:65
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:51
+msgid "consistent_point"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:66
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:52
+msgid "snapshot_name"
+msgstr ""
+
+#: com.amazon.redshift/replication/fluent/logical/LogicalCreateSlotBuilder.java:67
+#: com.amazon.redshift/replication/fluent/physical/PhysicalCreateSlotBuilder.java:53
+msgid "output_plugin"
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:132
+msgid ""
+"Could not find a java cryptographic algorithm: X.509 CertificateFactory not "
+"available."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:142
+#, java-format
+msgid "Could not open SSL certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:147
+#, java-format
+msgid "Loading the SSL certificate {0} into a KeyManager failed."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:211
+msgid "Enter SSL password: "
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:218
+msgid "Could not read password for SSL key file, console is not available."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:223
+#, java-format
+msgid "Could not read password for SSL key file by callbackhandler {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:243
+#, java-format
+msgid "Could not decrypt SSL key file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:250
+#, java-format
+msgid "Could not read SSL key file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LazyKeyManager.java:253
+#: com.amazon.redshift/ssl/LibPQFactory.java:162
+#, java-format
+msgid "Could not find a java cryptographic algorithm: {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:83
+#, java-format
+msgid "The password callback class provided {0} could not be instantiated."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:120
+#, java-format
+msgid "Could not open SSL root certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:135
+#, java-format
+msgid "Could not read SSL root certificate file {0}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:139
+#, java-format
+msgid "Loading the SSL root certificate {0} into a TrustManager failed."
+msgstr ""
+
+#: com.amazon.redshift/ssl/LibPQFactory.java:156
+msgid "Could not initialize SSL context."
+msgstr ""
+
+#: com.amazon.redshift/ssl/MakeSSL.java:42
+#, java-format
+msgid "SSL error: {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/MakeSSL.java:69
+#, java-format
+msgid "The HostnameVerifier class provided {0} could not be instantiated."
+msgstr ""
+
+#: com.amazon.redshift/ssl/MakeSSL.java:80
+#, java-format
+msgid "The hostname {0} could not be verified by hostnameverifier {1}."
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:84
+#, java-format
+msgid "Unable to parse X509Certificate for hostname {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:89
+#, java-format
+msgid "No certificates found for hostname {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:108
+#, java-format
+msgid "Hostname {0} is invalid"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:125
+#, java-format
+msgid "Unable to parse certificates for hostname {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:156
+#, java-format
+msgid "Server name validation pass for {0}, subjectAltName {1}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:172
+#, java-format
+msgid ""
+"Server name validation failed: certificate for host {0} dNSName entries "
+"subjectAltName, but none of them match. Assuming server name validation "
+"failed"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:183
+#, java-format
+msgid ""
+"Server name validation failed: unable to extract common name from "
+"X509Certificate for hostname {0}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:196
+#, java-format
+msgid ""
+"Server name validation failed: certificate for hostname {0} has no DNS "
+"subjectAltNames, and it CommonName is missing as well"
+msgstr ""
+
+#: com.amazon.redshift/ssl/PGjdbcHostnameVerifier.java:216
+#, java-format
+msgid ""
+"Server name validation failed: hostname {0} does not match common name {1}"
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:90
+msgid "The sslfactoryarg property may not be empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:106
+msgid ""
+"The environment variable containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:114
+msgid ""
+"The system property containing the server's SSL certificate must not be "
+"empty."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:121
+msgid ""
+"The sslfactoryarg property must start with the prefix file:, classpath:, "
+"env:, sys:, or -----BEGIN CERTIFICATE-----."
+msgstr ""
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:133
+#, fuzzy
+msgid "An error occurred reading the certificate"
+msgstr "Een fout trad op tijdens het ophalen van het authenticatie verzoek."
+
+#: com.amazon.redshift/ssl/SingleCertValidatingFactory.java:166
+msgid "No X509TrustManager found"
+msgstr ""
+
+#: com.amazon.redshift/util/PGInterval.java:152
+#, fuzzy
+msgid "Conversion of interval failed"
+msgstr "Conversie van money faalde - {0}."
+
+#: com.amazon.redshift/util/PGmoney.java:61
+#, fuzzy
+msgid "Conversion of money failed."
+msgstr "Conversie van money faalde - {0}."
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:44
+#, java-format
+msgid ""
+" (pgjdbc: autodetected server-encoding to be {0}, if the message is not "
+"readable, please check database logs and/or host, port, dbname, user, "
+"password, pg_hba.conf)"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:175
+#, java-format
+msgid "Detail: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:180
+#, java-format
+msgid "Hint: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:184
+#, java-format
+msgid "Position: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:188
+#, java-format
+msgid "Where: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:194
+#, java-format
+msgid "Internal Query: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:198
+#, java-format
+msgid "Internal Position: {0}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:205
+#, java-format
+msgid "Location: File: {0}, Routine: {1}, Line: {2}"
+msgstr ""
+
+#: com.amazon.redshift/util/ServerErrorMessage.java:210
+#, java-format
+msgid "Server SQLState: {0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:128
+msgid ""
+"Transaction control methods setAutoCommit(true), commit, rollback and "
+"setSavePoint not allowed while an XA transaction is active."
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:186
+#: com.amazon.redshift/xa/PGXAConnection.java:272
+#: com.amazon.redshift/xa/PGXAConnection.java:381
+#, java-format
+msgid "Invalid flags {0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:190
+#: com.amazon.redshift/xa/PGXAConnection.java:276
+#: com.amazon.redshift/xa/PGXAConnection.java:491
+msgid "xid must not be null"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:194
+msgid "Connection is busy with another transaction"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:203
+#: com.amazon.redshift/xa/PGXAConnection.java:286
+#, fuzzy
+msgid "suspend/resume not implemented"
+msgstr "Deze methode is nog niet geimplementeerd"
+
+#: com.amazon.redshift/xa/PGXAConnection.java:211
+#: com.amazon.redshift/xa/PGXAConnection.java:218
+#: com.amazon.redshift/xa/PGXAConnection.java:222
+#, java-format
+msgid ""
+"Invalid protocol state requested. Attempted transaction interleaving is not "
+"supported. xid={0}, currentXid={1}, state={2}, flags={3}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:233
+msgid "Error disabling autocommit"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:280
+#, java-format
+msgid ""
+"tried to call end without corresponding start call. state={0}, start "
+"xid={1}, currentXid={2}, preparedXid={3}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:326
+#, java-format
+msgid ""
+"Preparing already prepared transaction, the prepared xid {0}, prepare xid={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:329
+#, java-format
+msgid "Current connection does not have an associated xid. prepare xid={0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:336
+#, java-format
+msgid ""
+"Not implemented: Prepare must be issued using the same connection that "
+"started the transaction. currentXid={0}, prepare xid={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:340
+#, java-format
+msgid "Prepare called before end. prepare xid={0}, state={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:360
+#, java-format
+msgid "Error preparing transaction. prepare xid={0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:416
+msgid "Error during recover"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:480
+#, java-format
+msgid ""
+"Error rolling back prepared transaction. rollback xid={0}, preparedXid={1}, "
+"currentXid={2}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:521
+#, java-format
+msgid ""
+"One-phase commit called for xid {0} but connection was prepared with xid {1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:529
+msgid ""
+"Not implemented: one-phase commit must be issued using the same connection "
+"that was used to start it"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:533
+#, java-format
+msgid "One-phase commit with unknown xid. commit xid={0}, currentXid={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:537
+#, java-format
+msgid "commit called before end. commit xid={0}, state={1}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:548
+#, java-format
+msgid "Error during one-phase commit. commit xid={0}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:576
+#, java-format
+msgid ""
+"Not implemented: 2nd phase commit must be issued using an idle connection. "
+"commit xid={0}, currentXid={1}, state={2}, transactionState={3}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:609
+#, java-format
+msgid ""
+"Error committing prepared transaction. commit xid={0}, preparedXid={1}, "
+"currentXid={2}"
+msgstr ""
+
+#: com.amazon.redshift/xa/PGXAConnection.java:626
+#, java-format
+msgid "Heuristic commit/rollback not supported. forget xid={0}"
+msgstr ""
