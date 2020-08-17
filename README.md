@@ -15,7 +15,7 @@ The driver supports JDBC 4.2 specification.
 ### Prerequisites
 * JDK8
 * Maven 3.x
-* Redshift instance
+* Redshift instance connect to.
 
 ### Build Artifacts
 On Unix system run:
@@ -23,8 +23,7 @@ On Unix system run:
 build.sh
 ```
 It builds **redshift-jdbc42-{version}.jar** and **redshift-jdbc42-{version}.zip** files under **target** directory. 
-The jar file is the Redshift JDBC driver.  
-The zip file contains the driver jar file and all required dependencies files to use AWS SDK for the IDP/IAM features.
+The jar file is the Redshift JDBC driver.The zip file contains the driver jar file and all required dependencies files to use AWS SDK for the IDP/IAM features.
 
 ## Report Bugs
 
