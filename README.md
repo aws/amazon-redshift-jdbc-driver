@@ -1,16 +1,23 @@
 ## Redshift JDBC Driver
 
-Redshift JDBC Driver requires JDK8 to compile the code. At runtime it needs
-JRE8. This driver has many Redshift specific features such as,
+The Amazon JDBC Driver for Redshift is a Type 4 JDBC driver that provides database connectivity through the standard JDBC application program interfaces (APIs) available in the Java Platform, Enterprise Editions. The Driver provides access to Redshift from any Java application, application server, or Java-enabled applet.
+
+The driver has many Redshift specific features such as,
 
 * IAM authentication
 * IDP authentication
 * Redshift specific datatypes support
 * External schema support as part of getTables() and getColumns() JDBC API
 
-This driver supports JDBC 4.2 specification.
+The driver supports JDBC 4.2 specification.
 
 ## Build Driver
+### Prerequisites
+* JDK8
+* Maven 3.x
+* Redshift instance
+
+### Build Artifacts
 On Unix system run:
 ```
 build.sh
