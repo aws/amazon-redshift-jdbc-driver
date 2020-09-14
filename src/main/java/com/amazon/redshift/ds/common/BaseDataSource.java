@@ -225,7 +225,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   /**
    * Added for backward compatibility.
    * 
-   * @return
+   * @return user to connect as by default
    */
   public String getUserID() {
   	return getUser();
@@ -246,7 +246,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   /**
    * Added for backward compatibility.
    * 
-   * @param id
+   * @param id user to connect as by default
    */
   public void setUserID(String id) {
   	setUser(id);
@@ -1191,7 +1191,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   }
 
   /**
-   * @param loggerLevel of the JDBC Driver
+   * @param loggerLevel logger level of the JDBC Driver
    * @see RedshiftProperty#LOGGER_LEVEL
    */
   public void setLoggerLevel(String loggerLevel) {
@@ -1202,7 +1202,8 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   /**
    * Added for backward compatibility.
    * 
-   * @param level
+   * @param level logger level of the JDBC Driver
+   * @see RedshiftProperty#LOGGER_LEVEL
    */
   public void setLogLevel(String level) {
     RedshiftProperty.LOG_LEVEL.set(properties, level);
@@ -1241,7 +1242,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   /**
    * Added for backward compatibility.
    * 
-   * @param logDirectory
+   * @param logDirectory  output directory of the Logger.
    */
   public void setLogDirectory(String logDirectory) {
     RedshiftProperty.LOG_PATH.set(properties, logDirectory);
@@ -1599,12 +1600,12 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     RedshiftProperty.MAX_RESULT_BUFFER.set(properties, maxResultBuffer);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
   public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
     // java.util.logging.logger is not used in Redshift JDBC
     throw new SQLFeatureNotSupportedException ("java.util.logging is not used");
-  } 
-  //#endif
+  }
+  //JCP! endif
 
   /*
    * Alias methods below, these are to help with ease-of-use with other database tools / frameworks

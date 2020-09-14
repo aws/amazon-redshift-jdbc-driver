@@ -538,7 +538,7 @@ public enum RedshiftProperty {
    */
   READ_ONLY_MODE(
     "readOnlyMode",
-    "transaction",
+    "always", // transaction
     "Controls the behavior when a connection is set to be read only, one of 'ignore', 'transaction', or 'always' "
       + "When 'ignore', setting readOnly has no effect. "
       + "When 'transaction' setting readOnly to 'true' will cause transactions to BEGIN READ ONLY if autocommit is 'false'. "
@@ -919,6 +919,12 @@ public enum RedshiftProperty {
   DB_GROUPS("DbGroups",
   					null,
   					"A comma delimited database group names"),
+  /**
+   * Regex for filtering out dbGroups.
+   */
+  DB_GROUPS_FILTER("DbGroupsFilter",
+  					null,
+  					"Regex for filtering out dbGroups from final result"),
   
   /**
    * Forces database group names to be lower case.

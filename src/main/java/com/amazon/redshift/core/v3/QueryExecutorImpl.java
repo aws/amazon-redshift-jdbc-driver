@@ -36,6 +36,7 @@ import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.core.v3.replication.V3ReplicationProtocol;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.BatchResultHandler;
+import com.amazon.redshift.jdbc.FieldMetadata;
 import com.amazon.redshift.jdbc.TimestampUtils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
@@ -54,6 +55,7 @@ import java.lang.ref.ReferenceQueue;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayDeque;
@@ -153,7 +155,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
    */
   private final CommandCompleteParser commandCompleteParser = new CommandCompleteParser();
-
+  private final CopyQueryExecutor copyQueryExecutor;
+  
   public QueryExecutorImpl(RedshiftStream pgStream, String user, String database,
       int cancelSignalTimeout, Properties info, RedshiftLogger logger) throws SQLException, IOException {
     super(pgStream, user, database, cancelSignalTimeout, info, logger);
@@ -168,6 +171,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     															: 0;
 
     this.enableStatementCache = RedshiftProperty.ENABLE_STATEMENT_CACHE.getBoolean(info);
+    this.copyQueryExecutor = new CopyQueryExecutor(this, logger, pgStream);
+    this.serverProtocolVersion = 0;
     readStartupMessages();
   }
 
@@ -196,7 +201,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @param obtainer object that gets the lock. Normally current thread.
    * @throws RedshiftException when already holding the lock or getting interrupted.
    */
-  private void lock(Object obtainer) throws RedshiftException {
+  void lock(Object obtainer) throws RedshiftException {
     if (lockedFor == obtainer) {
       throw new RedshiftException(GT.tr("Tried to obtain lock while already holding it"),
           RedshiftState.OBJECT_NOT_IN_STATE);
@@ -212,7 +217,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @param holder object that holds the lock. Normally current thread.
    * @throws RedshiftException when this thread does not hold the lock
    */
-  private void unlock(Object holder) throws RedshiftException {
+  void unlock(Object holder) throws RedshiftException {
     if (lockedFor != holder) {
       throw new RedshiftException(GT.tr("Tried to break lock on database connection"),
           RedshiftState.OBJECT_NOT_IN_STATE);
@@ -225,7 +230,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * Wait until our lock is released. Execution of a single synchronized method can then continue
    * without further ado. Must be called at beginning of each synchronized public method.
    */
-  private void waitOnLock() throws RedshiftException {
+  void waitOnLock() throws RedshiftException {
     while (lockedFor != null) {
       try {
         this.wait();
@@ -311,7 +316,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       int maxRows, int fetchSize, int flags) throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
     
     synchronized(this) {
 	  	waitOnLock();
@@ -517,7 +522,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     
   	// Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -628,9 +633,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
       public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
           ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-          int[] rowCount) {
+          int[] rowCount, Thread ringBufferThread) {
         if (sawBegin) {
-          super.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount);
+          super.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount, ringBufferThread);
         }
       }
 
@@ -655,9 +660,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
   public byte[] fastpathCall(int fnid, ParameterList parameters, boolean suppressBegin)
       throws SQLException {
+  	return null;
+/* Not in use. TODO: Comment all references used in LargeObject.
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
     
     synchronized(this) {
 	    waitOnLock();
@@ -674,6 +681,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	          RedshiftState.CONNECTION_FAILURE, ioe);
 	    }
     }
+*/    
   }
 
   public void doSubprotocolBegin() throws SQLException {
@@ -732,6 +740,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return new SimpleParameterList(count, this);
   }
 
+/* Not in use.  
   private void sendFastpathCall(int fnid, SimpleParameterList params)
       throws SQLException, IOException {
     if (RedshiftLogger.isEnable()) {
@@ -774,6 +783,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     pgStream.sendInteger2(1); // Binary result format
     pgStream.flush();
   }
+*/  
 
   // Just for API compatibility with previous versions.
   public synchronized void processNotifies() throws SQLException {
@@ -868,6 +878,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     }
   }
 
+  /* Not in use.
   private byte[] receiveFastpathResult() throws IOException, SQLException {
     boolean endQuery = false;
     SQLException error = null;
@@ -930,6 +941,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     return returnValue;
   }
+*/ 
 
   //
   // Copy subprotocol implementation
@@ -945,57 +957,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   public  CopyOperation startCopy(String sql, boolean suppressBegin)
       throws SQLException {
   	
-    // Wait for current ring buffer thread to finish, if any.
-  	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null);
-  	
-    synchronized(this) {
-	    waitOnLock();
-	    
-	    if (!suppressBegin) {
-	      doSubprotocolBegin();
-	    }
-	    byte[] buf = Utils.encodeUTF8(sql);
-	
-	    try {
-	    	if(RedshiftLogger.isEnable())    	
-	    		logger.log(LogLevel.DEBUG, " FE=> Query(CopyStart)");
-	
-	      pgStream.sendChar('Q');
-	      pgStream.sendInteger4(buf.length + 4 + 1);
-	      pgStream.send(buf);
-	      pgStream.sendChar(0);
-	      pgStream.flush();
-	
-	      return processCopyResults(null, true);
-	      // expect a CopyInResponse or CopyOutResponse to our query above
-	    } catch (IOException ioe) {
-	      throw new RedshiftException(GT.tr("Database connection failed when starting copy"),
-	          RedshiftState.CONNECTION_FAILURE, ioe);
-	    }
-    }
-  }
-
-  /**
-   * Locks connection and calls initializer for a new CopyOperation Called via startCopy ->
-   * processCopyResults.
-   *
-   * @param op an uninitialized CopyOperation
-   * @throws SQLException on locking failure
-   * @throws IOException on database connection failure
-   */
-  private synchronized void initCopy(CopyOperationImpl op) throws SQLException, IOException {
-    pgStream.receiveInteger4(); // length not used
-    int rowFormat = pgStream.receiveChar();
-    int numFields = pgStream.receiveInteger2();
-    int[] fieldFormats = new int[numFields];
-
-    for (int i = 0; i < numFields; i++) {
-      fieldFormats[i] = pgStream.receiveInteger2();
-    }
-
-    lock(op);
-    op.init(this, rowFormat, fieldFormats);
+  	return copyQueryExecutor.startCopy(sql, suppressBegin);
   }
 
   /**
@@ -1005,71 +967,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @throws SQLException on any additional failure
    */
   public void cancelCopy(CopyOperationImpl op) throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to cancel an inactive copy operation"),
-          RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-    SQLException error = null;
-    int errors = 0;
-
-    try {
-      if (op instanceof CopyIn) {
-        synchronized (this) {
-        	if(RedshiftLogger.isEnable())    	
-        		logger.log(LogLevel.DEBUG, "FE => CopyFail");
-          final byte[] msg = Utils.encodeUTF8("Copy cancel requested");
-          pgStream.sendChar('f'); // CopyFail
-          pgStream.sendInteger4(5 + msg.length);
-          pgStream.send(msg);
-          pgStream.sendChar(0);
-          pgStream.flush();
-          do {
-            try {
-              processCopyResults(op, true); // discard rest of input
-            } catch (SQLException se) { // expected error response to failing copy
-              errors++;
-              if (error != null) {
-                SQLException e = se;
-                SQLException next;
-                while ((next = e.getNextException()) != null) {
-                  e = next;
-                }
-                e.setNextException(error);
-              }
-              error = se;
-            }
-          } while (hasLock(op));
-        }
-      } else if (op instanceof CopyOut) {
-        sendQueryCancel();
-      }
-
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when canceling copy operation"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    } finally {
-      // Need to ensure the lock isn't held anymore, or else
-      // future operations, rather than failing due to the
-      // broken connection, will simply hang waiting for this
-      // lock.
-      synchronized (this) {
-        if (hasLock(op)) {
-          unlock(op);
-        }
-      }
-    }
-
-    if (op instanceof CopyIn) {
-      if (errors < 1) {
-        throw new RedshiftException(GT.tr("Missing expected error response to copy cancel request"),
-            RedshiftState.COMMUNICATION_ERROR);
-      } else if (errors > 1) {
-        throw new RedshiftException(
-            GT.tr("Got {0} error responses to single copy cancel request", String.valueOf(errors)),
-            RedshiftState.COMMUNICATION_ERROR, error);
-      }
-    }
+  	copyQueryExecutor.cancelCopy(op);
   }
 
   /**
@@ -1080,26 +978,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @throws SQLException on failure
    */
   public synchronized long endCopy(CopyOperationImpl op) throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to end inactive copy"), RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-    try {
-    	if(RedshiftLogger.isEnable())    	
-    		logger.log(LogLevel.DEBUG, " FE=> CopyDone");
-
-      pgStream.sendChar('c'); // CopyDone
-      pgStream.sendInteger4(4);
-      pgStream.flush();
-
-      do {
-        processCopyResults(op, true);
-      } while (hasLock(op));
-      return op.getHandledRowCount();
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when ending copy"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    }
+  	return copyQueryExecutor.endCopy(op);
   }
 
   /**
@@ -1114,22 +993,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    */
   public synchronized void writeToCopy(CopyOperationImpl op, byte[] data, int off, int siz)
       throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
-          RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-  	if(RedshiftLogger.isEnable())    	
-  		logger.log(LogLevel.DEBUG, " FE=> CopyData({0})", siz);
-
-    try {
-      pgStream.sendChar('d');
-      pgStream.sendInteger4(siz + 4);
-      pgStream.send(data, off, siz);
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when writing to copy"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    }
+  	copyQueryExecutor.writeToCopy(op, data, off, siz);
   }
 
   /**
@@ -1142,37 +1006,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    */
   public synchronized void writeToCopy(CopyOperationImpl op, ByteStreamWriter from)
       throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
-          RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-    int siz = from.getLength();
-  	if(RedshiftLogger.isEnable())    	
-  		logger.log(LogLevel.DEBUG, " FE=> CopyData({0})", siz);
-
-    try {
-      pgStream.sendChar('d');
-      pgStream.sendInteger4(siz + 4);
-      pgStream.send(from);
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when writing to copy"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    }
+  	copyQueryExecutor.writeToCopy(op, from);
   }
 
   public synchronized void flushCopy(CopyOperationImpl op) throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
-          RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-    try {
-      pgStream.flush();
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when writing to copy"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    }
+  	copyQueryExecutor.flushCopy(op);
   }
 
   /**
@@ -1184,269 +1022,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @throws SQLException on any failure
    */
   synchronized void readFromCopy(CopyOperationImpl op, boolean block) throws SQLException {
-    if (!hasLock(op)) {
-      throw new RedshiftException(GT.tr("Tried to read from inactive copy"),
-          RedshiftState.OBJECT_NOT_IN_STATE);
-    }
-
-    try {
-      processCopyResults(op, block); // expect a call to handleCopydata() to store the data
-    } catch (IOException ioe) {
-      throw new RedshiftException(GT.tr("Database connection failed when reading from copy"),
-          RedshiftState.CONNECTION_FAILURE, ioe);
-    }
-  }
-
-  AtomicBoolean processingCopyResults = new AtomicBoolean(false);
-
-  /**
-   * Handles copy sub protocol responses from server. Unlocks at end of sub protocol, so operations
-   * on pgStream or QueryExecutor are not allowed in a method after calling this!
-   *
-   * @param block whether to block waiting for input
-   * @return CopyIn when COPY FROM STDIN starts; CopyOut when COPY TO STDOUT starts; null when copy
-   *         ends; otherwise, the operation given as parameter.
-   * @throws SQLException in case of misuse
-   * @throws IOException from the underlying connection
-   */
-  CopyOperationImpl processCopyResults(CopyOperationImpl op, boolean block)
-      throws SQLException, IOException {
-
-    /*
-    * fixes issue #1592 where one thread closes the stream and another is reading it
-     */
-    if (pgStream.isClosed()) {
-      throw new RedshiftException(GT.tr("RedshiftStream is closed",
-        op.getClass().getName()), RedshiftState.CONNECTION_DOES_NOT_EXIST);
-    }
-    /*
-    *  This is a hack as we should not end up here, but sometimes do with large copy operations.
-     */
-    if ( processingCopyResults.compareAndSet(false,true) == false ) {
-    	if(RedshiftLogger.isEnable())    	
-    		logger.log(LogLevel.INFO, "Ignoring request to process copy results, already processing");
-      return null;
-    }
-
-    // put this all in a try, finally block and reset the processingCopyResults in the finally clause
-    try {
-      boolean endReceiving = false;
-      SQLException error = null;
-      SQLException errors = null;
-      int len;
-
-      while (!endReceiving && (block || pgStream.hasMessagePending())) {
-
-        // There is a bug in the server's implementation of the copy
-        // protocol. It returns command complete immediately upon
-        // receiving the EOF marker in the binary protocol,
-        // potentially before we've issued CopyDone. When we are not
-        // blocking, we don't think we are done, so we hold off on
-        // processing command complete and any subsequent messages
-        // until we actually are done with the copy.
-        //
-        if (!block) {
-          int c = pgStream.peekChar();
-          if (c == 'C') {
-            // CommandComplete
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CommandStatus, Ignored until CopyDone");
-            break;
-          }
-        }
-
-        int c = pgStream.receiveChar();
-        switch (c) {
-
-          case 'A': // Asynchronous Notify
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE Asynchronous Notification while copying");
-
-            receiveAsyncNotify();
-            break;
-
-          case 'N': // Notice Response
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE Notification while copying");
-
-            addWarning(receiveNoticeResponse());
-            break;
-
-          case 'C': // Command Complete
-
-            String status = receiveCommandStatus();
-
-            try {
-              if (op == null) {
-                throw new RedshiftException(GT
-                    .tr("Received CommandComplete ''{0}'' without an active copy operation", status),
-                    RedshiftState.OBJECT_NOT_IN_STATE);
-              }
-              op.handleCommandStatus(status);
-            } catch (SQLException se) {
-              error = se;
-            }
-
-            block = true;
-            break;
-
-          case 'E': // ErrorMessage (expected response to CopyFail)
-
-            error = receiveErrorResponse(false);
-            // We've received the error and we now expect to receive
-            // Ready for query, but we must block because it might still be
-            // on the wire and not here yet.
-            block = true;
-            break;
-
-          case 'G': // CopyInResponse
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CopyInResponse");
-
-            if (op != null) {
-              error = new RedshiftException(GT.tr("Got CopyInResponse from server during an active {0}",
-                  op.getClass().getName()), RedshiftState.OBJECT_NOT_IN_STATE);
-            }
-
-            op = new CopyInImpl();
-            initCopy(op);
-            endReceiving = true;
-            break;
-
-          case 'H': // CopyOutResponse
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CopyOutResponse");
-
-            if (op != null) {
-              error = new RedshiftException(GT.tr("Got CopyOutResponse from server during an active {0}",
-                  op.getClass().getName()), RedshiftState.OBJECT_NOT_IN_STATE);
-            }
-
-            op = new CopyOutImpl();
-            initCopy(op);
-            endReceiving = true;
-            break;
-
-          case 'W': // CopyBothResponse
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CopyBothResponse");
-
-            if (op != null) {
-              error = new RedshiftException(GT.tr("Got CopyBothResponse from server during an active {0}",
-                  op.getClass().getName()), RedshiftState.OBJECT_NOT_IN_STATE);
-            }
-
-            op = new CopyDualImpl();
-            initCopy(op);
-            endReceiving = true;
-            break;
-
-          case 'd': // CopyData
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CopyData");
-
-            len = pgStream.receiveInteger4() - 4;
-
-            assert len > 0 : "Copy Data length must be greater than 4";
-
-            byte[] buf = pgStream.receive(len);
-            if (op == null) {
-              error = new RedshiftException(GT.tr("Got CopyData without an active copy operation"),
-                  RedshiftState.OBJECT_NOT_IN_STATE);
-            } else if (!(op instanceof CopyOut)) {
-              error = new RedshiftException(
-                  GT.tr("Unexpected copydata from server for {0}", op.getClass().getName()),
-                  RedshiftState.COMMUNICATION_ERROR);
-            } else {
-              op.handleCopydata(buf);
-            }
-            endReceiving = true;
-            break;
-
-          case 'c': // CopyDone (expected after all copydata received)
-
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE CopyDone");
-
-            len = pgStream.receiveInteger4() - 4;
-            if (len > 0) {
-              pgStream.receive(len); // not in specification; should never appear
-            }
-
-            if (!(op instanceof CopyOut)) {
-              error = new RedshiftException("Got CopyDone while not copying from server",
-                  RedshiftState.OBJECT_NOT_IN_STATE);
-            }
-
-            // keep receiving since we expect a CommandComplete
-            block = true;
-            break;
-          case 'S': // Parameter Status
-            try {
-              receiveParameterStatus();
-            } catch (SQLException e) {
-              error = e;
-              endReceiving = true;
-            }
-            break;
-
-          case 'Z': // ReadyForQuery: After FE:CopyDone => BE:CommandComplete
-
-            receiveRFQ();
-            if (hasLock(op)) {
-              unlock(op);
-            }
-            op = null;
-            endReceiving = true;
-            break;
-
-          // If the user sends a non-copy query, we've got to handle some additional things.
-          //
-          case 'T': // Row Description (response to Describe)
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE RowDescription (during copy ignored)");
-
-            skipMessage();
-            break;
-
-          case 'D': // DataRow
-          	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " <=BE DataRow (during copy ignored)");
-
-            skipMessage();
-            break;
-
-          default:
-            throw new IOException(
-                GT.tr("Unexpected packet type during copy: {0}", Integer.toString(c)));
-        }
-
-        // Collect errors into a neat chain for completeness
-        if (error != null) {
-          if (errors != null) {
-            error.setNextException(errors);
-          }
-          errors = error;
-          error = null;
-        }
-      }
-
-      if (errors != null) {
-        throw errors;
-      }
-      return op;
-
-    } finally {
-      /*
-      reset here in the finally block to make sure it really is cleared
-       */
-      processingCopyResults.set(false);
-    }
+  	copyQueryExecutor.readFromCopy(op, block);
   }
 
   /*
@@ -2119,28 +1695,36 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
 
   public void closeStatementAndPortal() {
-    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
-    try {
-			processDeadParsedQueries();
-	    processDeadPortals();
-//	    sendCloseStatement(null);
-//	    sendClosePortal("unnamed");
-	    sendFlush();
-	    sendSync(false);
-	    
-	    // Read SYNC response
-	    processSyncOnClose();
-		} catch (IOException e) {
-			// Ignore the error
-	    if (RedshiftLogger.isEnable()) {
-    		logger.logError(e);
-	    }
-		}	catch (SQLException sqe) {
-		// Ignore the error
-    if (RedshiftLogger.isEnable()) {
-  		logger.logError(sqe);
-    }
-	}
+  	
+    // Wait for current ring buffer thread to finish, if any.
+  	// Shouldn't call from synchronized method, which can cause dead-lock.
+  	// TODO: Pass statement close flag
+    waitForRingBufferThreadToFinish(false, false, null, null);
+
+    synchronized(this) {
+	    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
+	    try {
+				processDeadParsedQueries();
+		    processDeadPortals();
+	//	    sendCloseStatement(null);
+	//	    sendClosePortal("unnamed");
+		    sendFlush();
+		    sendSync(false);
+		    
+		    // Read SYNC response
+		    processSyncOnClose();
+			} catch (IOException e) {
+				// Ignore the error
+		    if (RedshiftLogger.isEnable()) {
+	    		logger.logError(e);
+		    }
+			}	catch (SQLException sqe) {
+				// Ignore the error
+		    if (RedshiftLogger.isEnable()) {
+		  		logger.logError(sqe);
+		    }
+			}
+   	} // synchronized
   }
   
   private void processDeadParsedQueries() throws IOException {
@@ -2189,9 +1773,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
   
   /**
-   * Returns true if Ring buffer thread is running, otherwise false.
+   * Check for a running ring buffer thread.
    * 
-   * @return
+   * @return returns true if Ring buffer thread is running, otherwise false.
    */
   @Override
   public boolean isRingBufferThreadRunning() {
@@ -2202,9 +1786,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * Close the last active ring buffer thread.
    */
   @Override
-  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows) {
+  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread) {
     // Abort current ring buffer thread, if any.
-    waitForRingBufferThreadToFinish(false, true, queueRows);
+    waitForRingBufferThreadToFinish(false, true, queueRows, ringBufferThread);
   }
   
   @Override
@@ -2219,6 +1803,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     while (!endQuery) {
       c = pgStream.receiveChar();
+      
       switch (c) {
         case 'A': // Asynchronous Notify
           receiveAsyncNotify();
@@ -2264,12 +1849,17 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
   
   protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries) throws IOException {
+  	processResults(handler, flags, fetchSize, subQueries, 0);
+  }
+
+  protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries, int initRowCount) throws IOException {
   	MessageLoopState msgLoopState = new MessageLoopState();
   	int[] rowCount = new int[1];
+  	rowCount[0] = initRowCount;
 		// Process messages on the same application main thread.
 		processResultsOnThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
   }
-
+  
   private void processResultsOnThread(ResultHandler handler, 
   				int flags, int fetchSize, 
   				MessageLoopState msgLoopState,
@@ -2374,7 +1964,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
             if (fields != null) { // There was a resultset.
             	tuples = new ArrayList<Tuple>();
-              handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount);
+              handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
               tuples = null;
               msgLoopState.queueTuples = null;
             }
@@ -2389,25 +1979,37 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         	if(RedshiftLogger.isEnable())    	
         		logger.log(LogLevel.DEBUG, " <=BE PortalSuspended");
 
-          if (msgLoopState.queueTuples == null) {
-	          ExecuteRequest executeData = pendingExecuteQueue.removeFirst();
-	          SimpleQuery currentQuery = executeData.query;
-	          Portal currentPortal = executeData.portal;
-	
-	          Field[] fields = currentQuery.getFields();
-	          if (fields != null 
-	          			&& (tuples == null 
-	          						&& msgLoopState.queueTuples == null)) {
-	            // When no results expected, pretend an empty resultset was returned
-	            // Not sure if new ArrayList can be always replaced with emptyList
-	          	tuples = noResults ? Collections.<Tuple>emptyList() : new ArrayList<Tuple>();
-	          }
-	
-	          handler.handleResultRows(currentQuery, fields, tuples, currentPortal, null, rowCount);
-	          tuples = null;
+          ExecuteRequest executeData = pendingExecuteQueue.removeFirst();
+          SimpleQuery currentQuery = executeData.query;
+          Portal currentPortal = executeData.portal;
+
+          Field[] fields = currentQuery.getFields();
+          if (fields != null 
+          			&& (tuples == null 
+          						&& msgLoopState.queueTuples == null)) {
+            // When no results expected, pretend an empty resultset was returned
+            // Not sure if new ArrayList can be always replaced with emptyList
+          	tuples = noResults ? Collections.<Tuple>emptyList() : new ArrayList<Tuple>();
+          }
+
+          if (msgLoopState.queueTuples != null) {
+        		// Mark end of result
+        		try {
+        			msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator(currentPortal);
+						} 
+        		catch (InterruptedException ie) {
+							// Handle interrupted exception
+              handler.handleError(
+                  new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
+                      RedshiftState.UNEXPECTED_ERROR, ie));
+						}
           }
           else
-          	msgLoopState.queueTuples = null;
+        		handler.handleResultRows(currentQuery, fields, tuples, currentPortal, null, rowCount, null);
+          
+          tuples = null;
+          msgLoopState.queueTuples = null;
+          
           break;
         }
 
@@ -2502,7 +2104,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           						|| msgLoopState.queueTuples != null)) {
             // There was a resultset.
           	if (msgLoopState.queueTuples == null)
-          		handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount);
+          		handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
           	else {
           		// Mark end of result
           		try {
@@ -2580,7 +2182,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                 SimpleQuery currentQuery = executeData.query;
                 Field[] fields = currentQuery.getFields();
                 
-                handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, rowCount);
+        	  		// Create a new ring buffer thread to process rows
+        	  		m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
+                
+                handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, rowCount, m_ringBufferThread);
                 
                 if (RedshiftLogger.isEnable()) {
                   int length;
@@ -2591,11 +2196,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                   }
                   logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
                 }
-                
-        	  		// Create a new thread to process rows
-        	  		m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
         	  		
-        	  		// Start the thread
+        	  		// Start the ring buffer thread
         	  		m_ringBufferThread.start();
         	  		
               	// Return to break the message loop on the application thread
@@ -2606,10 +2208,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       					return; // Break the ring buffer thread loop
           	}
           	else {
-            if (tuples == null) {
-              tuples = new ArrayList<Tuple>();
-            }
-            tuples.add(tuple);
+	            if (tuples == null) {
+	              tuples = new ArrayList<Tuple>();
+	            }
+	            tuples.add(tuple);
           	}
           }
 
@@ -2672,7 +2274,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           break;
 
         case 'T': // Row Description (response to Describe)
-          Field[] fields = receiveFields();
+          Field[] fields = receiveFields(serverProtocolVersion);
           tuples = new ArrayList<Tuple>();
 
           SimpleQuery query = pendingDescribePortalQueue.peekFirst();
@@ -2690,7 +2292,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
             	// TODO: is this possible?
             }
             
-            handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount);
+            handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
             tuples = null;
             msgLoopState.queueTuples = null;
           }
@@ -2803,7 +2405,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         default:
           throw new IOException("Unexpected packet type: " + c);
       }
-
     }
   }
 
@@ -2811,7 +2412,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * Ignore the response message by reading the message length and skipping over those bytes in the
    * communication stream.
    */
-  private void skipMessage() throws IOException {
+  void skipMessage() throws IOException {
     int len = pgStream.receiveInteger4();
 
     assert len >= 4 : "Length from skip message must be at least 4 ";
@@ -2820,11 +2421,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     pgStream.skip(len - 4);
   }
 
-  public  void fetch(ResultCursor cursor, ResultHandler handler, int fetchSize)
+  public  void fetch(ResultCursor cursor, ResultHandler handler, int fetchSize, int initRowCount)
       throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -2836,7 +2437,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	    handler = new ResultHandlerDelegate(delegateHandler) {
 	      @Override
 	      public void handleCommandStatus(String status, long updateCount, long insertOID) {
-	        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null);
+	        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null, null);
 	      }
 	    };
 	
@@ -2850,7 +2451,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       	sendFlush();
 	      sendSync(true);
 	
-	      processResults(handler, 0, fetchSize, (portal.getQuery().getSubqueries() != null));
+	      processResults(handler, 0, fetchSize, (portal.getQuery().getSubqueries() != null), initRowCount);
 	      estimatedReceiveBufferBytes = 0;
 	    } catch (IOException e) {
 	      abort();
@@ -2866,7 +2467,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   /*
    * Receive the field descriptions from the back end.
    */
-  private Field[] receiveFields() throws IOException {
+  private Field[] receiveFields(int serverProtocolVersion) throws IOException {
     pgStream.receiveInteger4(); // MESSAGE SIZE
     int size = pgStream.receiveInteger2();
     Field[] fields = new Field[size];
@@ -2886,6 +2487,30 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       fields[i] = new Field(columnLabel,
           typeOid, typeLength, typeModifier, tableOid, positionInTable);
       fields[i].setFormat(formatType);
+      
+      if (serverProtocolVersion >= ConnectionFactoryImpl.EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION) {
+      	// Read extended resultset metadata
+        String schemaName = pgStream.receiveString();
+        String tableName = pgStream.receiveString();
+        String columnName = pgStream.receiveString();
+        String catalogName = pgStream.receiveString();
+        int temp = pgStream.receiveInteger2();
+      	int nullable = temp & 0x1;
+      	int autoincrement = (temp >> 4)  & 0x1;
+      	int readOnly = (temp >> 8) & 0x1;
+      	int searchable = (temp >> 12) & 0x1;
+      	
+      	fields[i].setMetadata(new FieldMetadata(columnName,
+      														tableName, 
+      														schemaName,
+      														(nullable == 1) ? ResultSetMetaData.columnNoNulls
+      																						: ResultSetMetaData.columnNullable,
+      														 (autoincrement != 0),
+      														 catalogName,
+      														 (readOnly != 0),
+      														 (searchable != 0)
+      														));	
+      }
 
     	if(RedshiftLogger.isEnable())    	
     		logger.log(LogLevel.DEBUG, "        {0}", fields[i]);
@@ -2894,7 +2519,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return fields;
   }
 
-  private void receiveAsyncNotify() throws IOException {
+  void receiveAsyncNotify() throws IOException {
     int len = pgStream.receiveInteger4(); // MESSAGE SIZE
     assert len > 4 : "Length for AsyncNotify must be at least 4";
 
@@ -2908,7 +2533,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     }
   }
 
-  private SQLException receiveErrorResponse(boolean calledFromClose) throws IOException {
+  SQLException receiveErrorResponse(boolean calledFromClose) throws IOException {
     // it's possible to get more than one error message for a query
     // see libpq comments wrt backend closing a connection
     // so, append messages to a string buffer and keep processing
@@ -2936,7 +2561,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return error;
   }
 
-  private SQLWarning receiveNoticeResponse() throws IOException {
+  SQLWarning receiveNoticeResponse() throws IOException {
     int nlen = pgStream.receiveInteger4();
     assert nlen > 4 : "Notice Response length must be greater than 4";
 
@@ -2949,7 +2574,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return new RedshiftWarning(warnMsg);
   }
 
-  private String receiveCommandStatus() throws IOException {
+  String receiveCommandStatus() throws IOException {
     // TODO: better handle the msg len
     int len = pgStream.receiveInteger4();
     // read len -5 bytes (-4 for len and -1 for trailing \0)
@@ -2976,7 +2601,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     handler.handleCommandStatus(status, count, oid);
   }
 
-  private void receiveRFQ() throws IOException {
+  void receiveRFQ() throws IOException {
     if (pgStream.receiveInteger4() != 5) {
       throw new IOException("unexpected length of ReadyForQuery message");
     }
@@ -3008,7 +2633,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   @Override
   protected void sendCloseMessage() throws IOException {
     // Wait for current ring buffer thread to finish, if any.
-    waitForRingBufferThreadToFinish(true, false, null);
+    waitForRingBufferThreadToFinish(true, false, null, null);
   	
     pgStream.sendChar('X');
     pgStream.sendInteger4(4);
@@ -3132,6 +2757,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       setServerVersionNum(Integer.parseInt(value));
     } else if ("server_version".equals(name)) {
       setServerVersion(value);
+    } else if ("server_protocol_version".equals(name)) {
+      setServerProtocolVersion(value);
     }  else if ("integer_datetimes".equals(name)) {
       if ("on".equals(value)) {
         setIntegerDateTimes(true);
@@ -3201,10 +2828,15 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   /**
    * Wait for ring buffer thread to finish.
    * 
+   * @param calledFromConnectionClose true, if it called from connection.close(), false otherwise.
+   * @param calledFromResultsetClose true, if it called from resultset.close(), false otherwise.
+   * @param queueRows the blocking queue rows
+   * @param ringBufferThread the thread manage the blocking queue
    */
   public void waitForRingBufferThreadToFinish(boolean calledFromConnectionClose, 
   																						boolean calledFromResultsetClose,
-  																						RedshiftRowsBlockingQueue<Tuple> queueRows)
+  																						RedshiftRowsBlockingQueue<Tuple> queueRows,
+  																						Thread ringBufferThread)
   {
   	synchronized(m_ringBufferThreadLock) {
 			// Wait for full read of any executing command
@@ -3216,6 +2848,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 				{
 					if(calledFromConnectionClose)
 					{
+						// Interuupt the current thread
 						m_ringBufferStopThread = true;
 						m_ringBufferThread.interrupt();
 						return;
@@ -3227,15 +2860,17 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 						if (queueRows != null)
 							queueRows.setSkipRows();
 						
-						// Wait for thread to terminate.
-						m_ringBufferThread.join(joinWaitTime);
+						// Wait for thread associated with result to terminate.
+						if (ringBufferThread != null) {
+							ringBufferThread.join(joinWaitTime);
+						}
 						
 						if (queueRows != null)
 							queueRows.close();
 					}
 					else {
 						// Application is trying to execute another SQL on same connection.
-						// Wait for thread to terminate.
+						// Wait for current thread to terminate.
 						m_ringBufferThread.join(joinWaitTime);
 					}
 				}
@@ -3351,6 +2986,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	@Override
   	public void run() 
   	{
+			// TODO: Do we have to synchronize on this?
   		try
   		{
   			// Process result

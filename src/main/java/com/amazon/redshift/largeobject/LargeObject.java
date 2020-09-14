@@ -39,9 +39,9 @@ import java.sql.SQLException;
  * @see java.sql.PreparedStatement#setUnicodeStream
  */
 public class LargeObject
-    //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+    //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
     implements AutoCloseable
-    //#endif
+    //JCP! endif
     /* hi, checkstyle */ {
   /**
    * Indicates a seek from the beginning of a file.

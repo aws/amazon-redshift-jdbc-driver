@@ -28,9 +28,10 @@ import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
  * @author Oliver Jowett (oliver@opencloud.com)
  */
 public interface ResultHandler {
-  /**
-   * Called when result rows are received from a query.
-   *
+	
+	/**
+	 * Called when result rows are received from a query.
+	 * 
    * @param fromQuery the underlying query that generated these results; this may not be very
    *        specific (e.g. it may be a query that includes multiple statements).
    * @param fields column metadata for the resultset; might be <code>null</code> if
@@ -39,8 +40,10 @@ public interface ResultHandler {
    * @param cursor a cursor to use to fetch additional data; <code>null</code> if no further results
    *        are present.
    * @param queueTuples the actual data in a blocking queue. If this is set then tuples will be null.
-   */
-  void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount);
+	 * @param rowCount number of rows fetched from the socket.
+	 * @param ringBufferThread a thread to fetch rows in the limited rows buffer.
+	 */
+  void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount, Thread ringBufferThread);
 
   /**
    * Called when a query that did not return a resultset completes.

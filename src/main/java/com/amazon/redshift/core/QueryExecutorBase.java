@@ -65,7 +65,8 @@ public abstract class QueryExecutorBase implements QueryExecutor {
       = new TreeMap<String,String>(String.CASE_INSENSITIVE_ORDER);
   
   protected boolean enableStatementCache;
-
+  protected int serverProtocolVersion;
+  
   protected QueryExecutorBase(RedshiftStream pgStream, String user,
       String database, int cancelSignalTimeout, Properties info,
       RedshiftLogger logger) throws SQLException {
@@ -246,6 +247,11 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   }
 
   @Override
+  public int getServerProtocolVersion() {
+    return serverProtocolVersion;
+  }
+  
+  @Override
   public int getServerVersionNum() {
     if (serverVersionNum != 0) {
       return serverVersionNum;
@@ -255,6 +261,12 @@ public abstract class QueryExecutorBase implements QueryExecutor {
 
   public void setServerVersion(String serverVersion) {
     this.serverVersion = serverVersion;
+  }
+
+  public void setServerProtocolVersion(String serverProtocolVersion) {
+    this.serverProtocolVersion = (serverProtocolVersion != null && serverProtocolVersion.length() != 0) 
+    																? Integer.parseInt(serverProtocolVersion) 
+    																: 0;
   }
 
   public void setServerVersionNum(int serverVersionNum) {
@@ -490,14 +502,14 @@ public abstract class QueryExecutorBase implements QueryExecutor {
    * Close the last active ring buffer thread.
    */
   @Override
-  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows) {
+  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread) {
   	// Does nothing
   }
   
   /**
-   * Returns true if Ring buffer thread is running, otherwise false.
+   * Check for a running ring buffer thread. 
    * 
-   * @return
+   * @return returns true if Ring buffer thread is running, otherwise false.
    */
   @Override
   public boolean isRingBufferThreadRunning() {

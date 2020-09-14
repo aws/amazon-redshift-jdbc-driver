@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.ByteStreamWriter;
 import com.amazon.redshift.util.GT;
@@ -66,6 +67,7 @@ public class RedshiftStream implements Closeable, Flushable {
    * @param socketFactory socket factory to use when creating sockets
    * @param hostSpec the host and port to connect to
    * @param timeout timeout in milliseconds, or 0 if no timeout set
+   * @param logger the logger to log the entry for debugging.       
    * @throws IOException if an IOException occurs below it.
    */
   public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, int timeout, RedshiftLogger logger) throws IOException {
@@ -88,6 +90,9 @@ public class RedshiftStream implements Closeable, Flushable {
 
     int2Buf = new byte[2];
     int4Buf = new byte[4];
+    
+  	if(RedshiftLogger.isEnable())
+  		logger.log(LogLevel.INFO, "Gets a new stream on a new socket");
   }
 
   /**
@@ -95,8 +100,9 @@ public class RedshiftStream implements Closeable, Flushable {
    *
    * @param socketFactory socket factory
    * @param hostSpec the host and port to connect to
+   * @param logger the logger to log the entry for debugging.       
    * @throws IOException if an IOException occurs below it.
-   * @deprecated use {@link #RedshiftStream(SocketFactory, com.amazon.redshift.util.HostSpec, int)}
+   * @deprecated use {@link #RedshiftStream(SocketFactory, com.amazon.redshift.util.HostSpec, int, RedshiftLogger)}
    */
   @Deprecated
   public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, RedshiftLogger logger) throws IOException {
@@ -621,6 +627,9 @@ public class RedshiftStream implements Closeable, Flushable {
    */
   @Override
   public void close() throws IOException {
+  	if(RedshiftLogger.isEnable())
+  		logger.log(LogLevel.INFO, "Stream on a connected socket closed");
+  	
     if (encodingWriter != null) {
       encodingWriter.close();
     }

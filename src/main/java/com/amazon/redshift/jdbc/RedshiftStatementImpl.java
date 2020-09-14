@@ -153,10 +153,10 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
 
   public ResultSet createResultSet(Query originalQuery, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount) throws SQLException {
+      int[] rowCount, Thread ringBufferThread) throws SQLException {
     RedshiftResultSet newResult = new RedshiftResultSet(originalQuery, this, fields, tuples, cursor,
         getMaxRows(), getMaxFieldSize(), getResultSetType(), getResultSetConcurrency(),
-        getResultSetHoldability(), queueTuples, rowCount);
+        getResultSetHoldability(), queueTuples, rowCount, ringBufferThread);
     newResult.setFetchSize(getFetchSize());
     newResult.setFetchDirection(getFetchDirection());
     return newResult;
@@ -186,8 +186,8 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   /**
    * Internal use only.
    * 
-   * @param oldState
-   * @param newState
+   * @param oldState old state of the statement
+   * @param newState new state of the statement
    */
   public void updateStatementCancleState(StatementCancelState oldState, StatementCancelState newState) {
   	STATE_UPDATER.compareAndSet(this, oldState, newState);
@@ -235,9 +235,10 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     @Override
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
         ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount) {
+        int[] rowCount, Thread ringBufferThread) {
       try {
-        ResultSet rs = RedshiftStatementImpl.this.createResultSet(fromQuery, fields, tuples, cursor, queueTuples, rowCount);
+        ResultSet rs = RedshiftStatementImpl.this.createResultSet(fromQuery, fields, tuples, cursor, 
+        												queueTuples, rowCount, ringBufferThread);
         append(new ResultWrapper(rs));
       } catch (SQLException e) {
         handleError(e);
@@ -1183,7 +1184,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     return forceBinaryTransfers;
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   @Override
   public long getLargeUpdateCount() throws SQLException {
     synchronized (this) {
@@ -1304,7 +1305,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     
     return rc;
   }
-  //#endif
+  //JCP! endif
 
   public boolean isClosed() throws SQLException {
     return isClosed;
@@ -1535,7 +1536,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
 
   public ResultSet createDriverResultSet(Field[] fields, List<Tuple> tuples)
       throws SQLException {
-    return createResultSet(null, fields, tuples, null, null, null);
+    return createResultSet(null, fields, tuples, null, null, null, null);
   }
 
   protected void transformQueriesAndParameters() throws SQLException {

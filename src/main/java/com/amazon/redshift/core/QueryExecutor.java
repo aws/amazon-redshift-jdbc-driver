@@ -172,9 +172,10 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    * @param cursor the cursor to fetch from
    * @param handler the handler to feed results to
    * @param fetchSize the preferred number of rows to retrieve before suspending
+   * @param initRowCount the number of rows already fetched
    * @throws SQLException if query execution fails
    */
-  void fetch(ResultCursor cursor, ResultHandler handler, int fetchSize) throws SQLException;
+  void fetch(ResultCursor cursor, ResultHandler handler, int fetchSize, int initRowCount) throws SQLException;
 
   /**
    * Create an unparameterized Query object suitable for execution by this QueryExecutor. The
@@ -372,6 +373,17 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
   String getServerVersion();
 
   /**
+   * Redshift supports different versions to accomodate
+   * new request for optimization for better performance.
+   * 
+   * 0 means base protocol version
+   * 1 means extended resultset metadata protocol version
+   * 
+   * @return the server protocol version.
+   */
+  int getServerProtocolVersion();
+  
+  /**
    * Retrieve and clear the set of asynchronous notifications pending on this connection.
    *
    * @return an array of notifications; if there are no notifications, an empty array is returned.
@@ -474,13 +486,16 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
   
   /**
    * Close the last active ring buffer thread.
+   * 
+   * @param queueRows the blocking queue rows
+   * @param ringBufferThread the thread fetching rows in the blocking queue.
    */
-  void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows);
+  void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread);
   
   /**
-   * Returns true if Ring buffer thread is running, otherwise false.
+   * Check for a running ring buffer thread. 
    * 
-   * @return
+   * @return returns true if Ring buffer thread is running, otherwise false.
    */
   boolean isRingBufferThreadRunning();
   

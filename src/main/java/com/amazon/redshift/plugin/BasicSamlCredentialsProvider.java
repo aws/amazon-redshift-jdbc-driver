@@ -98,7 +98,7 @@ public class BasicSamlCredentialsProvider extends SamlCredentialsProvider
      * This will be used by the SamlCredentialsProvider parent class to get the temporary credentials.
      *
      * @return  The SAML assertion string.
-     * @throws  IOException
+     * @throws  IOException no error as such. It's an overridden method.
      */
     @Override
     protected String getSamlAssertion() throws IOException

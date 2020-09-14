@@ -29,11 +29,11 @@ public class GT {
 
   private GT() {
     try {
-      //#if mvn.project.property.redshift.jdbc.spec < "JDBC4.1"
-      bundle = ResourceBundle.getBundle("com.amazon.redshift.translation.messages");
-      //#else
+      //JCP! if mvn.project.property.redshift.jdbc.spec < "JDBC4.1"
+//JCP>       bundle = ResourceBundle.getBundle("com.amazon.redshift.translation.messages");
+      //JCP! else
       bundle = ResourceBundle.getBundle("com.amazon.redshift.translation.messages", Locale.getDefault(Locale.Category.DISPLAY));
-      //#endif
+      //JCP! endif
     } catch (MissingResourceException mre) {
       // translation files have not been installed
       bundle = null;

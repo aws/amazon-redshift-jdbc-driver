@@ -32,7 +32,7 @@ public interface ChainedCommonCreateSlotBuilder<T extends ChainedCommonCreateSlo
    * <p>This feature is only supported by PostgreSQL versions &gt;= 10.</p>
    *
    * @return T a slot builder
-   * @throws SQLFeatureNotSupportedException.
+   * @throws SQLFeatureNotSupportedException throws an exception, if not supported.
    */
   T withTemporaryOption() throws SQLFeatureNotSupportedException;
 

@@ -65,9 +65,9 @@ public class TypeInfoCache implements TypeInfo {
   public static final int GEOMETRYOID = Oid.GEOMETRY;
   public static final int GEOMETRYHEXOID = Oid.GEOMETRYHEX;
 
-  // Omni
-  public static final String OMNI_NAME = "omni";
-  public static final int OMNIOID = Oid.OMNI;
+  // super (previous name Omni)
+  public static final String SUPER_NAME = "super";
+  public static final int SUPEROID = Oid.SUPER;
   
   // basic rs types info:
   // 0 - type name
@@ -107,13 +107,13 @@ public class TypeInfoCache implements TypeInfo {
       {"timetz", Oid.TIMETZ, Types.TIME, "java.sql.Time", Oid.TIMETZ_ARRAY},
       {"timestamp", Oid.TIMESTAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMP_ARRAY},
       {"timestamptz", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMPTZ_ARRAY},
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
-      //#endif
+      //JCP! endif
       {"json", Oid.JSON, Types.OTHER, "com.amazon.redshift.util.RedshiftObject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "com.amazon.redshift.geometric.RedshiftPoint", Oid.POINT_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRY, Types.LONGVARBINARY, "[B", Oid.GEOMETRY_ARRAY},
-      {OMNI_NAME, Oid.OMNI, Types.LONGVARCHAR, "java.lang.String", Oid.OMNI_ARRAY}
+      {SUPER_NAME, Oid.SUPER, Types.LONGVARCHAR, "java.lang.String", Oid.SUPER_ARRAY}
   };
 
   /**
@@ -674,7 +674,7 @@ public class TypeInfoCache implements TypeInfo {
 
       case Oid.BPCHAR:
       case Oid.VARCHAR:
-      case Oid.OMNI:
+      case Oid.SUPER:
         if (typmod == -1) {
           return unknownLength;
         }
@@ -845,7 +845,7 @@ public class TypeInfoCache implements TypeInfo {
         return 49;
       case Oid.VARCHAR:
       case Oid.BPCHAR:
-      case Oid.OMNI:
+      case Oid.SUPER:
         if (typmod == -1) {
           return unknownLength;
         }
@@ -894,7 +894,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.BPCHAR:
       case Oid.VARCHAR:
         return 10485760;
-      case Oid.OMNI:
+      case Oid.SUPER:
         return 4194304;
       case Oid.BIT:
       case Oid.VARBIT:

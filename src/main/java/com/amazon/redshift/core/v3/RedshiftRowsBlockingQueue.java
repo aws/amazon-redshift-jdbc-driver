@@ -29,6 +29,8 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   private SQLException handlerException = null;
   private boolean skipRows = false;
   private int currentRow = -1;
+  
+  private Portal currentSuspendedPortal;  
 	
   public RedshiftRowsBlockingQueue(int capacity) {
 		super(capacity);
@@ -147,21 +149,38 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   	skipRows = true;
   }
 
-  /** Add end-of-rows indicator
+  /**
+   * Add end-of-rows indicator
    * 
+   * @throws InterruptedException throws when the thread gets interrupted.
    */
   public void addEndOfRowsIndicator() throws InterruptedException {
   	put((E)new Tuple(0));
   }
 
-  /** Add end-of-rows indicator, if not added.
+  /**
+   * Add end-of-rows indicator, if not added.
    * 
+   * @throws InterruptedException throws when the thread gets interrupted.
    */
   public void checkAndAddEndOfRowsIndicator() throws InterruptedException {
   	if (!endOfResultAdded) {
   		addEndOfRowsIndicator();
   		endOfResultAdded = true;  		
   	}
+  }
+  
+  public void checkAndAddEndOfRowsIndicator(Portal currentSuspendedPortal) throws InterruptedException {
+  	this.currentSuspendedPortal = currentSuspendedPortal;
+  	checkAndAddEndOfRowsIndicator();
+  }
+  
+  public Portal getSuspendedPortal() {
+  	return currentSuspendedPortal;
+  }
+
+  public boolean isSuspendedPortal() {
+  	return  (currentSuspendedPortal != null);
   }
   
   /**

@@ -31,7 +31,7 @@ public class SetupQueryRunner {
 
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
         ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount) {
+        int[] rowCount, Thread ringBufferThread) {
       this.tuples = tuples;
     }
 

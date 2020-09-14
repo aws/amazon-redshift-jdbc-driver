@@ -61,12 +61,12 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-//#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+//JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-//#endif
+//JCP! endif
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -109,6 +109,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   protected List<Tuple> rows; // Current page of results.
   protected RedshiftRowsBlockingQueue<Tuple> queueRows; // Results in a blocking queue.
   protected int[] rowCount;
+  protected Thread ringBufferThread;
   protected int currentRow = -1; // Index into 'rows' of our currrent row (0-based)
   protected int rowOffset; // Offset of row 0 in the actual resultset
   protected Tuple thisRow; // copy of the current result row
@@ -145,7 +146,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   RedshiftResultSet(Query originalQuery, BaseStatement statement, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, int maxRows, int maxFieldSize, int rsType, int rsConcurrency,
       int rsHoldability, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount) throws SQLException {
+      int[] rowCount, Thread ringBufferThread) throws SQLException {
     // Fail-fast on invalid null inputs
     if (tuples == null && queueTuples == null) {
       throw new NullPointerException("tuples or queueTuples must be non-null");
@@ -166,6 +167,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     this.resultsetconcurrency = rsConcurrency;
     this.queueRows = queueTuples;
     this.rowCount = rowCount;
+    this.ringBufferThread = ringBufferThread; 
   }
 
   /**
@@ -181,7 +183,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    * This is for backward compatibility only.
    * 
    * @return Number of rows in the result set.
-   * @throws ErrorException
+   * @throws SQLException
    *             If an error occurs.
    */
   public long getRowCount() throws SQLException {
@@ -562,7 +564,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return connection.getTimestampUtils().toTime(cal, string);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   private LocalTime getLocalTime(int i) throws SQLException {
     checkResultSet(i);
     if (wasNullFlag) {
@@ -585,7 +587,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     String string = getString(i);
     return connection.getTimestampUtils().toLocalTime(string);
   }
-  //#endif
+  //JCP! endif
 
   @Override
   public Timestamp getTimestamp(int i, java.util.Calendar cal) throws SQLException {
@@ -632,7 +634,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return connection.getTimestampUtils().toTimestamp(cal, string);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   private OffsetDateTime getOffsetDateTime(int i) throws SQLException {
     checkResultSet(i);
     if (wasNullFlag) {
@@ -692,7 +694,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     String string = getString(i);
     return connection.getTimestampUtils().toLocalDateTime(string);
   }
-  //#endif
+  //JCP! endif
 
   public java.sql.Date getDate(String c, java.util.Calendar cal) throws SQLException {
     return getDate(findColumn(c), cal);
@@ -895,7 +897,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	    }
 	
 	    // Do the actual fetch.
-	    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows);
+	    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows, 0);
 	
 	    // Now prepend our one saved row and move to it.
 	    rows.add(0, thisRow);
@@ -1838,14 +1840,25 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   public class CursorResultHandler extends ResultHandlerBase {
 
+  	int resultsettype;
+
+  	public CursorResultHandler() {
+  		this(0);
+  	}
+  	
+  	public CursorResultHandler(int resultsettype) {
+  		this.resultsettype = resultsettype;
+  	}
+  	
     @Override
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
         ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount) {
+        int[] rowCount, Thread ringBufferThread) {
       RedshiftResultSet.this.rows = tuples;
       RedshiftResultSet.this.cursor = cursor;
       RedshiftResultSet.this.queueRows = queueTuples;
       RedshiftResultSet.this.rowCount = rowCount;
+      RedshiftResultSet.this.ringBufferThread = ringBufferThread;
     }
 
     @Override
@@ -1865,7 +1878,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     
     @Override
     public boolean wantsScrollableResultSet() {
-    	return true; // Used in isLast() method.
+    	if(resultsettype !=0 )
+    		return resultsettype != ResultSet.TYPE_FORWARD_ONLY;
+    	else
+    		return true; // Used in isLast() method.
     }
   }
 
@@ -1924,14 +1940,23 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 				if (thisRow == null
 						|| thisRow.fieldCount() == 0) {
 					// End of result
-					SQLException ex = queueRows.getHandlerException();
-					queueRows.addEndOfRowsIndicator(); // Keep End of result indicator for repeated next() call.
-	        rowBuffer = null;
-	        thisRow = null;
-	        if (ex != null)
-	        	throw ex;
+					
+					// Set suspended cursor, if any
+					if(cursor == null)
+						cursor = queueRows.getSuspendedPortal();
+					
+					// Check for any error
+					resetBufAndCheckForAnyErrorInQueue();
 	        
-	        return false; // End of the resultset.
+	        // Read more rows, if portal suspended
+	        if(cursor != null
+	        		&& queueRows.isSuspendedPortal()) {
+	        	boolean moreRows = fetchMoreInQueueFromSuspendedPortal();
+	        	if(!moreRows)
+	        		return false;
+	        } // Suspended portal
+	        else
+	        	return false; // End of the resultset.
 				}
 				else {
 				//	System.out.print("R");
@@ -1963,7 +1988,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	      }
 	
 	      // Execute the fetch and update this resultset.
-	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows);
+	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows, 0);
 	
 	      currentRow = 0;
 	
@@ -1980,6 +2005,66 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     initRowBuffer();
     return true;
+  }
+  
+  private void resetBufAndCheckForAnyErrorInQueue() throws SQLException, InterruptedException {
+		SQLException ex = queueRows.getHandlerException();
+		queueRows.addEndOfRowsIndicator(); // Keep End of result indicator for repeated next() call.
+    rowBuffer = null;
+    thisRow = null;
+    if (ex != null)
+    	throw ex;
+  }
+  
+  private boolean fetchMoreInQueueFromSuspendedPortal() throws SQLException {
+    long rowCount = getRowCount();
+  	
+    if ((maxRows > 0 && rowCount >= maxRows)) {
+      return false; // End of the resultset.
+    }
+  	
+    // Calculate fetch size based on max rows.
+    int fetchRows = fetchSize;
+    if (maxRows != 0) {
+      if (fetchRows == 0 || rowCount + fetchRows > maxRows) {
+        // Fetch would exceed maxRows, limit it.
+        fetchRows = maxRows - (int)rowCount;
+      }
+    }
+  	
+    // Update statement state, so one can cancel the result fetch.
+  	((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IDLE, StatementCancelState.IN_QUERY);
+    
+    // Execute the fetch and update this resultset.
+    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(resultsettype), fetchRows, (int)rowCount);
+    
+    // We should get a new queue
+    if (queueRows != null) {
+      currentRow = 0;
+      try {
+				thisRow = queueRows.take();
+				if (thisRow == null
+						|| thisRow.fieldCount() == 0) {
+					// End of result
+					
+			    // Update statement state.
+			  	((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IN_QUERY, StatementCancelState.IDLE);
+					
+					// Check for any error
+					resetBufAndCheckForAnyErrorInQueue();	  	  					
+	        
+	        return false;
+				}
+				else
+					return true;
+			} 
+      catch (InterruptedException ie) {
+        throw new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
+            					RedshiftState.UNEXPECTED_ERROR, ie);
+			}
+    } // Do we have queue?
+    else
+    	return false;
   }
 
   public void close() throws SQLException {
@@ -2008,8 +2093,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     // release resources held (memory for tuples)
     rows = null;
     
-    // Close current ring buffer thread, if any.
-    connection.getQueryExecutor().closeRingBufferThread(queueRows);
+    // Close ring buffer thread associated with this result, if any.
+    connection.getQueryExecutor().closeRingBufferThread(queueRows, ringBufferThread);
     
     // release resources held (memory for queue)
     queueRows = null;
@@ -3018,8 +3103,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return (fields[column - 1].getOID() == Oid.GEOMETRYHEX);
   }
 
-  protected boolean isOmni(int column) {
-    return (fields[column - 1].getOID() == Oid.OMNI);
+  protected boolean isSuper(int column) {
+    return (fields[column - 1].getOID() == Oid.SUPER);
   }
   
   // ----------------- Formatting Methods -------------------
@@ -3556,9 +3641,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       }
     } else if (type == Timestamp.class) {
       if (sqlType == Types.TIMESTAMP
-              //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
               || sqlType == Types.TIMESTAMP_WITH_TIMEZONE
-      //#endif
+      //JCP! endif
       ) {
         return type.cast(getTimestamp(columnIndex));
       } else {
@@ -3567,9 +3652,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       }
     } else if (type == Calendar.class) {
       if (sqlType == Types.TIMESTAMP
-              //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
               || sqlType == Types.TIMESTAMP_WITH_TIMEZONE
-      //#endif
+      //JCP! endif
       ) {
         Timestamp timestampValue = getTimestamp(columnIndex);
         if (wasNull()) {
@@ -3635,7 +3720,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         throw new RedshiftException(GT.tr("Invalid Inet data."), RedshiftState.INVALID_PARAMETER_VALUE, ex);
       }
       // JSR-310 support
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
     } else if (type == LocalDate.class) {
       if (sqlType == Types.DATE) {
         Date dateValue = getDate(columnIndex);
@@ -3682,7 +3767,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         throw new RedshiftException(GT.tr("conversion to {0} from {1} not supported", type, getRSType(columnIndex)),
                 RedshiftState.INVALID_PARAMETER_VALUE);
       }
-      //#endif
+      //JCP! endif
     } else if (RedshiftObject.class.isAssignableFrom(type)) {
       Object object;
       if (isBinary(columnIndex)) {
@@ -3708,7 +3793,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return getObjectImpl(i, map);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   public void updateObject(int columnIndex, Object x, java.sql.SQLType targetSqlType,
       int scaleOrLength) throws SQLException {
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "updateObject");
@@ -3728,7 +3813,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       throws SQLException {
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "updateObject");
   }
-  //#endif
+  //JCP! endif
 
   public RowId getRowId(int columnIndex) throws SQLException {
     if (RedshiftLogger.isEnable()) 

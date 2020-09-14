@@ -22,6 +22,15 @@ public class RedshiftObject implements Serializable, Cloneable {
   public RedshiftObject() {
   }
 
+  public RedshiftObject(String type, String value) {
+  	setType(type);
+  	try {
+			setValue(value);
+		} catch (SQLException e) {
+			this.value = value;
+		}
+  }
+  
   /**
    * <p>This method sets the type of this object.</p>
    *

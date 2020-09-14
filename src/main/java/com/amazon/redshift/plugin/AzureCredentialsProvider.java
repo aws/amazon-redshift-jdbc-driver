@@ -62,7 +62,7 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
      * Required method to grab the SAML Response. Used in base class to refresh temporary credentials.
      *
      * @return Base64 encoded SAML Response string
-     * @throws IOException
+     * @throws IOException throws error when missing required parameters or unable to access IDP host.
      */
     protected String getSamlAssertion() throws IOException
     {

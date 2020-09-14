@@ -68,7 +68,11 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   private static final int AUTH_REQ_SASL = 10;
   private static final int AUTH_REQ_SASL_CONTINUE = 11;
   private static final int AUTH_REQ_SASL_FINAL = 12;
-
+  
+  // Server protocol versions
+  public static int BASE_SERVER_PROTOCOL_VERSION = 0;
+  public static int EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 1;
+  
   private ISSPIClient createSSPI(RedshiftStream pgStream,
       String spnServiceClass,
       boolean enableNegotiate) {
@@ -90,62 +94,70 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       throws SQLException, IOException {
     int connectTimeout = RedshiftProperty.CONNECT_TIMEOUT.getInt(info) * 1000;
 
-    RedshiftStream newStream = new RedshiftStream(socketFactory, hostSpec, connectTimeout, logger);
+    RedshiftStream newStream = null;
 
-    // Set the socket timeout if the "socketTimeout" property has been set.
-    int socketTimeout = RedshiftProperty.SOCKET_TIMEOUT.getInt(info);
-    if (socketTimeout > 0) {
-      newStream.getSocket().setSoTimeout(socketTimeout * 1000);
+    try {
+      newStream = new RedshiftStream(socketFactory, hostSpec, connectTimeout, logger);
+    	
+	    // Set the socket timeout if the "socketTimeout" property has been set.
+	    int socketTimeout = RedshiftProperty.SOCKET_TIMEOUT.getInt(info);
+	    if (socketTimeout > 0) {
+	      newStream.getSocket().setSoTimeout(socketTimeout * 1000);
+	    }
+	
+	    String maxResultBuffer = RedshiftProperty.MAX_RESULT_BUFFER.get(info);
+	    newStream.setMaxResultBuffer(maxResultBuffer);
+	
+	    // Enable TCP keep-alive probe if required.
+	    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
+	    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
+	
+	    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
+	    // If receiveBufferSize and send_buffer_size are set to a value greater
+	    // than 0, adjust. -1 means use the system default, 0 is ignored since not
+	    // supported.
+	
+	    // Set SO_RECVBUF read buffer size
+	    int receiveBufferSize = RedshiftProperty.RECEIVE_BUFFER_SIZE.getInt(info);
+	    if (receiveBufferSize > -1) {
+	      // value of 0 not a valid buffer size value
+	      if (receiveBufferSize > 0) {
+	        newStream.getSocket().setReceiveBufferSize(receiveBufferSize);
+	      } else {
+	      	if(RedshiftLogger.isEnable())
+	      		logger.log(LogLevel.INFO, "Ignore invalid value for receiveBufferSize: {0}", receiveBufferSize);
+	      }
+	    }
+	
+	    // Set SO_SNDBUF write buffer size
+	    int sendBufferSize = RedshiftProperty.SEND_BUFFER_SIZE.getInt(info);
+	    if (sendBufferSize > -1) {
+	      if (sendBufferSize > 0) {
+	        newStream.getSocket().setSendBufferSize(sendBufferSize);
+	      } else {
+	      	if(RedshiftLogger.isEnable())
+	      		logger.log(LogLevel.INFO, "Ignore invalid value for sendBufferSize: {0}", sendBufferSize);
+	      }
+	    }
+	
+	  	if(RedshiftLogger.isEnable()) {
+	      logger.log(LogLevel.DEBUG, "Receive Buffer Size is {0}", newStream.getSocket().getReceiveBufferSize());
+	      logger.log(LogLevel.DEBUG, "Send Buffer Size is {0}", newStream.getSocket().getSendBufferSize());
+	    }
+	
+	    // Construct and send an ssl startup packet if requested.
+	    newStream = enableSSL(newStream, sslMode, info, connectTimeout);
+	
+	    List<String[]> paramList = getParametersForStartup(user, database, info, true);
+	    sendStartupPacket(newStream, paramList);
+	
+	    // Do authentication (until AuthenticationOk).
+	    doAuthentication(newStream, hostSpec.getHost(), user, info);
     }
-
-    String maxResultBuffer = RedshiftProperty.MAX_RESULT_BUFFER.get(info);
-    newStream.setMaxResultBuffer(maxResultBuffer);
-
-    // Enable TCP keep-alive probe if required.
-    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
-    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
-
-    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
-    // If receiveBufferSize and send_buffer_size are set to a value greater
-    // than 0, adjust. -1 means use the system default, 0 is ignored since not
-    // supported.
-
-    // Set SO_RECVBUF read buffer size
-    int receiveBufferSize = RedshiftProperty.RECEIVE_BUFFER_SIZE.getInt(info);
-    if (receiveBufferSize > -1) {
-      // value of 0 not a valid buffer size value
-      if (receiveBufferSize > 0) {
-        newStream.getSocket().setReceiveBufferSize(receiveBufferSize);
-      } else {
-      	if(RedshiftLogger.isEnable())
-      		logger.log(LogLevel.INFO, "Ignore invalid value for receiveBufferSize: {0}", receiveBufferSize);
-      }
+    catch(Exception ex) {
+      closeStream(newStream);
+      throw ex;
     }
-
-    // Set SO_SNDBUF write buffer size
-    int sendBufferSize = RedshiftProperty.SEND_BUFFER_SIZE.getInt(info);
-    if (sendBufferSize > -1) {
-      if (sendBufferSize > 0) {
-        newStream.getSocket().setSendBufferSize(sendBufferSize);
-      } else {
-      	if(RedshiftLogger.isEnable())
-      		logger.log(LogLevel.INFO, "Ignore invalid value for sendBufferSize: {0}", sendBufferSize);
-      }
-    }
-
-  	if(RedshiftLogger.isEnable()) {
-      logger.log(LogLevel.DEBUG, "Receive Buffer Size is {0}", newStream.getSocket().getReceiveBufferSize());
-      logger.log(LogLevel.DEBUG, "Send Buffer Size is {0}", newStream.getSocket().getSendBufferSize());
-    }
-
-    // Construct and send an ssl startup packet if requested.
-    newStream = enableSSL(newStream, sslMode, info, connectTimeout);
-
-    List<String[]> paramList = getParametersForStartup(user, database, info, false);
-    sendStartupPacket(newStream, paramList);
-
-    // Do authentication (until AuthenticationOk).
-    doAuthentication(newStream, hostSpec.getHost(), user, info);
 
     return newStream;
   }
@@ -220,10 +232,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
             	if(RedshiftLogger.isEnable())
             		logger.log(LogLevel.DEBUG, ex, "sslMode==PREFER, however non-SSL connection failed as well");
               // non-SSL failed as well, so re-throw original exception
-              //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
               // Add non-SSL exception as suppressed
               e.addSuppressed(ex);
-              //#endif
+              //JCP! endif
               throw e;
             }
           } else if (sslMode == SslMode.ALLOW
@@ -245,10 +257,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
             	if(RedshiftLogger.isEnable())
             		logger.log(LogLevel.DEBUG, ex, "sslMode==ALLOW, however SSL connection failed as well");
               // non-SSL failed as well, so re-throw original exception
-              //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
               // Add SSL exception as suppressed
               e.addSuppressed(ex);
-              //#endif
+              //JCP! endif
               throw e;
             }
 
@@ -349,7 +361,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     }
     
     if(driverOsVersionParams) {
-	    String driver_version = DriverInfo.DRIVER_NAME + " " + DriverInfo.DRIVER_VERSION;
+	    String driver_version = DriverInfo.DRIVER_FULL_NAME;
 	    paramList.add(new String[]{"driver_version",driver_version});
 	
 	    String os_version = "";
@@ -365,6 +377,9 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    if (pluginName != null && pluginName.length() != 0) {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
+// TODO: remove comment from following line once server is ready	    
+//	    paramList.add(new String[]{"client_protocol_version",Integer.toString(EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION)});
+	    
     } // New parameters
     
     String replication = RedshiftProperty.REPLICATION.get(info);
@@ -524,10 +539,11 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     /* SSPI negotiation state, if used */
     ISSPIClient sspiClient = null;
 
-    //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+    //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
     /* SCRAM authentication state, if used */
-    com.amazon.redshift.jre7.sasl.ScramAuthenticator scramAuthenticator = null;
-    //#endif
+    //com.amazon.redshift.jre7.sasl.ScramAuthenticator scramAuthenticator =
+    // null;
+    //JCP! endif
 
     try {
       authloop: while (true) {
@@ -702,33 +718,33 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
                 if(RedshiftLogger.isEnable())
                 	logger.log(LogLevel.DEBUG, " <=BE AuthenticationSASL");
 
-                //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
-                scramAuthenticator = new com.amazon.redshift.jre7.sasl.ScramAuthenticator(user, password, pgStream);
-                scramAuthenticator.processServerMechanismsAndInit();
-                scramAuthenticator.sendScramClientFirstMessage();
+                //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+//                scramAuthenticator = new com.amazon.redshift.jre7.sasl.ScramAuthenticator(user, password, pgStream);
+//                scramAuthenticator.processServerMechanismsAndInit();
+//                scramAuthenticator.sendScramClientFirstMessage();
                 // This works as follows:
                 // 1. When tests is run from IDE, it is assumed SCRAM library is on the classpath
                 // 2. In regular build for Java < 8 this `if` is deactivated and the code always throws
                 if (false) {
-                  //#else
-                  throw new RedshiftException(GT.tr(
-                          "SCRAM authentication is not supported by this driver. You need JDK >= 8 and pgjdbc >= 42.2.0 (not \".jre\" versions)",
-                          areq), RedshiftState.CONNECTION_REJECTED);
-                  //#endif
-                  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+                  //JCP! else
+//JCP>                   throw new RedshiftException(GT.tr(
+//JCP>                           "SCRAM authentication is not supported by this driver. You need JDK >= 8 and pgjdbc >= 42.2.0 (not \".jre\" versions)",
+//JCP>                           areq), RedshiftState.CONNECTION_REJECTED);
+                  //JCP! endif
+                  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
                 }
                 break;
-                //#endif
+                //JCP! endif
 
-              //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
-              case AUTH_REQ_SASL_CONTINUE:
-                scramAuthenticator.processServerFirstMessage(msgLen - 4 - 4);
-                break;
-
-              case AUTH_REQ_SASL_FINAL:
-                scramAuthenticator.verifyServerSignature(msgLen - 4 - 4);
-                break;
-              //#endif
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+//              case AUTH_REQ_SASL_CONTINUE:
+//                scramAuthenticator.processServerFirstMessage(msgLen - 4 - 4);
+//                break;
+//
+//              case AUTH_REQ_SASL_FINAL:
+//                scramAuthenticator.verifyServerSignature(msgLen - 4 - 4);
+//                break;
+              //JCP! endif
 
               case AUTH_REQ_OK:
                 /* Cleanup after successful authentication */

@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class V3RedshiftReplicationStream implements RedshiftReplicationStream {
 
   private RedshiftLogger logger;
-  public static final long POSTGRES_EPOCH_2000_01_01 = 946684800000L;
+  public static final long REDSHIFT_EPOCH_2000_01_01 = 946684800000L;
   private static final long NANOS_PER_MILLISECOND = 1000000L;
 
   private final CopyDual copyDual;
@@ -52,6 +52,7 @@ public class V3RedshiftReplicationStream implements RedshiftReplicationStream {
    *                         completely, although an update will still be sent when requested by the
    *                         server, to avoid timeout disconnect.
    * @param replicationType  LOGICAL or PHYSICAL
+   * @param logger the logger to log the entry for debugging.       
    */
   public V3RedshiftReplicationStream(CopyDual copyDual, LogSequenceNumber startLSN, long updateIntervalMs,
       ReplicationType replicationType, RedshiftLogger logger
@@ -201,7 +202,7 @@ public class V3RedshiftReplicationStream implements RedshiftReplicationStream {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1 + 8 + 8 + 8 + 8 + 1);
 
     long now = System.nanoTime() / NANOS_PER_MILLISECOND;
-    long systemClock = TimeUnit.MICROSECONDS.convert((now - POSTGRES_EPOCH_2000_01_01),
+    long systemClock = TimeUnit.MICROSECONDS.convert((now - REDSHIFT_EPOCH_2000_01_01),
         TimeUnit.MICROSECONDS);
 
     if (RedshiftLogger.isEnable()) {
@@ -237,7 +238,7 @@ public class V3RedshiftReplicationStream implements RedshiftReplicationStream {
     if (RedshiftLogger.isEnable()) {
       Date clockTime = new Date(
           TimeUnit.MILLISECONDS.convert(lastServerClock, TimeUnit.MICROSECONDS)
-          + POSTGRES_EPOCH_2000_01_01);
+          + REDSHIFT_EPOCH_2000_01_01);
       logger.log(LogLevel.DEBUG, "  <=BE Keepalive(lastServerWal: {0}, clock: {1} needReply: {2})",
           new Object[]{lastServerLSN.asString(), clockTime, replyRequired});
     }

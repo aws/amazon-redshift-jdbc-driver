@@ -14,6 +14,8 @@ public class RandomStateUtil
 
     /**
      * Generates random state string 10 char length.
+     * 
+     * @return generated randomly.
      */
     public static String generateRandomState()
     {

@@ -8,6 +8,7 @@ package com.amazon.redshift.jdbc;
 import com.amazon.redshift.RedshiftResultSetMetaData;
 import com.amazon.redshift.core.BaseConnection;
 import com.amazon.redshift.core.Field;
+import com.amazon.redshift.core.v3.ConnectionFactoryImpl;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.Gettable;
@@ -37,7 +38,10 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
   public RedshiftResultSetMetaDataImpl(BaseConnection connection, Field[] fields) {
     this.connection = connection;
     this.fields = fields;
-    this.fieldInfoFetched = false;
+    this.fieldInfoFetched = (connection.getQueryExecutor().getServerProtocolVersion() 
+    																	>= ConnectionFactoryImpl.EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION) 
+    													? true
+    													: false;
   }
 
   public int getColumnCount() throws SQLException {
@@ -94,7 +98,10 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
    */
   @Override
   public boolean isSearchable(int column) throws SQLException {
-    return true;
+//    fetchFieldMetaData();
+    Field field = getField(column);
+    FieldMetadata metadata = field.getMetadata();
+    return (metadata == null) ? true : metadata.searchable;
   }
 
   /**
@@ -162,7 +169,10 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
   }
 
   public String getSchemaName(int column) throws SQLException {
-    return "";
+	//  fetchFieldMetaData();
+	  Field field = getField(column);
+	  FieldMetadata metadata = field.getMetadata();
+	  return metadata == null ? "" : metadata.schemaName;
   }
 
   private boolean populateFieldsWithMetadata(Gettable<FieldMetadata.Key, FieldMetadata> metadata) {
@@ -312,7 +322,10 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
    * @exception SQLException if a database access error occurs
    */
   public String getCatalogName(int column) throws SQLException {
-    return "";
+//    fetchFieldMetaData();
+    Field field = getField(column);
+    FieldMetadata metadata = field.getMetadata();
+    return metadata == null ? "" : metadata.catalogName;
   }
 
   public int getColumnType(int column) throws SQLException {
@@ -362,7 +375,10 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
    * @exception SQLException if a database access error occurs
    */
   public boolean isReadOnly(int column) throws SQLException {
-    return false;
+//    fetchFieldMetaData();
+    Field field = getField(column);
+    FieldMetadata metadata = field.getMetadata();
+    return (metadata == null) ? false : metadata.readOnly;
   }
 
   /**

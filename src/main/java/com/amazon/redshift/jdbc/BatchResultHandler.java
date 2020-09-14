@@ -68,7 +68,7 @@ public class BatchResultHandler extends ResultHandlerBase {
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      	 int[] rowCount) {
+      	 int[] rowCount, Thread ringBufferThread) {
     // If SELECT, then handleCommandStatus call would just be missing
     resultIndex++;
     if (!expectGeneratedKeys) {
@@ -80,7 +80,7 @@ public class BatchResultHandler extends ResultHandlerBase {
         // If SELECT, the resulting ResultSet is not valid
         // Thus it is up to handleCommandStatus to decide if resultSet is good enough
         latestGeneratedKeysRs = (RedshiftResultSet) rsStatement.createResultSet(fromQuery, fields,
-            new ArrayList<Tuple>(), cursor, queueTuples, rowCount);
+            new ArrayList<Tuple>(), cursor, queueTuples, rowCount, ringBufferThread);
       } catch (SQLException e) {
         handleError(e);
       }
@@ -160,17 +160,17 @@ public class BatchResultHandler extends ResultHandlerBase {
       }
 
       BatchUpdateException batchException;
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       batchException = new BatchUpdateException(
           GT.tr("Batch entry {0} {1} was aborted: {2}  Call getNextException to see other errors in the batch.",
               resultIndex, queryString, newError.getMessage()),
           newError.getSQLState(), 0, uncompressLongUpdateCount(), newError);
-      //#else
-      batchException = new BatchUpdateException(
-          GT.tr("Batch entry {0} {1} was aborted: {2}  Call getNextException to see other errors in the batch.",
-              resultIndex, queryString, newError.getMessage()),
-          newError.getSQLState(), 0, uncompressUpdateCount(), newError);
-      //#endif
+      //JCP! else
+//JCP>       batchException = new BatchUpdateException(
+//JCP>           GT.tr("Batch entry {0} {1} was aborted: {2}  Call getNextException to see other errors in the batch.",
+//JCP>               resultIndex, queryString, newError.getMessage()),
+//JCP>           newError.getSQLState(), 0, uncompressUpdateCount(), newError);
+      //JCP! endif
 
       super.handleError(batchException);
     }
@@ -187,21 +187,21 @@ public class BatchResultHandler extends ResultHandlerBase {
       if (isAutoCommit()) {
         // Re-create batch exception since rows after exception might indeed succeed.
         BatchUpdateException newException;
-        //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+        //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
         newException = new BatchUpdateException(
             batchException.getMessage(),
             batchException.getSQLState(), 0,
             uncompressLongUpdateCount(),
             batchException.getCause()
         );
-        //#else
-        newException = new BatchUpdateException(
-            batchException.getMessage(),
-            batchException.getSQLState(), 0,
-            uncompressUpdateCount(),
-            batchException.getCause()
-        );
-        //#endif
+        //JCP! else
+//JCP>         newException = new BatchUpdateException(
+//JCP>             batchException.getMessage(),
+//JCP>             batchException.getSQLState(), 0,
+//JCP>             uncompressUpdateCount(),
+//JCP>             batchException.getCause()
+//JCP>         );
+        //JCP! endif
 
         SQLException next = batchException.getNextException();
         if (next != null) {

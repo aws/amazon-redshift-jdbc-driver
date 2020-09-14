@@ -19,9 +19,9 @@ import java.sql.SQLException;
  * disconnect by timeout from server.
  */
 public interface RedshiftReplicationStream
-    //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+    //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
     extends AutoCloseable
-    //#endif
+    //JCP! endif
     /* hi, checkstyle */ {
 
   /**

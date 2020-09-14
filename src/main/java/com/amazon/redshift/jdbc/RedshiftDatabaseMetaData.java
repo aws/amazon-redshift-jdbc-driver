@@ -1070,7 +1070,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN '_int2' THEN 2003 "
             + " WHEN 'ARRAY' THEN 2003 "
             + " WHEN 'geometry' THEN -4 "
-            + " WHEN 'omni' THEN -16 "
+            + " WHEN 'super' THEN -16 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
@@ -1100,7 +1100,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'float8' THEN 53 "
             + " WHEN 'float' THEN 53 "
             + " WHEN 'geometry' THEN NULL "
-            + " WHEN 'omni' THEN NULL "
+            + " WHEN 'super' THEN NULL "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE pg_catalog.format_type(p.prorettype, NULL) "
@@ -1128,7 +1128,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'float8' THEN 8 "
             + " WHEN 'float' THEN  8 "
             + " WHEN 'geometry' THEN NULL "
-            + " WHEN 'omni' THEN NULL "
+            + " WHEN 'super' THEN NULL "
             + " END AS LENGTH, "
             + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
             + " WHEN 'smallint' THEN 0 "
@@ -1191,7 +1191,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'name' THEN 12 "
             + " WHEN 'ARRAY' THEN 2003 "
             + " WHEN 'geometry' THEN -4 "
-            + " WHEN 'omni' THEN -16 "
+            + " WHEN 'super' THEN -16 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -1267,7 +1267,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'name' THEN 12 "
             + " WHEN 'ARRAY' THEN 2003 "
             + " WHEN 'geometry' THEN -4 "
-            + " WHEN 'omni' THEN -16 "
+            + " WHEN 'super' THEN -16 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " TYPE_NAME, "
@@ -1297,7 +1297,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'float8' THEN 53 "
             + " WHEN 'float' THEN 53 "
             + " WHEN 'geometry' THEN NULL "
-            + " WHEN 'omni' THEN NULL "
+            + " WHEN 'super' THEN NULL "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE LENGTH "
@@ -1325,7 +1325,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'float8' THEN 8 "
             + " WHEN 'float' THEN  8 "
             + " WHEN 'geometry' THEN NULL "
-            + " WHEN 'omni' THEN NULL "
+            + " WHEN 'super' THEN NULL "
             + " END AS LENGTH, "
             + " CAST(CASE DECIMAL_DIGITS "
             + " WHEN 'smallint' THEN 0 "
@@ -1388,7 +1388,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'name' THEN 12 "
             + " WHEN 'ARRAY' THEN 2003 "
             + " WHEN 'geometry' THEN -4 "
-            + " WHEN 'omni' THEN -16 "
+            + " WHEN 'super' THEN -16 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -1644,7 +1644,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'"
             + " END"
             + " AS VARCHAR(124)) AS TABLE_TYPE,"
-            + " REMARKS"
+            + " REMARKS,"
+            + " '' as TYPE_CAT,"
+            + " '' as TYPE_SCHEM,"
+            + " '' as TYPE_NAME, "
+            + " '' AS SELF_REFERENCING_COL_NAME,"
+            + " '' AS REF_GENERATION "
             + " FROM svv_tables)");
     
     tableQuery.append( " WHERE true ");
@@ -1669,7 +1674,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " schemaname AS table_schem,"
             + " tablename AS TABLE_NAME,"
             + " 'EXTERNAL TABLE' AS TABLE_TYPE,"
-            + " NULL AS REMARKS"
+            + " NULL AS REMARKS,"
+            + " '' as TYPE_CAT,"
+            + " '' as TYPE_SCHEM,"
+            + " '' as TYPE_NAME, "
+            + " '' AS SELF_REFERENCING_COL_NAME,"
+            + " '' AS REF_GENERATION "
             + " FROM svv_external_tables)");
 
     tableQuery.append( " WHERE true ");
@@ -1922,7 +1932,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when '_int2' THEN 2003 ");
       result.append("when 'ARRAY' THEN 2003 ");
       result.append("when 'geometry' THEN -4 ");
-      result.append("when 'omni' THEN -16 ");
+      result.append("when 'super' THEN -16 ");
       result.append("else 1111 END as SMALLINT) AS DATA_TYPE, ");
       result.append("t.typname as TYPE_NAME, ");
       result.append("case typname ");
@@ -1958,7 +1968,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when '_int4' THEN 10 ");
       result.append("when '_int2' THEN 5 ");
       result.append("when 'geometry' THEN NULL ");
-      result.append("when 'omni' THEN NULL ");
+      result.append("when 'super' THEN NULL ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as COLUMN_SIZE , ");
@@ -1976,7 +1986,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'numeric' then (atttypmod - 4) & 65535 ");
       result.append("when 'timestamp' then 6 ");
       result.append("when 'geometry' then NULL ");
-      result.append("when 'omni' then NULL ");
+      result.append("when 'super' then NULL ");
       result.append("else 0 end as DECIMAL_DIGITS, ");
       result.append("10 AS NUM_PREC_RADIX , ");
       result.append("case a.attnotnull OR (t.typtype = 'd' AND t.typnotnull) ");
@@ -2027,7 +2037,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when '_int2' THEN 2003 ");
       result.append("when 'ARRAY' THEN 2003 ");
       result.append("when 'geometry' THEN -4 ");
-      result.append("when 'omni' THEN -16 ");
+      result.append("when 'super' THEN -16 ");
       result.append("else 1111 END as SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) as SQL_DATETIME_SUB , ");
       result.append("case typname ");
@@ -2063,7 +2073,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when '_int4' THEN 10 ");
       result.append("when '_int2' THEN 5 ");
       result.append("when 'geometry' THEN NULL ");
-      result.append("when 'omni' THEN NULL ");
+      result.append("when 'super' THEN NULL ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as CHAR_OCTET_LENGTH , ");
@@ -2155,7 +2165,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'name' THEN 12 ");
       result.append("WHEN 'ARRAY' THEN 2003 ");
       result.append("WHEN 'geometry' THEN -4 ");
-      result.append("WHEN 'omni' THEN -16 ");
+      result.append("WHEN 'super' THEN -16 ");
       result.append("ELSE 1111 END AS SMALLINT) AS DATA_TYPE, ");
       result.append("COALESCE(NULL,CASE columntype WHEN 'boolean' THEN 'bool' ");
       result.append("WHEN 'character varying' THEN 'varchar' ");
@@ -2204,7 +2214,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN '_int4' THEN 10 ");
       result.append("WHEN '_int2' THEN 5 ");
       result.append("WHEN 'geometry' THEN NULL ");
-      result.append("WHEN 'omni' THEN NULL ");
+      result.append("WHEN 'super' THEN NULL ");
       result.append("ELSE 2147483647 END AS COLUMN_SIZE, ");
       result.append("NULL AS BUFFER_LENGTH, ");
       result.append("CASE columntype ");
@@ -2215,7 +2225,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'timestamp' THEN 6 ");
       result.append("WHEN 'timestamp without time zone' THEN 6 ");
       result.append("WHEN 'geometry' THEN NULL ");
-      result.append("WHEN 'omni' THEN NULL ");
+      result.append("WHEN 'super' THEN NULL ");
       result.append("ELSE 0 END AS DECIMAL_DIGITS, 10 AS NUM_PREC_RADIX, ");
       result.append("NULL AS NULLABLE,  NULL AS REMARKS,   NULL AS COLUMN_DEF, ");
       result.append("CAST(CASE columntype_rep ");
@@ -2255,7 +2265,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'name' THEN 12 ");
       result.append("WHEN 'ARRAY' THEN 2003 ");
       result.append("WHEN 'geometry' THEN -4 ");
-      result.append("WHEN 'omni' THEN -4 ");
+      result.append("WHEN 'super' THEN -4 ");
       result.append("ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, CASE ");
       result.append("WHEN LEFT (columntype,7) = 'varchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
@@ -2343,7 +2353,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'name' THEN 12"
 	      + " WHEN 'ARRAY' THEN 2003"
         + " WHEN 'geometry' THEN -4 "
-        + " WHEN 'omni' THEN -16 "
+        + " WHEN 'super' THEN -16 "
 	      + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE,"
 	      + " COALESCE("
 	      + " domain_name,"
@@ -2396,7 +2406,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN '_int4' THEN 10"
 	      + " WHEN '_int2' THEN 5"
         + " WHEN 'geometry' THEN NULL"
-        + " WHEN 'omni' THEN NULL"
+        + " WHEN 'super' THEN NULL"
 	      + " ELSE " + unknownColumnSize
 	      + " END AS COLUMN_SIZE,"
 	      + " NULL AS BUFFER_LENGTH,"
@@ -2409,7 +2419,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'timestamp' THEN 6"
 	      + " WHEN 'timestamp without time zone' THEN 6"
         + " WHEN 'geometry' THEN NULL"
-        + " WHEN 'omni' THEN NULL"
+        + " WHEN 'super' THEN NULL"
 	      + " ELSE 0"
 	      + " END AS DECIMAL_DIGITS,"
 	      + " 10 AS NUM_PREC_RADIX,"
@@ -2455,7 +2465,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'name' THEN 12"
 	      + " WHEN 'ARRAY' THEN 2003"
         + " WHEN 'geometry' THEN -4"
-        + " WHEN 'omni' THEN -16"
+        + " WHEN 'super' THEN -16"
 	      + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE,"
 	      + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB,"
 	      + " CASE data_type"
@@ -2494,7 +2504,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN '_int4' THEN 10"
 	      + " WHEN '_int2' THEN 5"
         + " WHEN 'geometry' THEN NULL"
-        + " WHEN 'omni' THEN NULL"
+        + " WHEN 'super' THEN NULL"
 	      + " ELSE " + unknownColumnSize
 	      + " END AS CHAR_OCTET_LENGTH,"
 	      + " ordinal_position AS ORDINAL_POSITION,"
@@ -2583,7 +2593,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'name' THEN 12" 
     + " WHEN external_type = 'ARRAY' THEN 2003" 
     + " WHEN external_type = 'geometry' THEN -4"
-    + " WHEN external_type = 'omni' THEN -16"
+    + " WHEN external_type = 'super' THEN -16"
     + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE," 
     + " CASE WHEN left(external_type, 17) = 'character varying' THEN 'varchar'" 
     + " WHEN left(external_type, 7) = 'varchar' THEN 'varchar'" 
@@ -2631,7 +2641,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = '_int4' THEN 10" 
     + " WHEN external_type = '_int2' THEN 5" 
     + " WHEN external_type = 'geometry' THEN NULL"
-    + " WHEN external_type = 'omni' THEN NULL"
+    + " WHEN external_type = 'super' THEN NULL"
     + " ELSE 2147483647 END AS COLUMN_SIZE," 
     + " NULL AS BUFFER_LENGTH," 
     + " CASE WHEN external_type = 'real'THEN 8" 
@@ -2644,7 +2654,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'timestamp' THEN 6" 
     + " WHEN external_type = 'timestamp without time zone' THEN 6" 
     + " WHEN external_type = 'geometry' THEN NULL"
-    + " WHEN external_type = 'omni' THEN NULL"
+    + " WHEN external_type = 'super' THEN NULL"
     + " ELSE 0 END AS DECIMAL_DIGITS," 
     + " 10 AS NUM_PREC_RADIX," 
     + " NULL AS NULLABLE," 
@@ -2691,7 +2701,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'name' THEN 12" 
     + " WHEN external_type = 'ARRAY' THEN 2003" 
     + " WHEN external_type = 'geometry' THEN -4"
-    + " WHEN external_type = 'omni' THEN -16"
+    + " WHEN external_type = 'super' THEN -16"
     + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE," 
     + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB," 
     + " CASE WHEN left(external_type, 7) = 'varchar' THEN regexp_substr(external_type, '[0-9]+', 7)::integer" 
@@ -3350,7 +3360,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 //          + " AND "
     		  + " WHERE "
           + " t.typname in ("
-          + "'bool','char','int8','int2','int4','float4','float8','bpchar','varchar','date','time','timestamp','timestamptz','numeric','refcursor','geometry','omni')";
+          + "'bool','char','int8','int2','int4','float4','float8','bpchar','varchar','date','time','timestamp','timestamptz','numeric','refcursor','geometry','super')";
 //          + " AND "
 //          + " (t.typrelid = 0 OR (SELECT c.relkind = 'c' FROM pg_catalog.pg_class c WHERE c.oid = t.typrelid))";
 
@@ -3817,7 +3827,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 //    boolean pgFuncResultExists = connection.haveMinimumServerVersion(ServerVersion.v8_4);
 
     // Use query that support pg_get_function_result to get function result, else unknown is defaulted
-    String funcTypeSql = DatabaseMetaData.functionResultUnknown + " ";
+//    String funcTypeSql = DatabaseMetaData.functionResultUnknown + " ";
 /*    if (pgFuncResultExists) {
       funcTypeSql = " CASE "
               + "   WHEN (format_type(p.prorettype, null) = 'unknown') THEN " + DatabaseMetaData.functionResultUnknown
@@ -3830,30 +3840,50 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
     // Build query and result
     String sql;
-    sql = "SELECT current_database() AS FUNCTION_CAT, n.nspname AS FUNCTION_SCHEM, p.proname AS FUNCTION_NAME, "
+    sql = "SELECT routine_catalog AS FUNCTION_CAT, "
+        + " routine_schema AS FUNCTION_SCHEM, "
+        + " routine_name AS FUNCTION_NAME,"
+        + " CAST('' AS VARCHAR(256)) AS REMARKS, "
+        + " CASE data_type"
+        + " WHEN 'USER-DEFINED' THEN 0"
+        + " WHEN 'record' THEN 2"
+        + " ELSE 1"
+        + " END AS FUNCTION_TYPE, "
+        + " specific_name AS SPECIFIC_NAME"
+        + " FROM INFORMATION_SCHEMA.ROUTINES"
+        + " WHERE routine_type LIKE 'FUNCTION' ";
+    
+/*    sql = "SELECT current_database() AS FUNCTION_CAT, n.nspname AS FUNCTION_SCHEM, p.proname AS FUNCTION_NAME, "
         + " d.description AS REMARKS, "
         + funcTypeSql + " AS FUNCTION_TYPE, "
         + " p.proname || '_' || p.prooid AS SPECIFIC_NAME "
         + "FROM pg_catalog.pg_proc_info p "
         + "INNER JOIN pg_catalog.pg_namespace n ON p.pronamespace=n.oid "
         + "LEFT JOIN pg_catalog.pg_description d ON p.prooid=d.objoid "
-        + "WHERE true  ";
+        + "WHERE true  "; */
     /*
     if the user provides a schema then search inside the schema for it
      */
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
-    } else {
-      /* if no schema is provided then limit the search inside the search_path */
+//      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
+    		sql += " AND  routine_schema LIKE " + escapeQuotes(schemaPattern);
+    } 
+/*    else {
+      // if no schema is provided then limit the search inside the search_path 
       sql += "and pg_function_is_visible(p.prooid)";
-    }
+    } */
+    
     if (functionNamePattern != null && !functionNamePattern.isEmpty()) {
-      sql += " AND p.proname LIKE " + escapeQuotes(functionNamePattern);
+//      sql += " AND p.proname LIKE " + escapeQuotes(functionNamePattern);
+      sql += " AND  routine_name LIKE " + escapeQuotes(functionNamePattern);;
     }
-    if (connection.getHideUnprivilegedObjects()) {
+    
+/*    if (connection.getHideUnprivilegedObjects()) {
       sql += " AND has_function_privilege(p.prooid,'EXECUTE')";
-    }
-    sql += " ORDER BY FUNCTION_SCHEM, FUNCTION_NAME, p.prooid::text ";
+    } */
+    
+//    sql += " ORDER BY FUNCTION_SCHEM, FUNCTION_NAME, p.prooid::text ";
+     sql += " ORDER BY routine_catalog, routine_schema, routine_name ";
 
     ResultSet rs = createMetaDataStatement().executeQuery(sql);
     
@@ -3871,7 +3901,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern, columnNamePattern);
     
-    Field[] f = new Field[columns];
+/*    Field[] f = new Field[columns];
     List<Tuple> v = new ArrayList<Tuple>();
 
     f[0] = new Field("FUNCTION_CAT", Oid.VARCHAR);
@@ -3891,24 +3921,403 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     f[14] = new Field("ORDINAL_POSITION", Oid.INT4);
     f[15] = new Field("IS_NULLABLE", Oid.VARCHAR);
     f[16] = new Field("SPECIFIC_NAME", Oid.VARCHAR);
+*/    
 
-    String sql;
-    sql = "SELECT n.nspname,p.proname,p.prorettype,p.proargtypes, t.typtype,t.typrelid, "
+/*    String sql;
+    	sql = "SELECT n.nspname,p.proname,p.prorettype,p.proargtypes, t.typtype,t.typrelid, "
         + " p.proargnames, p.proargmodes, p.proallargtypes, p.prooid "
         + " FROM pg_catalog.pg_proc_info p, pg_catalog.pg_namespace n, pg_catalog.pg_type t "
         + " WHERE p.pronamespace=n.oid AND p.prorettype=t.oid ";
+*/
+	final String unknownColumnSize = "2147483647";
+	final String superMaxLength = "4194304 ";
+	
+	StringBuilder functionColumnQuery = new StringBuilder();
+	
+	functionColumnQuery.append(
+	    "SELECT PROCEDURE_CAT AS FUNCTION_CAT, "
+			+ " PROCEDURE_SCHEM AS FUNCTION_SCHEM, "
+	    + " PROCEDURE_NAME AS FUNCTION_NAME,"
+			+ " COLUMN_NAME, "
+	    + " COLUMN_TYPE, "
+			+ " DATA_TYPE, "
+	    + " TYPE_NAME, "
+			+ " COLUMN_SIZE AS PRECISION, "
+	    + " LENGTH , "
+			+ " DECIMAL_DIGITS AS SCALE, "
+	    + " NUM_PREC_RADIX AS RADIX, "
+			+ " NULLABLE, "
+	    + " REMARKS, "
+	    + " CHAR_OCTET_LENGTH, "
+	    + " ORDINAL_POSITION, "
+	    + " IS_NULLABLE, "
+	    + " SPECIFIC_NAME  "
+	    + " FROM (");
+	
+	functionColumnQuery.append("SELECT current_database() AS PROCEDURE_CAT, "
+	        + " n.nspname as PROCEDURE_SCHEM, "
+	        + " p.proname AS PROCEDURE_NAME, "
+	        + " CAST(CASE ((array_upper(proargnames, 0) - array_lower(proargnames, 0)) > 0) "
+	        + " WHEN 't' THEN proargnames[array_upper(proargnames, 1)] "
+	        + " ELSE '' "
+	        + " END AS VARCHAR(256)) AS COLUMN_NAME, "
+	
+	        + " CAST(CASE p.proretset "
+	        + " WHEN 't' THEN 3 "
+	        + " ELSE 5 "
+	        + " END AS SMALLINT) AS COLUMN_TYPE, "
+	        + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
+	        + " WHEN 'text' THEN 12 "
+	        + " WHEN 'bit' THEN  -7 "
+	        + " WHEN 'bool' THEN  -7 "
+	        + " WHEN 'boolean' THEN  -7 "
+	        + " WHEN 'varchar' THEN 12 "
+	        + " WHEN 'character varying' THEN  12 "
+	        + " WHEN '\"char\"' THEN 1"
+	        + " WHEN 'char' THEN  1 "
+	        + " WHEN 'character' THEN  1 "
+	        + " WHEN 'nchar' THEN 1 "
+	        + " WHEN 'bpchar' THEN 1 "
+	        + " WHEN 'nvarchar' THEN 12 "
+	        + " WHEN 'date' THEN 91 "
+	        + " WHEN 'timestamp' THEN 93 "
+	        + " WHEN 'timestamp without time zone' THEN 93 "
+	        + " WHEN 'timestamptz' THEN 2014 "
+	        + " WHEN 'timestamp with time zone' THEN 2014 "
+	        + " WHEN 'smallint' THEN 5 "
+	        + " WHEN 'int2' THEN 5 "
+	        + " WHEN 'integer' THEN 4 "
+	        + " WHEN 'int' THEN 4 "
+	        + " WHEN 'int4' THEN 4 "
+	        + " WHEN 'bigint' THEN -5 "
+	        + " WHEN 'int8' THEN -5 "
+	        + " WHEN 'real' THEN 7 "
+	        + " WHEN 'float4' THEN 7 "
+	        + " WHEN 'double precision' THEN 6 "
+	        + " WHEN 'float8' THEN 6 "
+	        + " WHEN 'float' THEN 6 "
+	        + " WHEN 'decimal' THEN 3 "
+	        + " WHEN 'numeric' THEN 2 "
+	        + " WHEN '_float4' THEN 2003 "
+	        + " WHEN '_aclitem' THEN 2003 "
+	        + " WHEN '_text' THEN 2003 "
+	        + " WHEN 'bytea' THEN -2 "
+	        + " WHEN 'oid' THEN -5 "
+	        + " WHEN 'name' THEN 12 "
+	        + " WHEN '_int4' THEN 2003 "
+	        + " WHEN '_int2' THEN 2003 "
+	        + " WHEN 'ARRAY' THEN 2003 "
+	        + " WHEN 'geometry' THEN -4 "
+	        + " WHEN 'super' THEN -1 "
+	        + " ELSE 1111 "
+	        + " END AS SMALLINT) AS DATA_TYPE, "
+	        + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
+	        + " CASE pg_catalog.format_type(p.prorettype, NULL) "
+	        + " WHEN 'text' THEN NULL "
+	        + " WHEN 'varchar' THEN NULL "
+	        + " WHEN 'character varying' THEN NULL "
+	        + " WHEN '\"char\"' THEN NULL "
+	        + " WHEN 'character' THEN NULL "
+	        + " WHEN 'nchar' THEN NULL "
+	        + " WHEN 'bpchar' THEN NULL "
+	        + " WHEN 'nvarchar' THEN NULL "
+	        + " WHEN 'text' THEN NULL "
+	        + " WHEN 'date' THEN NULL "
+	        + " WHEN 'timestamp' THEN 6 "
+	        + " WHEN 'smallint' THEN 5 "
+	        + " WHEN 'int2' THEN 5 "
+	        + " WHEN 'integer' THEN 10 "
+	        + " WHEN 'int' THEN 10 "
+	        + " WHEN 'int4' THEN 10 "
+	        + " WHEN 'bigint' THEN 19 "
+	        + " WHEN 'int8' THEN 19 "
+	        + " WHEN 'decimal' THEN 38 "
+	        + " WHEN 'real' THEN 24 "
+	        + " WHEN 'float4' THEN 53 "
+	        + " WHEN 'double precision' THEN 53 "
+	        + " WHEN 'float8' THEN 53 "
+	        + " WHEN 'float' THEN 53 "
+	        + " WHEN 'geometry' THEN NULL "
+	        + " WHEN 'super' THEN " + superMaxLength
+	        + " ELSE " + unknownColumnSize
+	        + " END AS COLUMN_SIZE, "
+	        + " CASE pg_catalog.format_type(p.prorettype, NULL) "
+	        + " WHEN 'text' THEN NULL "
+	        + " WHEN 'varchar' THEN NULL "
+	        + " WHEN 'character varying' THEN NULL "
+	        + " WHEN '\"char\"' THEN NULL "
+	        + " WHEN 'character' THEN NULL "
+	        + " WHEN 'nchar' THEN NULL "
+	        + " WHEN 'bpchar' THEN NULL "
+	        + " WHEN 'nvarchar' THEN NULL "
+	        + " WHEN 'date' THEN 6 "
+	        + " WHEN 'timestamp' THEN 6 "
+	        + " WHEN 'smallint' THEN 2 "
+	        + " WHEN 'int2' THEN 2 "
+	        + " WHEN 'integer' THEN 4 "
+	        + " WHEN 'int' THEN 4 "
+	        + " WHEN 'int4' THEN 4 "
+	        + " WHEN 'bigint' THEN 20 "
+	        + " WHEN 'int8' THEN 20 "
+	        + " WHEN 'decimal' THEN 8 "
+	        + " WHEN 'real' THEN 4 "
+	        + " WHEN 'float4' THEN 8 "
+	        + " WHEN 'double precision' THEN 8 "
+	        + " WHEN 'float8' THEN 8 "
+	        + " WHEN 'float' THEN  8 "
+	        + " WHEN 'geometry' THEN NULL "
+	        + " WHEN 'super' THEN " + superMaxLength
+	        + " END AS LENGTH, "
+	        + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
+	        + " WHEN 'smallint' THEN 0 "
+	        + " WHEN 'int2' THEN 0 "
+	        + " WHEN 'integer' THEN 0 "
+	        + " WHEN 'int' THEN 0 "
+	        + " WHEN 'int4' THEN 0 "
+	        + " WHEN 'bigint' THEN 0 "
+	        + " WHEN 'int8' THEN 0 "
+	        + " WHEN 'decimal' THEN 0 "
+	        + " WHEN 'real' THEN 8 "
+	        + " WHEN 'float4' THEN 8 "
+	        + " WHEN 'double precision' THEN 17 "
+	        + " WHEN 'float' THEN 17 "
+	        + " WHEN 'float8' THEN 17 "
+	        + " WHEN 'numeric' THEN 0 "
+	        + " WHEN 'timestamp' THEN 6 "
+	        + " WHEN 'timestamp without time zone' THEN 6 "
+	        + " WHEN 'timestamptz' THEN 6 "
+	        + " WHEN 'timestamp with time zone' THEN 6 "
+	        + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
+	        + " 10 AS NUM_PREC_RADIX, "
+	        + " CAST(2 AS SMALLINT) AS NULLABLE, "
+	        + " CAST('' AS VARCHAR(256)) AS REMARKS, "
+	        + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
+	        + " CAST(0 AS SMALLINT) AS ORDINAL_POSITION, "
+	        + " CAST('' AS VARCHAR(256)) AS IS_NULLABLE, "
+	        + " p.proname || '_' || p.prooid AS SPECIFIC_NAME, "
+	        + " p.prooid as PROOID, "
+	        + " -1 AS PROARGINDEX "
+	
+	        + " FROM pg_catalog.pg_proc_info p LEFT JOIN pg_namespace n ON n.oid = p.pronamespace "
+	        + " WHERE pg_catalog.format_type(p.prorettype, NULL) != 'void' "
+	        + " AND prokind = 'f' ");
+    
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
+//      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
+    	functionColumnQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
     }
     if (functionNamePattern != null && !functionNamePattern.isEmpty()) {
-      sql += " AND p.proname LIKE " + escapeQuotes(functionNamePattern);
+//      sql += " AND p.proname LIKE " + escapeQuotes(functionNamePattern);
+    	functionColumnQuery.append(" AND p.proname LIKE " + escapeQuotes(functionNamePattern));    	
     }
-    sql += " ORDER BY n.nspname, p.proname, p.prooid::text ";
+    if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+    	functionColumnQuery.append(" AND COLUMN_NAME LIKE " + escapeQuotes(columnNamePattern));    	
+    }
+    
+    functionColumnQuery.append(" UNION ALL ");
 
-    byte[] isnullableUnknown = new byte[0];
+    functionColumnQuery.append(" SELECT DISTINCT current_database() AS PROCEDURE_CAT, "
+            + " PROCEDURE_SCHEM, "
+            + " PROCEDURE_NAME, "
+            + "CAST(CASE (char_length(COLUMN_NAME) > 0) WHEN 't' THEN COLUMN_NAME "
+            + "ELSE '' "
+            + "END AS VARCHAR(256)) AS COLUMN_NAME, "
 
-    Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery(sql);
+            + " CAST( CASE COLUMN_TYPE "
+            + " WHEN 105 THEN 1 "
+            + " WHEN 98 THEN 2 "
+            + " WHEN 111 THEN 4 "
+            + " ELSE 5 END AS SMALLINT) AS COLUMN_TYPE, "
+            + " CAST(CASE DATA_TYPE "
+            + " WHEN 'text' THEN 12 "
+            + " WHEN 'bit' THEN  -7 "
+            + " WHEN 'bool' THEN  -7 "
+            + " WHEN 'boolean' THEN  -7 "
+            + " WHEN 'varchar' THEN 12 "
+            + " WHEN 'character varying' THEN  12 "
+            + " WHEN '\"char\"' THEN  1 "
+            + " WHEN 'char' THEN  1 "
+            + " WHEN 'character' THEN  1 "
+            + " WHEN 'nchar' THEN 1 "
+            + " WHEN 'bpchar' THEN 1 "
+            + " WHEN 'nvarchar' THEN 12 "
+            + " WHEN 'date' THEN 91 "
+            + " WHEN 'timestamp' THEN 93 "
+            + " WHEN 'timestamp without time zone' THEN 93 "
+            + " WHEN 'timestamptz' THEN 2014 "
+            + " WHEN 'timestamp with time zone' THEN 2014 "
+            + " WHEN 'smallint' THEN 5 "
+            + " WHEN 'int2' THEN 5 "
+            + " WHEN 'integer' THEN 4 "
+            + " WHEN 'int' THEN 4 "
+            + " WHEN 'int4' THEN 4 "
+            + " WHEN 'bigint' THEN -5 "
+            + " WHEN 'int8' THEN -5 "
+            + " WHEN 'real' THEN 7 "
+            + " WHEN 'float4' THEN 7 "
+            + " WHEN 'double precision' THEN 6 "
+            + " WHEN 'float8' THEN 6 "
+            + " WHEN 'float' THEN 6 "
+            + " WHEN 'decimal' THEN 3 "
+            + " WHEN 'numeric' THEN 2 "
+            + " WHEN 'bytea' THEN -2 "
+            + " WHEN 'oid' THEN -5 "
+            + " WHEN 'name' THEN 12 "
+            + " WHEN 'ARRAY' THEN 2003 "
+            + " WHEN 'geometry' THEN -4 "
+            + " WHEN 'super' THEN -1 "
+            + " ELSE 1111 "
+            + " END AS SMALLINT) AS DATA_TYPE, "
+            + " TYPE_NAME, "
+            + " CASE COLUMN_SIZE "
+            + " WHEN 'text' THEN NULL "
+            + " WHEN 'varchar' THEN NULL "
+            + " WHEN 'character varying' THEN NULL "
+            + " WHEN '\"char\"' THEN NULL "
+            + " WHEN 'character' THEN NULL "
+            + " WHEN 'nchar' THEN NULL "
+            + " WHEN 'bpchar' THEN NULL "
+            + " WHEN 'nvarchar' THEN NULL "
+            + " WHEN 'text' THEN NULL "
+            + " WHEN 'date' THEN NULL "
+            + " WHEN 'timestamp' THEN 6 "
+            + " WHEN 'smallint' THEN 5 "
+            + " WHEN 'int2' THEN 5 "
+            + " WHEN 'integer' THEN 10 "
+            + " WHEN 'int' THEN 10 "
+            + " WHEN 'int4' THEN 10 "
+            + " WHEN 'bigint' THEN 19 "
+            + " WHEN 'int8' THEN 19 "
+            + " WHEN 'decimal' THEN 38 "
+            + " WHEN 'real' THEN 24 "
+            + " WHEN 'float4' THEN 53 "
+            + " WHEN 'double precision' THEN 53 "
+            + " WHEN 'float8' THEN 53 "
+            + " WHEN 'float' THEN 53 "
+            + " WHEN 'geometry' THEN NULL "
+            + " WHEN 'super' THEN " + superMaxLength
+            + " ELSE " + unknownColumnSize
+            + " END AS COLUMN_SIZE, "
+            + " CASE LENGTH "
+            + " WHEN 'text' THEN NULL "
+            + " WHEN 'varchar' THEN NULL "
+            + " WHEN 'character varying' THEN NULL "
+            + " WHEN '\"char\"' THEN NULL "
+            + " WHEN 'character' THEN NULL "
+            + " WHEN 'nchar' THEN NULL "
+            + " WHEN 'bpchar' THEN NULL "
+            + " WHEN 'nvarchar' THEN NULL "
+            + " WHEN 'date' THEN 6 "
+            + " WHEN 'timestamp' THEN 6 "
+            + " WHEN 'smallint' THEN 2 "
+            + " WHEN 'int2' THEN 2 "
+            + " WHEN 'integer' THEN 4 "
+            + " WHEN 'int' THEN 4 "
+            + " WHEN 'int4' THEN 4 "
+            + " WHEN 'bigint' THEN 20 "
+            + " WHEN 'int8' THEN 20 "
+            + " WHEN 'decimal' THEN 8 "
+            + " WHEN 'real' THEN 4 "
+            + " WHEN 'float4' THEN 8 "
+            + " WHEN 'double precision' THEN 8 "
+            + " WHEN 'float8' THEN 8 "
+            + " WHEN 'float' THEN  8 "
+            + " WHEN 'geometry' THEN NULL "
+            + " WHEN 'super' THEN " + superMaxLength
+            + " END AS LENGTH, "
+            + " CAST(CASE DECIMAL_DIGITS "
+            + " WHEN 'smallint' THEN 0 "
+            + " WHEN 'int2' THEN 0 "
+            + " WHEN 'integer' THEN 0 "
+            + " WHEN 'int' THEN 0 "
+            + " WHEN 'int4' THEN 0 "
+            + " WHEN 'bigint' THEN 0 "
+            + " WHEN 'int8' THEN 0 "
+            + " WHEN 'decimal' THEN 0 "
+            + " WHEN 'real' THEN 8 "
+            + " WHEN 'float4' THEN 8 "
+            + " WHEN 'double precision' THEN 17 "
+            + " WHEN 'float' THEN 17 "
+            + " WHEN 'float8' THEN 17 "
+            + " WHEN 'numeric' THEN 0 "
+            + " WHEN 'timestamp' THEN 6 "
+            + " WHEN 'timestamp without time zone' THEN 6 "
+            + " WHEN 'timestamptz' THEN 6 "
+            + " WHEN 'timestamp with time zone' THEN 6 "
+            + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
+            + " 10 AS NUM_PREC_RADIX, "
+            + " CAST(2 AS SMALLINT) AS NULLABLE, "
+            + " CAST(''AS VARCHAR(256)) AS REMARKS, "
+            + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
+            + " PROARGINDEX AS ORDINAL_POSITION, "
+            + " CAST(''AS VARCHAR(256)) AS IS_NULLABLE, "
+            + " SPECIFIC_NAME, PROOID, PROARGINDEX "
+            + " FROM ( "
+            + " SELECT current_database() AS PROCEDURE_CAT,"
+            + " n.nspname AS PROCEDURE_SCHEM, "
+            + " proname AS PROCEDURE_NAME, "
+            + " CASE WHEN (proallargtypes is NULL) THEN proargnames[pos+1] "
+            + " ELSE proargnames[pos] END AS COLUMN_NAME,"
+            + " CASE WHEN proargmodes is NULL THEN 105 "
+            + " ELSE CAST(proargmodes[pos] AS INT) END AS COLUMN_TYPE, "
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS DATA_TYPE,"
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL) "
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS TYPE_NAME,"
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS COLUMN_SIZE,"
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS LENGTH,"
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS DECIMAL_DIGITS,"
+            + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
+            + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS RADIX,"
+            + " CAST(2 AS SMALLINT) AS NULLABLE,"
+            + " CAST(''AS VARCHAR(256)) AS REMARKS,"
+            + " pg_catalog.format_type(proargtypes[pos], NULL) AS CHAR_OCTET_LENGTH,"
+            + " CASE WHEN (proallargtypes is NULL) THEN pos+1"
+            + " WHEN pos = array_upper(proallargtypes, 1) THEN 0"
+            + " ELSE pos END AS ORDINAL_POSITION,"
+            + " CAST('' AS VARCHAR(256)) AS IS_NULLABLE,"
+            + " p.prooid AS PROOID,"
+            + " CASE WHEN (proallargtypes is NULL) THEN pos+1"
+            + " WHEN prokind = 'f' AND pos = array_upper(proallargtypes, 1) THEN 0"
+            + " ELSE pos END AS PROARGINDEX, "
+            + " p.proname || '_' || p.prooid AS SPECIFIC_NAME "
+            + " FROM (pg_catalog.pg_proc_info p LEFT JOIN pg_namespace n"
+            + " ON n.oid = p.pronamespace)"
+            + " LEFT JOIN (SELECT "
+            + " CASE WHEN (proallargtypes IS NULL) "
+            + " THEN generate_series(array_lower(proargnames, 1), array_upper(proargnames, 1))-1"
+            + " ELSE generate_series(array_lower(proargnames, 1), array_upper(proargnames, 1)+1)-1 "
+            + " END AS pos"
+            + " FROM pg_catalog.pg_proc_info p ) AS s ON (pos >= 0 AND pos <= pronargs+1)"
+            + " WHERE prokind = 'f' ");
+    
+    if (schemaPattern != null && !schemaPattern.isEmpty()) {
+    	functionColumnQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
+    }
+    if (functionNamePattern != null && !functionNamePattern.isEmpty()) {
+    	functionColumnQuery.append(" AND p.proname LIKE " + escapeQuotes(functionNamePattern));    	
+    }
+	  if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+	  	functionColumnQuery.append(" AND COLUMN_NAME LIKE " + escapeQuotes(columnNamePattern));    	
+	  }
+    
+    functionColumnQuery.append(" ) AS INPUT_PARAM_TABLE"
+        + " WHERE ORDINAL_POSITION IS NOT NULL"
+        + " ) AS RESULT_SET WHERE (DATA_TYPE != 1111 OR (TYPE_NAME IS NOT NULL AND TYPE_NAME != '-'))"
+        + " ORDER BY PROCEDURE_CAT ,PROCEDURE_SCHEM,"
+        + " PROCEDURE_NAME, PROOID, PROARGINDEX, COLUMN_TYPE DESC");
+	  
+//    sql += " ORDER BY n.nspname, p.proname, p.prooid::text ";
+
+//    byte[] isnullableUnknown = new byte[0];
+
+//    Statement stmt = connection.createStatement();
+//    ResultSet rs = stmt.executeQuery(functionColumnQuery.toString()); // sql
+    
+/*    
     while (rs.next()) {
       byte[] schema = rs.getBytes("nspname");
       byte[] functionName = rs.getBytes("proname");
@@ -4059,10 +4468,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         columnstmt.close();
       }
     }
-    rs.close();
-    stmt.close();
+*/    
+//    rs.close();
+//    stmt.close();
 
-    ResultSet rc = ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+//    ResultSet rc = ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+    	ResultSet rc = createMetaDataStatement().executeQuery(functionColumnQuery.toString());
     
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(false, rc);
@@ -4165,7 +4576,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   /**
    * Helper method to determine if there is a possible external schema pattern match.
    *
-   * @throws ErrorException   If an error occurs.
+   * @throws SQLException   If an error occurs.
    */
   private int getExtSchemaPatternMatch(String schemaPattern)
       throws SQLException

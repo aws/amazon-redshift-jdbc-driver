@@ -56,12 +56,12 @@ import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-//#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+//JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-//#endif
+//JCP! endif
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Map;
@@ -145,7 +145,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
     return rc;
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   @Override
   public long executeLargeUpdate() throws SQLException {
     if (RedshiftLogger.isEnable())
@@ -160,7 +160,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
     
     return rc;
   }
-  //#endif
+  //JCP! endif
 
   @Override
   public boolean execute(String sql) throws SQLException {
@@ -271,10 +271,10 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
         oid = Oid.DATE;
         break;
       case Types.TIME:
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       case Types.TIME_WITH_TIMEZONE:
       case Types.TIMESTAMP_WITH_TIMEZONE:
-      //#endif
+      //JCP! endif
       case Types.TIMESTAMP:
         oid = Oid.UNSPECIFIED;
         break;
@@ -662,11 +662,11 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
           java.sql.Date tmpd;
           if (in instanceof java.util.Date) {
             tmpd = new java.sql.Date(((java.util.Date) in).getTime());
-            //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
           } else if (in instanceof LocalDate) {
             setDate(parameterIndex, (LocalDate) in);
             break;
-            //#endif
+            //JCP! endif
           } else {
             tmpd = connection.getTimestampUtils().toDate(getDefaultCalendar(), in.toString());
           }
@@ -680,11 +680,11 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
           java.sql.Time tmpt;
           if (in instanceof java.util.Date) {
             tmpt = new java.sql.Time(((java.util.Date) in).getTime());
-            //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
           } else if (in instanceof LocalTime) {
             setTime(parameterIndex, (LocalTime) in);
             break;
-            //#endif
+            //JCP! endif
           } else {
             tmpt = connection.getTimestampUtils().toTime(getDefaultCalendar(), in.toString());
           }
@@ -700,18 +700,18 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
           java.sql.Timestamp tmpts;
           if (in instanceof java.util.Date) {
             tmpts = new java.sql.Timestamp(((java.util.Date) in).getTime());
-            //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
           } else if (in instanceof LocalDateTime) {
             setTimestamp(parameterIndex, (LocalDateTime) in);
             break;
-            //#endif
+            //JCP! endif
           } else {
             tmpts = connection.getTimestampUtils().toTimestamp(getDefaultCalendar(), in.toString());
           }
           setTimestamp(parameterIndex, tmpts);
         }
         break;
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       case Types.TIMESTAMP_WITH_TIMEZONE:
         if (in instanceof OffsetDateTime) {
           setTimestamp(parameterIndex, (OffsetDateTime) in);
@@ -724,7 +724,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
               RedshiftState.INVALID_PARAMETER_TYPE);
         }
         break;
-      //#endif
+      //JCP! endif
       case Types.BOOLEAN:
       case Types.BIT:
         setBoolean(parameterIndex, BooleanTypeUtil.castToBoolean(in));
@@ -1057,7 +1057,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
       setRedshiftObject(parameterIndex, (RedshiftObject) x);
     } else if (x instanceof Character) {
       setString(parameterIndex, ((Character) x).toString());
-      //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
     } else if (x instanceof LocalDate) {
       setDate(parameterIndex, (LocalDate) x);
     } else if (x instanceof LocalTime) {
@@ -1066,7 +1066,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
       setTimestamp(parameterIndex, (LocalDateTime) x);
     } else if (x instanceof OffsetDateTime) {
       setTimestamp(parameterIndex, (OffsetDateTime) x);
-      //#endif
+      //JCP! endif
     } else if (x instanceof Map) {
       setMap(parameterIndex, (Map<?, ?>) x);
     } else if (x instanceof Number) {
@@ -1520,7 +1520,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
     bindString(i, connection.getTimestampUtils().toString(cal, t), oid);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   private void setDate(int i, LocalDate localDate) throws SQLException {
     int oid = Oid.DATE;
     bindString(i, connection.getTimestampUtils().toString(localDate), oid);
@@ -1540,14 +1540,14 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
     int oid = Oid.TIMESTAMPTZ;
     bindString(i, connection.getTimestampUtils().toString(offsetDateTime), oid);
   }
-  //#endif
+  //JCP! endif
 
   public ParameterMetaData createParameterMetaData(BaseConnection conn, int[] oids)
       throws SQLException {
     return new RedshiftParameterMetaData(conn, oids);
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   public void setObject(int parameterIndex, Object x, java.sql.SQLType targetSqlType,
       int scaleOrLength) throws SQLException {
     throw Driver.notImplemented(this.getClass(), "setObject");
@@ -1557,7 +1557,7 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
       throws SQLException {
     throw Driver.notImplemented(this.getClass(), "setObject");
   }
-  //#endif
+  //JCP! endif
 
   public void setRowId(int parameterIndex, RowId x) throws SQLException {
     throw Driver.notImplemented(this.getClass(), "setRowId(int, RowId)");

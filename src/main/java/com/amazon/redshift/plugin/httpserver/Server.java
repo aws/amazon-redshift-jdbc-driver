@@ -91,7 +91,7 @@ public class Server
     /**
      * Actual start server to work.
      *
-     * @throws InternalPluginException all exceptions wrapped in {@link InternalPluginException}
+     * @throws IOException all exceptions wrapped in {@link IOException}
      */
     public void listen() throws IOException
     {
@@ -149,10 +149,10 @@ public class Server
         return mapper;
     }
 
+    // Copy of apache-core {@link org.apache.http.impl.bootstrap.Worker}
+    // and {@link org.apache.http.impl.bootstrap.RequestListener}
     /**
      * Http worker thread.
-     * Copy of apache-core {@link org.apache.http.impl.bootstrap.Worker}
-     * and {@link org.apache.http.impl.bootstrap.RequestListener}
      */
     public class ListenerThread extends Thread
     {

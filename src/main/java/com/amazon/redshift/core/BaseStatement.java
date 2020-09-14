@@ -40,9 +40,27 @@ public interface BaseStatement extends RedshiftStatement, Statement {
    * @return the new ResultSet
    * @throws SQLException if something goes wrong
    */
+  
+  /**
+   * 
+   * Create a resultset from data retrieved from the server.
+   *
+   * @param originalQuery the query that generated this resultset; used when dealing with updateable
+   *        resultsets
+   * @param fields the column metadata for the resultset
+   * @param tuples the resultset data
+   * @param cursor the cursor to use to retrieve more data from the server; if null, no additional
+   *        data is present.
+   * @param queueTuples the actual data in a blocking queue. If this is set then tuples will be null.
+	 * @param rowCount number of rows fetched from the socket.
+	 * @param ringBufferThread a thread to fetch rows in the limited rows buffer.
+   * 
+   * @return the new ResultSet
+   * @throws SQLException if something goes wrong
+   */
   ResultSet createResultSet(Query originalQuery, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount) throws SQLException;
+      int[] rowCount, Thread ringBufferThread) throws SQLException;
 
   /**
    * Execute a query, passing additional query flags.

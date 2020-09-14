@@ -20,7 +20,7 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-//#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+//JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -32,7 +32,7 @@ import java.time.ZonedDateTime;
 import java.time.chrono.IsoEra;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
-//#endif
+//JCP! endif
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -51,7 +51,7 @@ public class TimestampUtils {
   private static final char[][] NUMBERS;
   private static final HashMap<String, TimeZone> GMT_ZONES = new HashMap<String, TimeZone>();
   private static final int MAX_NANOS_BEFORE_WRAP_ON_ROUND = 999999500;
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   private static final Duration ONE_MICROSECOND = Duration.ofNanos(1000);
   // LocalTime.MAX is 23:59:59.999_999_999, and it wraps to 24:00:00 when nanos exceed 999_999_499
   // since Redshift has microsecond resolution only
@@ -62,7 +62,7 @@ public class TimestampUtils {
   private static final LocalDate MIN_LOCAL_DATE = LocalDate.of(4713, 1, 1).with(ChronoField.ERA, IsoEra.BCE.getValue());
   private static final LocalDateTime MIN_LOCAL_DATETIME = MIN_LOCAL_DATE.atStartOfDay();
   private static final OffsetDateTime MIN_OFFSET_DATETIME = MIN_LOCAL_DATETIME.atOffset(ZoneOffset.UTC);
-  //#endif
+  //JCP! endif
 
   private static final Field DEFAULT_TIME_ZONE_FIELD;
 
@@ -421,7 +421,7 @@ public class TimestampUtils {
     return result;
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   /**
    * Parse a string and return a LocalTime representing its value.
    *
@@ -559,7 +559,7 @@ public class TimestampUtils {
     return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
   }
 
-  //#endif
+  //JCP! endif
 
   public synchronized Time toTime(Calendar cal, String s) throws SQLException {
     // 1) Parse backend string
@@ -844,7 +844,7 @@ public class TimestampUtils {
     }
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   public synchronized String toString(LocalDate localDate) {
     if (LocalDate.MAX.equals(localDate)) {
       return "infinity";
@@ -949,7 +949,7 @@ public class TimestampUtils {
       sb.append(" BC");
     }
   }
-  //#endif
+  //JCP! endif
 
   private static int skipWhitespace(char[] s, int start) {
     int slen = s.length;
@@ -1091,7 +1091,7 @@ public class TimestampUtils {
     return convertToTime(millis, tz); // Ensure date part is 1970-01-01
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   /**
    * Returns the SQL Time object matching the given bytes with {@link Oid#TIME}.
    *
@@ -1117,7 +1117,7 @@ public class TimestampUtils {
 
     return LocalTime.ofNanoOfDay(micros * 1000);
   }
-  //#endif
+  //JCP! endif
 
   /**
    * Returns the SQL Timestamp object matching the given bytes with {@link Oid#TIMESTAMP} or
@@ -1243,7 +1243,7 @@ public class TimestampUtils {
     return ts;
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   /**
    * Returns the local date time object matching the given bytes with {@link Oid#TIMESTAMP} or
    * {@link Oid#TIMESTAMPTZ}.
@@ -1265,7 +1265,7 @@ public class TimestampUtils {
     // Postgres is always UTC
     return LocalDateTime.ofEpochSecond(parsedTimestamp.millis / 1000L, parsedTimestamp.nanos, ZoneOffset.UTC);
   }
-  //#endif
+  //JCP! endif
 
   /**
    * <p>Given a UTC timestamp {@code millis} finds another point in time that is rendered in given time

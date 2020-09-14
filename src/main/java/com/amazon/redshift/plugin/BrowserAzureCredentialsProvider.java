@@ -1,13 +1,12 @@
 package com.amazon.redshift.plugin;
 
-import com.amazonaws.util.json.Jackson;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
 import com.amazon.redshift.plugin.httpserver.Server;
 import com.amazon.redshift.plugin.utils.RandomStateUtil;
-import org.apache.commons.codec.Charsets;
+import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
@@ -24,6 +23,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,10 +31,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import static com.amazonaws.util.StringUtils.isNullOrEmpty;
 import static com.amazon.redshift.plugin.httpserver.RequestHandler.REDSHIFT_PATH;
 import static com.amazon.redshift.plugin.utils.CheckUtils.*;
 import static com.amazon.redshift.plugin.utils.ResponseUtils.findParameter;
+import static com.amazonaws.util.StringUtils.isNullOrEmpty;
 import static org.apache.commons.codec.binary.StringUtils.newStringUtf8;
 
 /**
@@ -389,7 +389,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             HttpHeaders.CONTENT_TYPE,
             ContentType.APPLICATION_FORM_URLENCODED.toString());
         post.addHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.toString());
-        post.setEntity(new UrlEncodedFormEntity(parameters, Charsets.UTF_8));
+        post.setEntity(new UrlEncodedFormEntity(parameters, StandardCharsets.UTF_8));
         
       	if(RedshiftLogger.isEnable())
       		m_log.log(LogLevel.DEBUG,

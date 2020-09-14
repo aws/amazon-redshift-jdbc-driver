@@ -6,7 +6,7 @@
 package com.amazon.redshift.jdbc2;
 
 /**
- * Implement this interface and register the its instance to ArrayAssistantRegistry, to let Postgres
+ * Implement this interface and register the its instance to ArrayAssistantRegistry, to let Redshift
  * driver to support more array type.
  *
  * @author Minglei Tu

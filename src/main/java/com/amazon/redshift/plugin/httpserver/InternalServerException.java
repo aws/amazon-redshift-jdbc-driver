@@ -22,7 +22,7 @@ public class InternalServerException extends InternalPluginException
     /**
      * Wrap Exception in this class.
      *
-     * @param ex    Exception object.
+     * @param exceptionToWrap   Exception object.
      *
      * @return instance of this class.
      */

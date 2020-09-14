@@ -138,12 +138,12 @@ class RedshiftCallableStatement extends RedshiftPreparedStatement implements Cal
           if (callResult[j] != null) {
             callResult[j] = ((Double) callResult[j]).floatValue();
           }
-          //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+          //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
         } else if (columnType == Types.REF_CURSOR && functionReturnType[j] == Types.OTHER) {
           // For backwards compatibility reasons we support that ref cursors can be
           // registered with both Types.OTHER and Types.REF_CURSOR so we allow
           // this specific mismatch
-          //#endif
+          //JCP! endif
         } else {
           throw new RedshiftException(GT.tr(
               "A CallableStatement function was executed and the out parameter {0} was of type {1} however type {2} was registered.",
@@ -567,7 +567,7 @@ class RedshiftCallableStatement extends RedshiftPreparedStatement implements Cal
     throw Driver.notImplemented(this.getClass(), "registerOutParameter(int,int,String)");
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
   public void setObject(String parameterName, Object x, java.sql.SQLType targetSqlType,
       int scaleOrLength) throws SQLException {
     throw Driver.notImplemented(this.getClass(), "setObject");
@@ -607,7 +607,7 @@ class RedshiftCallableStatement extends RedshiftPreparedStatement implements Cal
       throws SQLException {
     throw Driver.notImplemented(this.getClass(), "registerOutParameter");
   }
-  //#endif
+  //JCP! endif
 
   public RowId getRowId(int parameterIndex) throws SQLException {
     throw Driver.notImplemented(this.getClass(), "getRowId(int)");

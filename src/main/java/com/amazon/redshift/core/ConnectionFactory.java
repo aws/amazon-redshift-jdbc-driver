@@ -38,6 +38,7 @@ public abstract class ConnectionFactory {
    * @param database the database on the server to connect to; may not be null.
    * @param info extra properties controlling the connection; notably, "password" if present
    *        supplies the password to authenticate with.
+   * @param logger the logger to log the entry for debugging.       
    * @return the new, initialized, connection
    * @throws SQLException if the connection could not be established.
    */
@@ -69,6 +70,7 @@ public abstract class ConnectionFactory {
    * @param database the database on the server to connect to; may not be null.
    * @param info extra properties controlling the connection; notably, "password" if present
    *        supplies the password to authenticate with.
+   * @param logger the logger to log the entry for debugging.       
    * @return the new, initialized, connection, or <code>null</code> if this protocol version is not
    *         supported by the server.
    * @throws SQLException if the connection could not be established for a reason other than

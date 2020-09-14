@@ -16,9 +16,10 @@ public class ResponseUtils
 
     /**
      * Find parameter by name in http request/response  {@link NameValuePair} List.
-     * <p>
-     * During build in BuildDriver.sh:124 SimbaPackageRenamer.jar makes class packages rename.
-     * This tool can`t work with JAVA8 lambdas. So instead of using stream api to search params, I have to iterate.
+     * 
+     * @param name name of the parameter
+     * @param list list of parameters
+     * @return returns value of the found parameter, otherwise null.
      */
     public static String findParameter(String name, List<NameValuePair> list)
     {

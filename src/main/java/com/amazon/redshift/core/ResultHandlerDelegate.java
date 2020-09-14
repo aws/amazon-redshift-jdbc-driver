@@ -28,9 +28,9 @@ public class ResultHandlerDelegate implements ResultHandler {
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount) {
+      int[] rowCount, Thread ringBufferThread) {
     if (delegate != null) {
-      delegate.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount);
+      delegate.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount, ringBufferThread);
     }
   }
 

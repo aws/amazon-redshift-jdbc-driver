@@ -1,6 +1,5 @@
 package com.amazon.redshift.plugin.httpserver;
 
-import org.apache.commons.codec.Charsets;
 import org.apache.http.*;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -8,6 +7,7 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestHandler;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Return valid HTML for all requests.
@@ -23,8 +23,8 @@ public class ValidHttpRequestHandler implements HttpRequestHandler
     public void handle(HttpRequest request, HttpResponse response, HttpContext context)
             throws HttpException, IOException
     {
-        response.setEntity(new StringEntity(VALID_RESPONSE, Charsets.UTF_8));
-        response.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.TEXT_HTML.withCharset(Charsets.UTF_8).toString());
+        response.setEntity(new StringEntity(VALID_RESPONSE, StandardCharsets.UTF_8));
+        response.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.TEXT_HTML.withCharset(StandardCharsets.UTF_8).toString());
         response.setStatusCode(HttpStatus.SC_OK);
     }
 }

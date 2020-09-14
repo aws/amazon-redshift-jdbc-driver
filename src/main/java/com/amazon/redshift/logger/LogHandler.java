@@ -7,7 +7,7 @@ public interface LogHandler {
 	 * This can be a file or console.
 	 * 
 	 * @param message Log entry
-	 * @throws Exception
+	 * @throws Exception throws when any error happens during write operation.
 	 */
   public void write(String message) throws Exception;
   

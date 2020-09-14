@@ -118,6 +118,7 @@ public class Encoding {
    * compatibility.
    *
    * @param encoding charset to use
+   * @param logger the logger to log the entry for debugging.       
    * @param fastASCIINumbers whether this encoding is compatible with ASCII numbers.
    */
   protected Encoding(Charset encoding, boolean fastASCIINumbers, RedshiftLogger logger) {
@@ -138,6 +139,7 @@ public class Encoding {
    * is compatible with ASCII numbers.
    *
    * @param encoding charset to use
+   * @param logger the logger to log the entry for debugging.       
    */
   protected Encoding(Charset encoding, RedshiftLogger logger) {
     this(encoding, testAsciiNumbers(encoding), logger);
@@ -157,6 +159,7 @@ public class Encoding {
    * Construct an Encoding for a given JVM encoding.
    *
    * @param jvmEncoding the name of the JVM encoding
+   * @param logger the logger to log the entry for debugging.       
    * @return an Encoding instance for the specified encoding, or an Encoding instance for the
    *     default JVM encoding if the specified encoding is unavailable.
    */
@@ -174,6 +177,7 @@ public class Encoding {
    * Construct an Encoding for a given database encoding.
    *
    * @param databaseEncoding the name of the database encoding
+   * @param logger the logger to log the entry for debugging.       
    * @return an Encoding instance for the specified encoding, or an Encoding instance for the
    *     default JVM encoding if the specified encoding is unavailable.
    */

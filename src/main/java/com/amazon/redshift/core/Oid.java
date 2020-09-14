@@ -81,8 +81,8 @@ public class Oid {
   public static final int GEOMETRY_ARRAY = UNSPECIFIED;
   public static final int GEOMETRYHEX = 3999;
   public static final int GEOMETRYHEX_ARRAY = UNSPECIFIED;
-  public static final int OMNI = 4000;
-  public static final int OMNI_ARRAY = UNSPECIFIED;
+  public static final int SUPER = 4000;
+  public static final int SUPER_ARRAY = UNSPECIFIED;
 
   private static final Map<Integer, String> OID_TO_NAME = new HashMap<Integer, String>(100);
   private static final Map<String, Integer> NAME_TO_OID = new HashMap<String, Integer>(100);

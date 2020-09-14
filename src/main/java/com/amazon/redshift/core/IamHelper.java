@@ -52,10 +52,12 @@ public final class IamHelper
      * is specified, all other <b>required</b> IAM properties must be specified too or else it
      * throws an error.
      *
-     * @param Properties                PostgreSQLClient settings used to authenticate if connection
-     *                                  should be granted.
+     * @param info                Redshift client settings used to authenticate if connection
+     *                            should be granted.
+     * @param settings						Redshift IAM settings
+     * @param log									Redshift logger
      *
-     * @throws RedshiftException           If an error occurs.
+     * @throws RedshiftException  If an error occurs.
      */
     public static void setIAMProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log) 
     										throws RedshiftException

@@ -21,7 +21,7 @@ class CallableBatchResultHandler extends BatchResultHandler {
   }
 
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, 
-  							RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount) {
+  							RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount, Thread ringBufferThread) {
     /* ignore */
   }
 }

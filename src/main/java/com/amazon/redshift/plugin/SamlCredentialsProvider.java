@@ -60,6 +60,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import static java.lang.String.format;
+
 public abstract class SamlCredentialsProvider implements IPlugin
 {
 
@@ -78,7 +80,8 @@ public abstract class SamlCredentialsProvider implements IPlugin
     protected boolean m_sslInsecure;
     protected String m_dbUser;
     protected String m_dbGroups;
-    protected Boolean m_forceLowercase;    
+    protected String m_dbGroupsFilter;
+    protected Boolean m_forceLowercase;
     protected Boolean m_autoCreate;
     protected String m_region;
     protected RedshiftLogger m_log;
@@ -187,6 +190,10 @@ public abstract class SamlCredentialsProvider implements IPlugin
         {
             m_dbGroups = value;
         }
+        else if (RedshiftProperty.DB_GROUPS_FILTER.getName().equalsIgnoreCase(key))
+        {
+            m_dbGroupsFilter = value;
+        }
         else if (RedshiftProperty.FORCE_LOWERCASE.getName().equalsIgnoreCase(key))
         {
             m_forceLowercase = Boolean.valueOf(value);
@@ -243,8 +250,8 @@ public abstract class SamlCredentialsProvider implements IPlugin
 
         try
         {
-            final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws:iam::\\d*:saml-provider/\\S+");
-            final Pattern ROLE_PATTERN = Pattern.compile("arn:aws:iam::\\d*:role/\\S+");
+            final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:saml-provider/\\S+");
+            final Pattern ROLE_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:role/\\S+");
             String samlAssertion = getSamlAssertion();
 
             if (RedshiftLogger.isEnable())
@@ -415,16 +422,20 @@ public abstract class SamlCredentialsProvider implements IPlugin
                 "https://redshift.amazon.com/SAML/Attributes/DbGroups");
         if (!attributeValues.isEmpty())
         {
-            StringBuilder sb = new StringBuilder();
-            for (String value : attributeValues)
+            attributeValues = filterOutGroups(attributeValues);
+            if (!attributeValues.isEmpty())
             {
-                if (sb.length() > 0)
+                StringBuilder sb = new StringBuilder();
+                for (String value : attributeValues)
                 {
-                    sb.append(',');
+                    if (sb.length() > 0)
+                    {
+                        sb.append(',');
+                    }
+                    sb.append(value);
                 }
-                sb.append(value);
+                metadata.setDbGroups(sb.toString());
             }
-            metadata.setDbGroups(sb.toString());
         }
         
         attributeValues = GetSAMLAttributeValues(xPath, doc,
@@ -435,6 +446,34 @@ public abstract class SamlCredentialsProvider implements IPlugin
         }
         		
         return metadata;
+    }
+    
+    /**
+     * Method removes all groups from given lists matching {@link m_dbGroupsFilter}
+     *  regex.
+     * @param attributeValues in
+     * @return attributeValues filtered
+     */
+    private List<String> filterOutGroups(List<String> attributeValues) {
+        if ( m_dbGroupsFilter != null )
+        {
+            final Pattern groupsFilter = Pattern.compile(m_dbGroupsFilter);
+            List<String> ret = new ArrayList<>();
+            for (String attributeValue : attributeValues)
+            {
+                m_log.logDebug("Check group {0} with regexp {1}",
+                                             attributeValue, m_dbGroupsFilter);
+                if (!groupsFilter.matcher(attributeValue).matches())
+                {
+                    m_log.logDebug("Add {0} to dbgroups", attributeValue);
+                    ret.add(attributeValue);
+                }
+            }
+            return ret;
+        }
+        else {
+            return attributeValues;
+        }
     }
 
     private static Document parse(byte[] samlAssertion) throws IOException, SAXException,

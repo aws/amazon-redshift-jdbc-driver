@@ -20,6 +20,7 @@ import java.sql.SQLException;
 public interface ReplicationProtocol {
   /**
    * @param options not null options for logical replication stream
+   * @param logger the logger to log the entry for debugging.       
    * @return not null stream instance from which available fetch wal logs that was decode by output
    *     plugin
    * @throws SQLException on error
@@ -28,6 +29,7 @@ public interface ReplicationProtocol {
 
   /**
    * @param options not null options for physical replication stream
+   * @param logger the logger to log the entry for debugging.       
    * @return not null stream instance from which available fetch wal logs
    * @throws SQLException on error
    */

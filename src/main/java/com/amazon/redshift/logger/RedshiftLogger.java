@@ -93,10 +93,9 @@ public class RedshiftLogger {
   	}
   }
   /**
-   * True if any of connection enable the logging.
-   * Otherwise false.
+   * Check for logging enable or not.
    * 
-   * @return
+   * @return true if any of the connection enable the logging, false otherwise.
    */
   public static boolean isEnable() {
   	return isEnable;

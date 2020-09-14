@@ -58,7 +58,7 @@ public class Driver implements java.sql.Driver {
   private static Driver registeredDriver;
   private static SharedTimer sharedTimer = new SharedTimer();
   private static final String DEFAULT_PORT =
-      /*$"\""+mvn.project.property.template.default.rs.port+"\";"$*//*-*/"5439";
+      "5439";
   private static final String URL_PREFIX = "jdbc:redshift:";
 	private static final Pattern URL_PATTERN =
 			Pattern.compile("(iam:)?//([^:/?]+)(:([^/?]*))?(/([^?;]*))?([?;](.*))?");
@@ -690,6 +690,8 @@ public class Driver implements java.sql.Driver {
   }
 
   /**
+   * 
+   * @param props the connection properties.
    * @return the address portion of the URL
    */
   public static HostSpec[] hostSpecs(Properties props) {
@@ -759,13 +761,13 @@ public class Driver implements java.sql.Driver {
         RedshiftState.NOT_IMPLEMENTED.getState());
   }
 
-  //#if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
   @Override
   public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
     // java.util.logging.logger is not used in Redshift JDBC
     throw new SQLFeatureNotSupportedException ("java.util.logging is not used");
   }
-  //#endif
+  //JCP! endif
 
   public static SharedTimer getSharedTimer() {
     return sharedTimer;
