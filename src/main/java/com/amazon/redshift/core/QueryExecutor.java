@@ -382,6 +382,14 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    * @return the server protocol version.
    */
   int getServerProtocolVersion();
+
+  /**
+   * Get the server capability for datashare database query support.
+   * This should enable for data sharing (either producer/consumer).
+   *  
+   * @return true means datashare database query is supported otherwise false.
+   */
+  boolean isDatashareEnabled();
   
   /**
    * Retrieve and clear the set of asynchronous notifications pending on this connection.
@@ -504,4 +512,10 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    */
   void closeStatementAndPortal();  
   
+  /**
+   * Get multiple SQL supports.
+   * 
+   * @return true, if supported. false otherwise.
+   */
+  boolean isMultiSqlSupport();
 }

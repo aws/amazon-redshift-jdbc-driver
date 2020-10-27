@@ -140,7 +140,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     /**
      *  Default port for local server.
      */
-    private int m_listen_port = 7890;
+    private int m_listen_port = 0;
 
     /**
      * Redirect URI variable.
@@ -163,12 +163,12 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             checkAndThrowsWithMessage(
                 m_idp_response_timeout < 10,
                 KEY_IDP_RESPONSE_TIMEOUT + " should be 10 seconds or greater.");
-            checkInvalidAndThrows((m_listen_port < 1 || m_listen_port > 65535), KEY_LISTEN_PORT);
-            this.redirectUri = "http://localhost:" + m_listen_port + REDSHIFT_PATH;
+            checkInvalidAndThrows( m_listen_port != 0 && (  m_listen_port < 1 || m_listen_port > 65535), KEY_LISTEN_PORT);
+            if( m_listen_port == 0 )
+            {
+                m_log.logDebug("Listen port set to 0. Will pick random port");
+            }
 
-          	if (RedshiftLogger.isEnable())
-          		m_log.logDebug("redirectUri: {0}", redirectUri);
-            
             String token = fetchAuthorizationToken();
             String content = fetchSamlResponse(token);
             String samlAssertion = extractSamlAssertion(content);
@@ -269,6 +269,8 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         Server server =
             new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout));
         server.listen();
+        int localPort = server.getLocalPort();
+        this.redirectUri = "http://localhost:" + localPort + REDSHIFT_PATH;
         try
         {
         		if(RedshiftLogger.isEnable())

@@ -148,6 +148,18 @@ public enum RedshiftProperty {
     "Specifies the maximum size (in megabytes) of fields to be cached per connection. A value of {@code 0} disables the cache."),
 
   /**
+   * Returns metadata for the connected database only.
+   * Application is ready to accept metadata from all databases,
+   *  can set the value of this parameter "false".
+   *  Default value is "true" means application gets metadata from single
+   *  databases. 
+   */
+  DATABASE_METADATA_CURRENT_DB_ONLY(
+    "databaseMetadataCurrentDbOnly",
+    "true",
+    "Control the behavior of metadata API to return data from all accessible databases or only from connected database"),
+  
+  /**
    * Default parameter for {@link java.sql.Statement#getFetchSize()}. A value of {@code 0} means
    * that need fetch all rows at once
    */
@@ -209,6 +221,16 @@ public enum RedshiftProperty {
   ENABLE_GENERATED_NAME_FOR_PREPARED_STATEMENT("enableGeneratedName",
   							"true",
   							"The Redshift uses generated statement name and portal name"),
+  
+  /**
+   * "true" means driver supports multiple SQL commands (semicolon separated) in a Statement object.
+   * "false" means driver throws an exception when see multiple SQL commands.
+   * Default value is "true".
+   */
+  ENABLE_MULTI_SQL_SUPPORT(
+    "enableMultiSqlSupport",
+    "true",
+    "Control the behavior of semicolon separated SQL commands in a Statement"),
   
   /**
    * The statement cache enable/disable.
@@ -436,6 +458,14 @@ public enum RedshiftProperty {
     null,
     "Password to use when authenticating.",
     false),
+
+  /**
+   * Set the query group on a connection.
+   */
+  QUERY_GROUP(
+    "queryGroup",
+    null,
+    "Assign a query to a queue at runtime by assigning your query to the appropriate query group"),
   
   /**
    * Database name to connect to (may be specified directly in the JDBC URL).

@@ -976,6 +976,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 /*    if (connection.haveMinimumServerVersion(ServerVersion.v11)) {
       sql += " AND p.prokind='p'";
     } */
+    
+    sql += getCatalogFilterCondition(catalog);
+    
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
       sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     } else {
@@ -1203,6 +1206,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
             + " FROM pg_catalog.pg_proc_info p LEFT JOIN pg_namespace n ON n.oid = p.pronamespace "
             + " WHERE pg_catalog.format_type(p.prorettype, NULL) != 'void' ");
+    
+    procedureColQuery.append(getCatalogFilterCondition(catalog));
     
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	procedureColQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
@@ -1441,6 +1446,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     
     procedureColQuery.append(" WHERE true ");
     
+    procedureColQuery.append(getCatalogFilterCondition(catalog));
+    
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	procedureColQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
     }
@@ -1487,8 +1494,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     	sql = buildLocalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);    	
     }
     else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
-    	// svv_tables
-    	sql = buildUniversalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+    	if (isSingleDatabaseMetaData()) {
+	    	// svv_tables
+	    	sql = buildUniversalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+    	}
+    	else {
+	    	// svv_all_tables
+	    	sql = buildUniversalAllSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+    	}
     }
     else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
     	// svv_external_tables
@@ -1554,7 +1567,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
              + " LEFT JOIN pg_catalog.pg_namespace dn ON (dn.oid=dc.relnamespace AND dn.nspname='pg_catalog') "
              + " WHERE c.relnamespace = n.oid ";
 
-    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, LOCAL_SCHEMA_QUERY);
+    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, LOCAL_SCHEMA_QUERY, true, null);
     
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
 
@@ -1565,10 +1578,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 																			String schemaPattern, 
 																			String tableNamePattern,
 																			String[] types,
-																			int schemaPatternType) throws SQLException {
+																			int schemaPatternType,
+																			boolean apiSupportedOnlyForConnectedDatabase,
+																			String databaseColName) throws SQLException {
   	String filterClause = "";
     String useSchemas = "SCHEMAS";
   	
+    filterClause += getCatalogFilterCondition(catalog, apiSupportedOnlyForConnectedDatabase, databaseColName);
+    
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	filterClause += " AND TABLE_SCHEM LIKE " + escapeQuotes(schemaPattern);
     }
@@ -1654,7 +1671,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     
     tableQuery.append( " WHERE true ");
     
-    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, NO_SCHEMA_UNIVERSAL_QUERY);
+    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, NO_SCHEMA_UNIVERSAL_QUERY, true, null);
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
     
     tableQuery.append(filterClause);
@@ -1663,6 +1680,43 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return tableQuery.toString();
   }
 
+  // Datashare/Cross-db support svv_all_tables view
+  private String buildUniversalAllSchemaTablesQuery(String catalog,
+			String schemaPattern, 
+			String tableNamePattern,
+			String[] types) throws SQLException {
+    StringBuilder tableQuery = new StringBuilder(2048);
+    tableQuery.append("SELECT * FROM (SELECT CAST(DATABASE_NAME AS VARCHAR(124)) AS TABLE_CAT,"
+            + " SCHEMA_NAME AS TABLE_SCHEM,"
+            + " TABLE_NAME  AS TABLE_NAME,"
+            + " CAST("
+            + " CASE "
+            + " WHEN SCHEMA_NAME='information_schema' "
+            + "    AND TABLE_TYPE='TABLE' THEN 'SYSTEM TABLE' "
+            + " WHEN SCHEMA_NAME='information_schema' "
+            + "    AND TABLE_TYPE='VIEW' THEN 'SYSTEM VIEW' "
+            + " ELSE TABLE_TYPE "
+            + " END "             
+            + " AS VARCHAR(124)) AS TABLE_TYPE,"
+            + " REMARKS,"
+            + " '' as TYPE_CAT,"
+            + " '' as TYPE_SCHEM,"
+            + " '' as TYPE_NAME, "
+            + " '' AS SELF_REFERENCING_COL_NAME,"
+            + " '' AS REF_GENERATION "
+            + " FROM PG_CATALOG.SVV_ALL_TABLES)");
+    
+    tableQuery.append( " WHERE true ");
+    
+    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, NO_SCHEMA_UNIVERSAL_QUERY, false, "TABLE_CAT");
+    String orderby = " ORDER BY TABLE_TYPE, TABLE_CAT, TABLE_SCHEM, TABLE_NAME ";
+    
+    tableQuery.append(filterClause);
+    tableQuery.append(orderby);
+    
+    return tableQuery.toString();
+  }
+  
   private String buildExternalSchemaTablesQuery(String catalog,
 													String schemaPattern, 
 													String tableNamePattern,
@@ -1684,7 +1738,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
     tableQuery.append( " WHERE true ");
     
-    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, EXTERNAL_SCHEMA_QUERY);
+    String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, EXTERNAL_SCHEMA_QUERY, true, null);
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
     
     tableQuery.append(filterClause);
@@ -1796,19 +1850,48 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
     String sql;
-    sql = "SELECT nspname AS TABLE_SCHEM, NULL AS TABLE_CATALOG FROM pg_catalog.pg_namespace "
-          + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
-          + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
-          + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ";
-    if (schemaPattern != null && !schemaPattern.isEmpty()) {
-      sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
-    }
-    if (connection.getHideUnprivilegedObjects()) {
-      sql += " AND has_schema_privilege(nspname, 'USAGE, CREATE')";
-    }
-    sql += " ORDER BY TABLE_SCHEM";
+    
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(true, catalog, schemaPattern);
+    
+	  if (isSingleDatabaseMetaData()) {
+	    sql = "SELECT nspname AS TABLE_SCHEM, NULL AS TABLE_CATALOG FROM pg_catalog.pg_namespace "
+	          + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
+	          + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
+	          + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ";
+	    
+	    sql += getCatalogFilterCondition(catalog);
+	    
+	    if (schemaPattern != null && !schemaPattern.isEmpty()) {
+	      sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
+	    }
+	    if (connection.getHideUnprivilegedObjects()) {
+	      sql += " AND has_schema_privilege(nspname, 'USAGE, CREATE')";
+	    }
+	    
+	    sql += " ORDER BY TABLE_SCHEM";
+	  }
+	  else {
+	  	sql = "SELECT CAST(schema_name AS varchar(124)) AS TABLE_SCHEM, " 
+	  				+ " CAST(database_name AS varchar(124)) AS TABLE_CATALOG " 
+	  				+ " FROM PG_CATALOG.SVV_ALL_SCHEMAS " 
+	  				+ " WHERE TRUE ";
+	  	
+	    sql += getCatalogFilterCondition(catalog, false, null);
+	    
+	    if (schemaPattern != null && !schemaPattern.isEmpty()) {
+	      sql += " AND schema_name LIKE " + escapeQuotes(schemaPattern);
+	    }
 
-    return createMetaDataStatement().executeQuery(sql);
+	    sql += " ORDER BY TABLE_CATALOG, TABLE_SCHEM";
+	  }
+
+    ResultSet rs = createMetaDataStatement().executeQuery(sql);
+    
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(false, rs);
+    
+    return rs;
   }
 
   /**
@@ -1817,14 +1900,43 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    Field[] f = new Field[1];
-    List<Tuple> v = new ArrayList<Tuple>();
-    f[0] = new Field("TABLE_CAT", Oid.VARCHAR);
-    byte[][] tuple = new byte[1][];
-    tuple[0] = connection.encodeString(connection.getCatalog());
-    v.add(new Tuple(tuple));
+  	
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(true);
+  	
+  	String sql;
+  	
+  	if (isDatabaseMetadataCurrentDbOnly()) {
+  		// Behavious same as before i.e. returns only single database.
+  		Field[] f = new Field[1];
+      List<Tuple> v = new ArrayList<Tuple>();
+      f[0] = new Field("TABLE_CAT", Oid.VARCHAR);
+      byte[][] tuple = new byte[1][];
+      tuple[0] = connection.encodeString(connection.getCatalog());
+      v.add(new Tuple(tuple));
 
-    return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+      return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+  	}
+  	else if (!isMultiDatabasesCatalogEnableInServer()) { 
+    	// As DataAPI needed list of databases, the driver returns multiple databases,
+  		// using the pg_database.
+	  	sql = "SELECT datname as TABLE_CAT FROM pg_database " + 
+	  		  					" WHERE datistemplate = 'false' and datname!='padb_harvest'";
+  	}
+  	else {
+  		// Datasharing/federation support enable, so get databases using the new view.
+  		sql = "SELECT CAST(database_name AS varchar(124)) AS TABLE_CAT FROM PG_CATALOG.SVV_REDSHIFT_DATABASES ";
+  	}
+	  	
+    sql += " ORDER BY TABLE_CAT";
+
+    ResultSet rs = createMetaDataStatement().executeQuery(sql);
+    
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(false, rs);
+    
+    return rs;
+  	
   }
 
   @Override
@@ -1862,8 +1974,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     	sql = buildLocalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);    	
     }
     else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
-    	// svv_columns
-    	sql = buildUniversalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    	if (isSingleDatabaseMetaData()) {
+	    	// svv_columns
+	    	sql = buildUniversalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    	}
+    	else {
+	    	// svv_all_columns
+	    	sql = buildUniversalAllSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    	}
     }
     else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
     	// svv_external_columns
@@ -2105,6 +2223,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("LEFT JOIN pg_catalog.pg_namespace dn ON (dc.relnamespace=dn.oid AND dn.nspname='pg_catalog') ");
       result.append("WHERE a.attnum > 0 AND NOT a.attisdropped    ");
 
+      result.append(getCatalogFilterCondition(catalog));
+      
       if (schemaPattern != null && !schemaPattern.isEmpty()) {
       	result.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
       }
@@ -2286,6 +2406,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append(" WHERE true ");
 
       // Apply the filters to the column list for late binding view.
+      
+      result.append(getCatalogFilterCondition(catalog));
+      
       if (schemaPattern != null && !schemaPattern.isEmpty()) {
       	result.append(" AND schemaname LIKE " + escapeQuotes(schemaPattern));
       }
@@ -2300,6 +2423,238 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       }
 
       return result.toString();
+  }
+  
+  private String buildUniversalAllSchemaColumnsQuery(String catalog,
+												String schemaPattern, 
+												String tableNamePattern,
+												String columnNamePattern) throws SQLException {
+  	final String unknownColumnSize = "2147483647";
+    
+	  StringBuilder result = new StringBuilder(8192);
+	  
+	  result.append("SELECT database_name AS TABLE_CAT, "
+    + " schema_name AS TABLE_SCHEM, "
+    + " table_name, "
+    + " COLUMN_NAME, "
+    + " CAST(CASE regexp_replace(data_type, '^_.', 'ARRAY') "
+    + " WHEN 'text' THEN 12 "
+    + " WHEN 'bit' THEN -7 "
+    + " WHEN 'bool' THEN -7 "
+    + " WHEN 'boolean' THEN -7 "
+    + " WHEN 'varchar' THEN 12 "
+    + " WHEN 'character varying' THEN 12 "
+    + " WHEN 'char' THEN 1 "
+    + " WHEN 'character' THEN 1 "
+    + " WHEN 'nchar' THEN 1 "
+    + " WHEN 'bpchar' THEN 1 "
+    + " WHEN 'nvarchar' THEN 12 "
+    + " WHEN '\"char\"' THEN 1 "
+    + " WHEN 'date' THEN 91 "
+    + " WHEN 'timestamp' THEN 93 "
+    + " WHEN 'timestamp without time zone' THEN 93 "
+    + " WHEN 'timestamp with time zone' THEN 2014 "
+    + " WHEN 'smallint' THEN 5 "
+    + " WHEN 'int2' THEN 5 "
+    + " WHEN 'integer' THEN 4 "
+    + " WHEN 'int' THEN 4 "
+    + " WHEN 'int4' THEN 4 "
+    + " WHEN 'bigint' THEN -5 "
+    + " WHEN 'int8' THEN -5 "
+    + " WHEN 'decimal' THEN 3 "
+    + " WHEN 'real' THEN 7 "
+    + " WHEN 'float4' THEN 7 "
+    + " WHEN 'double precision' THEN 8 "
+    + " WHEN 'float8' THEN 8 "
+    + " WHEN 'float' THEN 6 "
+    + " WHEN 'numeric' THEN 2 "
+    + " WHEN 'timestamptz' THEN 2014 "
+    + " WHEN 'bytea' THEN -2 "
+    + " WHEN 'oid' THEN -5 "
+    + " WHEN 'name' THEN 12 "
+    + " WHEN 'ARRAY' THEN 2003 "
+    + " WHEN 'geometry' THEN -4 "
+    + " WHEN 'super' THEN -16 "
+    + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE, "
+    + " CASE data_type "
+    + " WHEN 'boolean' THEN 'bool' "
+    + " WHEN 'character varying' THEN 'varchar' "
+    + " WHEN '\"char\"' THEN 'char' "
+    + " WHEN 'smallint' THEN 'int2' "
+    + " WHEN 'integer' THEN 'int4' "
+    + " WHEN 'bigint' THEN 'int8' "
+    + " WHEN 'real' THEN 'float4' "
+    + " WHEN 'double precision' THEN 'float8' "
+    + " WHEN 'timestamp without time zone' THEN 'timestamp' "
+    + " WHEN 'timestamp with time zone' THEN 'timestamptz' "
+    + " ELSE data_type "
+    + " END AS TYPE_NAME, "
+    + " CASE data_type "
+    + " WHEN 'int4' THEN 10 "
+    + " WHEN 'bit' THEN 1 "
+    + " WHEN 'bool' THEN 1 "
+    + " WHEN 'boolean' THEN 1 "
+    + " WHEN 'varchar' THEN character_maximum_length "
+    + " WHEN 'character varying' THEN character_maximum_length "
+    + " WHEN 'char' THEN character_maximum_length "
+    + " WHEN 'character' THEN character_maximum_length "
+    + " WHEN 'nchar' THEN character_maximum_length "
+    + " WHEN 'bpchar' THEN character_maximum_length "
+    + " WHEN 'nvarchar' THEN character_maximum_length "
+    + " WHEN 'date' THEN 13 "
+    + " WHEN 'timestamp' THEN 29 "
+    + " WHEN 'timestamp without time zone' THEN 29 "
+    + " WHEN 'smallint' THEN 5 "
+    + " WHEN 'int2' THEN 5 "
+    + " WHEN 'integer' THEN 10 "
+    + " WHEN 'int' THEN 10 "
+    + " WHEN 'int4' THEN 10 "
+    + " WHEN 'bigint' THEN 19 "
+    + " WHEN 'int8' THEN 19 "
+    + " WHEN 'decimal' THEN numeric_precision "
+    + " WHEN 'real' THEN 8 "
+    + " WHEN 'float4' THEN 8 "
+    + " WHEN 'double precision' THEN 17 "
+    + " WHEN 'float8' THEN 17 "
+    + " WHEN 'float' THEN 17 "
+    + " WHEN 'numeric' THEN numeric_precision "
+    + " WHEN '_float4' THEN 8 "
+    + " WHEN 'timestamptz' THEN 35 "
+    + " WHEN 'timestamp with time zone' THEN 35 "
+    + " WHEN 'oid' THEN 10 "
+    + " WHEN '_int4' THEN 10 "
+    + " WHEN '_int2' THEN 5 "
+    + " WHEN 'geometry' THEN NULL "
+    + " WHEN 'super' THEN NULL "
+    + " ELSE   2147483647 "
+    + " END AS COLUMN_SIZE, "
+    + " NULL AS BUFFER_LENGTH, "
+    + " CASE data_type "
+    + " WHEN 'real' THEN 8 "
+    + " WHEN 'float4' THEN 8 "
+    + " WHEN 'double precision' THEN 17 "
+    + " WHEN 'float8' THEN 17 "
+    + " WHEN 'numeric' THEN numeric_scale "
+    + " WHEN 'timestamp' THEN 6 "
+    + " WHEN 'timestamp without time zone' THEN 6 "
+    + " WHEN 'geometry' THEN NULL "
+    + " WHEN 'super' THEN NULL "
+    + " ELSE 0 "
+    + " END AS DECIMAL_DIGITS, "
+    + " 10 AS NUM_PREC_RADIX, "
+    + " CASE is_nullable WHEN 'YES' THEN 1 "
+    + " WHEN 'NO' THEN 0 "
+    + " ELSE 2 end AS NULLABLE, "
+    + " REMARKS, "
+    + " column_default AS COLUMN_DEF, "
+    + " CAST(CASE regexp_replace(data_type, '^_.', 'ARRAY') "
+    + " WHEN 'text' THEN 12 "
+    + " WHEN 'bit' THEN -7 "
+    + " WHEN 'bool' THEN -7 "
+    + " WHEN 'boolean' THEN -7 "
+    + " WHEN 'varchar' THEN 12 "
+    + " WHEN 'character varying' THEN 12 "
+    + " WHEN 'char' THEN 1 "
+    + " WHEN 'character' THEN 1 "
+    + " WHEN 'nchar' THEN 1 "
+    + " WHEN 'bpchar' THEN 1 "
+    + " WHEN 'nvarchar' THEN 12 "
+    + " WHEN '\"char\"' THEN 1 "
+    + " WHEN 'date' THEN 91 "
+    + " WHEN 'timestamp' THEN 93 "
+    + " WHEN 'timestamp without time zone' THEN 93 "
+    + " WHEN 'timestamp with time zone' THEN 2014 "
+    + " WHEN 'smallint' THEN 5 "
+    + " WHEN 'int2' THEN 5 "
+    + " WHEN 'integer' THEN 4 "
+    + " WHEN 'int' THEN 4 "
+    + " WHEN 'int4' THEN 4 "
+    + " WHEN 'bigint' THEN -5 "
+    + " WHEN 'int8' THEN -5 "
+    + " WHEN 'decimal' THEN 3 "
+    + " WHEN 'real' THEN 7 "
+    + " WHEN 'float4' THEN 7 "
+    + " WHEN 'double precision' THEN 8 "
+    + " WHEN 'float8' THEN 8 "
+    + " WHEN 'float' THEN 6 "
+    + " WHEN 'numeric' THEN 2 "
+    + " WHEN 'timestamptz' THEN 2014 "
+    + " WHEN 'bytea' THEN -2 "
+    + " WHEN 'oid' THEN -5 "
+    + " WHEN 'name' THEN 12 "
+    + " WHEN 'ARRAY' THEN 2003 "
+    + " WHEN 'geometry' THEN -4 "
+    + " WHEN 'super' THEN -16 "
+    + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, "
+    + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
+    + " CASE data_type "
+    + " WHEN 'int4' THEN 10 "
+    + " WHEN 'bit' THEN 1 "
+    + " WHEN 'bool' THEN 1 "
+    + " WHEN 'boolean' THEN 1 "
+    + " WHEN 'varchar' THEN character_maximum_length "
+    + " WHEN 'character varying' THEN character_maximum_length "
+    + " WHEN 'char' THEN character_maximum_length "
+    + " WHEN 'character' THEN character_maximum_length "
+    + " WHEN 'nchar' THEN character_maximum_length "
+    + " WHEN 'bpchar' THEN character_maximum_length "
+    + " WHEN 'nvarchar' THEN character_maximum_length "
+    + " WHEN 'date' THEN 13 "
+    + " WHEN 'timestamp' THEN 29 "
+    + " WHEN 'timestamp without time zone' THEN 29 "
+    + " WHEN 'smallint' THEN 5 "
+    + " WHEN 'int2' THEN 5 "
+    + " WHEN 'integer' THEN 10 "
+    + " WHEN 'int' THEN 10 "
+    + " WHEN 'int4' THEN 10 "
+    + " WHEN 'bigint' THEN 19 "
+    + " WHEN 'int8' THEN 19 "
+    + " WHEN 'decimal' THEN numeric_precision "
+    + " WHEN 'real' THEN 8 "
+    + " WHEN 'float4' THEN 8 "
+    + " WHEN 'double precision' THEN 17 "
+    + " WHEN 'float8' THEN 17 "
+    + " WHEN 'float' THEN 17 "
+    + " WHEN 'numeric' THEN numeric_precision "
+    + " WHEN '_float4' THEN 8 "
+    + " WHEN 'timestamptz' THEN 35 "
+    + " WHEN 'timestamp with time zone' THEN 35 "
+    + " WHEN 'oid' THEN 10 "
+    + " WHEN '_int4' THEN 10 "
+    + " WHEN '_int2' THEN 5 "
+    + " WHEN 'geometry' THEN NULL "
+    + " WHEN 'super' THEN NULL "
+    + " ELSE   2147483647 "
+    + " END AS CHAR_OCTET_LENGTH, "
+    + " ordinal_position AS ORDINAL_POSITION, "
+    + " is_nullable AS IS_NULLABLE, "
+    + " NULL AS SCOPE_CATALOG, "
+    + " NULL AS SCOPE_SCHEMA, "
+    + " NULL AS SCOPE_TABLE, "
+    + " data_type as SOURCE_DATA_TYPE, "
+    + " CASE WHEN left(column_default, 10) = '\"identity\"' THEN 'YES' "
+    + " WHEN left(column_default, 16) = 'default_identity' THEN 'YES' "
+    + " ELSE 'NO' END AS IS_AUTOINCREMENT, "
+    + " IS_AUTOINCREMENT AS IS_GENERATEDCOLUMN "
+    + " FROM PG_CATALOG.svv_all_columns ");	  
+	  
+	  result.append( " WHERE true ");
+	  
+	  result.append(getCatalogFilterCondition(catalog, false, null));
+	  
+    if (schemaPattern != null && !schemaPattern.isEmpty()) {
+    	result.append(" AND schema_name LIKE " + escapeQuotes(schemaPattern));
+    }
+    if (tableNamePattern != null && !tableNamePattern.isEmpty()) {
+    	result.append(" AND table_name LIKE " + escapeQuotes(tableNamePattern));
+    }
+    if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
+    	result.append(" AND COLUMN_NAME LIKE " + escapeQuotes(columnNamePattern));
+    }
+
+    result.append(" ORDER BY TABLE_CAT, TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION ");
+	  
+	  return result.toString();
   }
   
   private String buildUniversalSchemaColumnsQuery(String catalog,
@@ -2523,6 +2878,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	  
 	  result.append( " WHERE true ");
 	  
+	  result.append(getCatalogFilterCondition(catalog));
+	  
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	result.append(" AND table_schema LIKE " + escapeQuotes(schemaPattern));
     }
@@ -2725,6 +3082,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   	
 	  result.append( " WHERE true ");
 	  
+	  result.append(getCatalogFilterCondition(catalog));
+	  
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	result.append(" AND schemaname LIKE " + escapeQuotes(schemaPattern));
     }
@@ -2768,6 +3127,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
           + " AND c.relkind = 'r' "
           + " AND a.attnum > 0 AND NOT a.attisdropped ";
 
+    sql += getCatalogFilterCondition(catalog);
+    
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -2847,6 +3208,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
           + " AND c.relowner = u.usesysid "
           + " AND c.relkind IN ('r','p') ";
 
+    sql += getCatalogFilterCondition(catalog);
+    
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
       sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     }
@@ -3097,6 +3460,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
            "i.indisprimary  AND " +
            "ct.relnamespace = n.oid ";
     
+    sql += getCatalogFilterCondition(catalog);
+    
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -3203,6 +3568,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
            "i.indisprimary  AND " +
            "ct.relnamespace = n.oid ";
 
+    sql += getCatalogFilterCondition(catalog);
+    
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -3287,6 +3654,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       sql += " AND pkic.oid = con.conindid ";
     } */
 
+    sql += getCatalogFilterCondition(primaryCatalog);
+    
     if (primarySchema != null && !primarySchema.isEmpty()) {
       sql += " AND pkn.nspname = " + escapeQuotes(primarySchema);
     }
@@ -3734,6 +4103,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       toAdd.append(" and t.typname like ").append(escapeQuotes(typeNamePattern));
     }
 
+    toAdd.append(getCatalogFilterCondition(catalog));
+    
     // schemaPattern may have been modified above
     if (schemaPattern != null) {
       toAdd.append(" and n.nspname like ").append(escapeQuotes(schemaPattern));
@@ -3861,6 +4232,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + "INNER JOIN pg_catalog.pg_namespace n ON p.pronamespace=n.oid "
         + "LEFT JOIN pg_catalog.pg_description d ON p.prooid=d.objoid "
         + "WHERE true  "; */
+    
+    sql += getCatalogFilterCondition(catalog);
+    
     /*
     if the user provides a schema then search inside the schema for it
      */
@@ -4102,6 +4476,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHERE pg_catalog.format_type(p.prorettype, NULL) != 'void' "
 	        + " AND prokind = 'f' ");
     
+		functionColumnQuery.append(getCatalogFilterCondition(catalog));
+	
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
 //      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     	functionColumnQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
@@ -4583,25 +4959,32 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   {
       if (null != schemaPattern && !schemaPattern.equals(""))
       {
-      	String sql = "select 1 from svv_external_schemas where schemaname like " 
-      									+ escapeQuotes(schemaPattern); 
-      	Statement stmt = null;
-        ResultSet rs = null;
-
-      	try {
-	        stmt = connection.createStatement();
-	        rs = stmt.executeQuery(sql);
-	        if (rs.next()) {
-	        	return EXTERNAL_SCHEMA_QUERY; // Optimized query
-	        }
-	        else
-	        	return LOCAL_SCHEMA_QUERY; // Only local schema
+      	if (isSingleDatabaseMetaData()) {
+	      	String sql = "select 1 from svv_external_schemas where schemaname like " 
+	      									+ escapeQuotes(schemaPattern); 
+	      	Statement stmt = null;
+	        ResultSet rs = null;
+	
+	      	try {
+		        stmt = connection.createStatement();
+		        rs = stmt.executeQuery(sql);
+		        if (rs.next()) {
+		        	return EXTERNAL_SCHEMA_QUERY; // Optimized query
+		        }
+		        else
+		        	return LOCAL_SCHEMA_QUERY; // Only local schema
+	      	}
+	      	finally {
+	      		if (rs != null)
+	      			rs.close();
+	      		if (stmt != null) 
+	      			stmt.close();
+	      	}
       	}
-      	finally {
-      		if (rs != null)
-      			rs.close();
-      		if (stmt != null) 
-      			stmt.close();
+      	else {
+      		// Datashare or cross-db support always go through
+      		// svv_all* view.
+          return NO_SCHEMA_UNIVERSAL_QUERY; // Query both external and local schema
       	}
       }
       else
@@ -4612,4 +4995,38 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       }
   }
   
+  private boolean isSingleDatabaseMetaData() {
+  	return (isDatabaseMetadataCurrentDbOnly()
+  						|| !isMultiDatabasesCatalogEnableInServer());
+  }
+  private boolean isDatabaseMetadataCurrentDbOnly() {
+  	return connection.isDatabaseMetadataCurrentDbOnly();
+  }
+  
+  private boolean isMultiDatabasesCatalogEnableInServer() {
+  	return connection.getQueryExecutor().isDatashareEnabled();
+  }
+
+  private String getCatalogFilterCondition(String catalog) throws SQLException {
+  	return getCatalogFilterCondition(catalog, true, null);
+  }
+
+  private String getCatalogFilterCondition(String catalog, boolean apiSupportedOnlyForConnectedDatabase, String databaseColName) throws SQLException {
+  	String catalogFilter = "";
+    if (catalog != null && !catalog.isEmpty()) {
+		  if (isSingleDatabaseMetaData()
+		  		 || apiSupportedOnlyForConnectedDatabase) {
+		    	// Catalog parameter is not a pattern.
+		    	catalogFilter = " AND current_database() = " + escapeQuotes(catalog);
+		    }
+		  else {
+		  	if (databaseColName == null)
+		  		databaseColName = "database_name";
+		  	
+	    	catalogFilter = " AND " + databaseColName + " = " + escapeQuotes(catalog);
+		  }
+    }
+    
+	  return catalogFilter;
+  }
 }

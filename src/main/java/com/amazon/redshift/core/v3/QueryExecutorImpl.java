@@ -257,7 +257,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
   public Query createSimpleQuery(String sql) throws SQLException {
     List<NativeQuery> queries = Parser.parseJdbcSql(sql,
-        getStandardConformingStrings(), false, true,
+        getStandardConformingStrings(), false, true, true,
         isReWriteBatchedInsertsEnabled());
     return wrap(queries);
   }
@@ -2163,7 +2163,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           		if (msgLoopState.queueTuples == null) {
           			// i.e. First row
           			firstRow = true;
-          			msgLoopState.queueTuples = new RedshiftRowsBlockingQueue<Tuple>(fetchSize, fetchRingBufferSize);
+          			msgLoopState.queueTuples = new RedshiftRowsBlockingQueue<Tuple>(fetchSize, fetchRingBufferSize, logger);
           		}
           		
           		// Add row in the queue
@@ -2768,7 +2768,19 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         throw new RedshiftException(GT.tr("Protocol error.  Session setup failed."),
             RedshiftState.PROTOCOL_VIOLATION);
       }
-    }
+    } 
+    else if ("datashare_enabled".equals(name)) {
+      if ("on".equals(value)) {
+      	setDatashareEnabled(true);
+      } 
+      else if ("off".equals(value)) {
+      	setDatashareEnabled(false);
+      } 
+      else {
+        throw new RedshiftException(GT.tr("Protocol error.  Session setup failed. Invalid value of datashare_enabled parameter. Only on/off are valid values"),
+            RedshiftState.PROTOCOL_VIOLATION);
+      }
+    } // enable_redshift_federation
   }
 
   public void setTimeZone(TimeZone timeZone) {

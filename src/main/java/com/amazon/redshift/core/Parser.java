@@ -38,6 +38,7 @@ public class Parser {
    * @param withParameters            whether to replace ?, ? with $1, $2, etc
    * @param splitStatements           whether to split statements by semicolon
    * @param isBatchedReWriteConfigured whether re-write optimization is enabled
+   * @param isMultiSqlSupport 				whether multiple SQL commands support is enabled 
    * @param returningColumnNames      for simple insert, update, delete add returning with given column names
    * @return list of native queries
    * @throws SQLException if unable to add returning clause (invalid column names)
@@ -45,6 +46,7 @@ public class Parser {
   public static List<NativeQuery> parseJdbcSql(String query, boolean standardConformingStrings,
       boolean withParameters, boolean splitStatements,
       boolean isBatchedReWriteConfigured,
+      boolean isMultiSqlSupport,
       String... returningColumnNames) throws SQLException {
     if (!withParameters && !splitStatements
         && returningColumnNames != null && returningColumnNames.length == 0) {
@@ -145,6 +147,12 @@ public class Parser {
             if (nativeSql.length() > 0) {
               if (addReturning(nativeSql, currentCommandType, returningColumnNames, isReturningPresent)) {
                 isReturningPresent = true;
+              }
+              
+              if(!isMultiSqlSupport) {
+              	// Throw an exception, if application doesn't need multiple SQL commands support.
+                throw new RedshiftException(GT.tr("Multiple SQL commands support is disabled."),
+                    RedshiftState.UNEXPECTED_ERROR);
               }
 
               if (splitStatements) {

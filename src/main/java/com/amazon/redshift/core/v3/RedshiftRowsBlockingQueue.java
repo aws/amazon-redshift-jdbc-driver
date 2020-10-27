@@ -9,6 +9,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.amazon.redshift.core.Tuple;
+import com.amazon.redshift.logger.LogLevel;
+import com.amazon.redshift.logger.RedshiftLogger;
 
 public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
 	private static final long serialVersionUID = -7903933977591709194L;
@@ -30,27 +32,37 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   private boolean skipRows = false;
   private int currentRow = -1;
   
+  // This can be null for default constructor.
+  private RedshiftLogger logger;  
+  
   private Portal currentSuspendedPortal;  
 	
   public RedshiftRowsBlockingQueue(int capacity) {
 		super(capacity);
-  	init(capacity, 0);
+  	init(capacity, 0, null);
 	}
   
-  public RedshiftRowsBlockingQueue(int fetchSize, long fetchRingBufferSize) {
+  public RedshiftRowsBlockingQueue(int fetchSize, long fetchRingBufferSize, RedshiftLogger logger) {
   	super(
   			(fetchSize != 0 
   				 && fetchRingBufferSize == 0) 
   			? fetchSize
   			: Integer.MAX_VALUE);
-  	init(fetchSize, fetchRingBufferSize);
+  	init(fetchSize, fetchRingBufferSize, logger);
   }
   
-  private void init(int fetchSize, long fetchRingBufferSize) {
+  private void init(int fetchSize, long fetchRingBufferSize, RedshiftLogger logger) {
   	this.fetchSize = fetchSize;
   	this.fetchRingBufferSizeCapacity = fetchRingBufferSize;
+  	this.logger = logger;
   	limitByBufSize =  (fetchRingBufferSize != 0);
 		totalFetchRingBufferSize = new AtomicLong();
+		
+    if (RedshiftLogger.isEnable() 
+  			&& logger != null) {
+    	logger.log(LogLevel.DEBUG, "init(): limitByBufSize={0} , totalFetchRingBufferSize={1}, fetchRingBufferSizeCapacity = {2}, fetchSize = {3}", 
+    															limitByBufSize, totalFetchRingBufferSize.get(), fetchRingBufferSizeCapacity, fetchSize);
+    }
   }
   
   @Override
@@ -58,6 +70,13 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   	if (skipRows) return;
   	if (limitByBufSize) {
   		if (e != null) {
+  			
+/*  	    if (RedshiftLogger.isEnable() 
+  	  			&& logger != null) {
+  	    	logger.log(LogLevel.DEBUG, "put(): limitByBufSize={0} , totalFetchRingBufferSize={1}, fetchRingBufferSizeCapacity = {2}, fetchSize = {3}", 
+  	    															limitByBufSize, totalFetchRingBufferSize.get(), fetchRingBufferSizeCapacity, fetchSize);
+  	    } */
+  			
   			// Is buffer at full capacity?
         if(totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
     			final ReentrantLock putLock = this.putLock;
@@ -67,11 +86,19 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
 			  		Tuple row = (Tuple)e;
 			  		long currentBufSize;
 			  		
+		        if (RedshiftLogger.isEnable() 
+		        			&& logger != null) {
+		          logger.log(LogLevel.DEBUG, "put(): Buffer full. Waiting for application to read rows and make space");
+		        }
+			  		
 		  			// Wait buffer at capacity
 	          while (totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
 	            notFull.await(1, TimeUnit.SECONDS);
 	          }
 	            
+		        if (RedshiftLogger.isEnable() && logger != null)
+		          logger.log(LogLevel.DEBUG, "put(): Buffer state change from full to having some space. Now adding a new row."); 
+	          
 	    	  	super.put(e);
 			  			
 	    	  	currentBufSize = totalFetchRingBufferSize.addAndGet(row.length());
@@ -82,10 +109,12 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
 	          putLock.unlock();
 	        }
         }
-        else
+        else {
     	  	super.put(e);
+    	  	totalFetchRingBufferSize.addAndGet(((Tuple)e).length());    	  	
+        }
   		}
-  	}
+  	} // By size
   	else
   		super.put(e);
   }

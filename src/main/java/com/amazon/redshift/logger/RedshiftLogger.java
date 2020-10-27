@@ -3,7 +3,6 @@ package com.amazon.redshift.logger;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Array;
 import java.sql.DriverManager;
 import java.text.FieldPosition;
 import java.text.MessageFormat;

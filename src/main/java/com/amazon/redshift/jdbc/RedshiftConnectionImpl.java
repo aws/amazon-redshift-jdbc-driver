@@ -172,6 +172,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   
   private int reWriteBatchedInsertsSize;
   
+  private boolean databaseMetadataCurrentDbOnly;
+  
   public static String NON_VALIDATING_SSL_FACTORY = "org.postgresql.ssl.NonValidatingFactory"; 
   
 
@@ -287,6 +289,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     if (RedshiftProperty.READ_ONLY.getBoolean(info)) {
       setReadOnly(true);
     }
+    
+    this.databaseMetadataCurrentDbOnly = RedshiftProperty.DATABASE_METADATA_CURRENT_DB_ONLY.getBoolean(info);
 
     this.hideUnprivilegedObjects = RedshiftProperty.HIDE_UNPRIVILEGED_OBJECTS.getBoolean(info);
 
@@ -868,6 +872,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
     firstWarning = null;
   }
 
+  public void setDatabaseMetadataCurrentDbOnly(boolean databaseMetadataCurrentDbOnly) throws SQLException {
+  	this.databaseMetadataCurrentDbOnly = databaseMetadataCurrentDbOnly;
+  }
+  
+  public boolean isDatabaseMetadataCurrentDbOnly() {
+  	return databaseMetadataCurrentDbOnly;
+  }
+  
   @Override
   public void setReadOnly(boolean readOnly) throws SQLException {
   	

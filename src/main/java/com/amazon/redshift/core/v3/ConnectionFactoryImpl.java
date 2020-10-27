@@ -377,7 +377,8 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    if (pluginName != null && pluginName.length() != 0) {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
-// TODO: remove comment from following line once server is ready	    
+	    
+	    // Send protocol version as 1, so server can send optimized extended RSMD.
 //	    paramList.add(new String[]{"client_protocol_version",Integer.toString(EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION)});
 	    
     } // New parameters
@@ -806,6 +807,14 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       SetupQueryRunner.run(queryExecutor, sql.toString(), false);
     }
 
+    String queryGroup = RedshiftProperty.QUERY_GROUP.get(info);
+    if (queryGroup != null && queryGroup.length() != 0) { 
+      StringBuilder sql = new StringBuilder();
+      sql.append("SET query_group TO '");
+      Utils.escapeLiteral(sql, queryGroup, queryExecutor.getStandardConformingStrings());
+      sql.append("'");
+      SetupQueryRunner.run(queryExecutor, sql.toString(), false);
+    }
   }
 
   private boolean isPrimary(QueryExecutor queryExecutor) throws SQLException, IOException {

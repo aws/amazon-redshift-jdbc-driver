@@ -41,6 +41,12 @@ public class Server
     private final int m_port;
 
     /**
+     * Port on witch socket listen.
+     * if used random port
+     */
+    private int local_port;
+
+    /**
      * Instance of Request Handler.
      */
     private final RequestHandler m_handler;
@@ -88,6 +94,10 @@ public class Server
         m_connectionFactory = DefaultBHttpServerConnectionFactory.INSTANCE;
     }
 
+    public int getLocalPort() {
+        return local_port;
+    }
+
     /**
      * Actual start server to work.
      *
@@ -103,6 +113,7 @@ public class Server
                 this.m_defaultSocketConfig.getBacklogSize(),
                 this.m_ipAddress);
             serverSocket.setSoTimeout(m_defaultSocketConfig.getSoTimeout());
+            this.local_port = serverSocket.getLocalPort();
             m_listener = new ListenerThread(serverSocket);
             m_listener.start();
         }

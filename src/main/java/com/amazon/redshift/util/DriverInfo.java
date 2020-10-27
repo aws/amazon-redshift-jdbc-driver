@@ -41,7 +41,7 @@ public final class DriverInfo {
     } catch (IOException ex) {
       // do nothing
     }
-    String[] versionComponents = version.split(".");
+    String[] versionComponents = version.split("\\.");
     int majorVersion = 2;
     int minorVersion = 0;
     int patchVersion = 0;
@@ -50,6 +50,9 @@ public final class DriverInfo {
         majorVersion = Integer.parseInt(versionComponents[0]);
         minorVersion = Integer.parseInt(versionComponents[1]);
         patchVersion = Integer.parseInt(versionComponents[2]);
+      }
+      else {
+      	version = "2.0.0.0";      	
       }
     } catch (NumberFormatException ex) {
       majorVersion = 2;

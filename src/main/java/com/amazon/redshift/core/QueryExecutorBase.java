@@ -66,6 +66,8 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   
   protected boolean enableStatementCache;
   protected int serverProtocolVersion;
+  protected boolean datashareEnabled;
+  protected boolean enableMultiSqlSupport;
   
   protected QueryExecutorBase(RedshiftStream pgStream, String user,
       String database, int cancelSignalTimeout, Properties info,
@@ -95,6 +97,8 @@ public abstract class QueryExecutorBase implements QueryExecutor {
             cachedQuery.query.close();
           }
         });
+    this.datashareEnabled = false;
+    this.enableMultiSqlSupport = RedshiftProperty.ENABLE_MULTI_SQL_SUPPORT.getBoolean(info);
   }
 
   protected abstract void sendCloseMessage() throws IOException;
@@ -250,6 +254,11 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   public int getServerProtocolVersion() {
     return serverProtocolVersion;
   }
+
+  @Override
+  public boolean isDatashareEnabled() {
+    return datashareEnabled;
+  }
   
   @Override
   public int getServerVersionNum() {
@@ -263,12 +272,16 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     this.serverVersion = serverVersion;
   }
 
-  public void setServerProtocolVersion(String serverProtocolVersion) {
+  protected void setServerProtocolVersion(String serverProtocolVersion) {
     this.serverProtocolVersion = (serverProtocolVersion != null && serverProtocolVersion.length() != 0) 
     																? Integer.parseInt(serverProtocolVersion) 
     																: 0;
   }
 
+  protected void setDatashareEnabled(boolean datashareEnabled) {
+    this.datashareEnabled = datashareEnabled;
+  }
+  
   public void setServerVersionNum(int serverVersionNum) {
     this.serverVersionNum = serverVersionNum;
   }
@@ -304,6 +317,12 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   public boolean isReWriteBatchedInsertsEnabled() {
     return this.reWriteBatchedInserts;
   }
+  
+  @Override
+  public  boolean isMultiSqlSupport() {
+    return enableMultiSqlSupport;
+  }
+  
 
   @Override
   public final CachedQuery borrowQuery(String sql) throws SQLException {
