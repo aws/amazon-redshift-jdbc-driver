@@ -25,6 +25,10 @@ build.sh
 It builds **redshift-jdbc42-{version}.jar** and **redshift-jdbc42-{version}.zip** files under **target** directory. 
 The jar file is the Redshift JDBC driver.The zip file contains the driver jar file and all required dependencies files to use AWS SDK for the IDP/IAM features.
 
+### Installation and Configuartion of Driver
+
+See [Amazon Redshift JDBC Driver Installation and Configuration Guide](https://docs.aws.amazon.com/redshift/latest/mgmt/jdbc20_install.html) for more information.
+
 ## Report Bugs
 
 See [CONTRIBUTING](CONTRIBUTING.md#Reporting-Bugs/Feature-Requests) for more information.
