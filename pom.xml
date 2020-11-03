@@ -33,6 +33,7 @@
 
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
+        <jackson.version>2.11.3</jackson.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
@@ -76,7 +77,6 @@
             <artifactId>httpclient</artifactId>
             <version>4.5.2</version>
         </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -400,22 +400,13 @@
                     <archive>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addClasspath>true</addClasspath>
                         </manifest>
                         <manifestEntries>
                             <Main-Class>com.amazon.redshift.util.RedshiftJDBCMain</Main-Class>
                             <Specification-Title>JDBC</Specification-Title>
                             <Specification-Version>${jdbc.specification.version}</Specification-Version>
                             <Specification-Vendor>Oracle Corporation</Specification-Vendor>
-                            <Class-Path>aws-java-sdk-core-1.11.118.jar aws-java-sdk-redshift-1.11.118.jar
-                                aws-java-sdk-sts-1.11.118.jar commons-codec-1.9.jar 
-                                commons-logging-1.1.3.jar commons-logging-1.2.jar
-                                httpclient-4.5.2.jar httpcore-4.4.4.jar 
-                                jackson-annotations-2.10.1.jar jackson-core-2.10.1.jar 
-                                jackson-databind-2.10.1.jar jackson-dataformat-cbor-2.10.1.jar 
-                                jackson-annotations-2.6.0.jar jackson-core-2.6.6.jar 
-                                jackson-databind-2.6.6.jar jackson-dataformat-cbor-2.6.6.jar 
-                                joda-time-2.8.1.jar
-                            </Class-Path>
                             <Automatic-Module-Name>com.amazon.redshift.jdbc</Automatic-Module-Name>
                         </manifestEntries>
                         <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
@@ -778,7 +769,8 @@
                         <failOnViolation>true</failOnViolation>
                         <failsOnError>true</failsOnError>
                         <consoleOutput>true</consoleOutput>
-                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                        <includeTestSourceDirectory>true
+                        </includeTestSourceDirectory>
                     </configuration>
                 </plugin>
 
@@ -788,7 +780,26 @@
 
     <dependencyManagement>
         <dependencies>
-
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-cbor</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
             <dependency>
                 <groupId>se.jiderhamn</groupId>
                 <artifactId>classloader-leak-test-framework</artifactId>

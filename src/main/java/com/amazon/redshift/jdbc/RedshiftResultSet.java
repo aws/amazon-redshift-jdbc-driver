@@ -2114,6 +2114,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return wasNullFlag;
   }
 
+  private boolean isCharType(int columnIndex) throws SQLException {
+  	int colType = getSQLType(columnIndex);
+  	
+  	return (colType == Types.VARCHAR
+  						|| colType == Types.CHAR
+  						|| colType == Types.LONGVARCHAR
+  						|| colType == Types.NVARCHAR
+  						|| colType == Types.NCHAR
+  						|| colType == Types.LONGNVARCHAR);
+  }
+  
   @Override
   public String getString(int columnIndex) throws SQLException {
     if (RedshiftLogger.isEnable()) 
@@ -2125,7 +2136,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
 
     // varchar in binary is same as text, other binary fields are converted to their text format
-    if (isBinary(columnIndex) && getSQLType(columnIndex) != Types.VARCHAR) {
+    if (isBinary(columnIndex) 
+    			&& !isCharType(columnIndex)) {
       Field field = fields[columnIndex - 1];
       Object obj = internalGetObject(columnIndex, field);
       if (obj == null) {
@@ -2230,7 +2242,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     int col = columnIndex - 1;
     if (Oid.BOOL == fields[col].getOID()) {
       final byte[] v = thisRow.get(col);
-      return (1 == v.length) && (116 == v[0]); // 116 = 't'
+      if (isBinary(columnIndex)) {
+      	return (1 == v.length) && (1 == v[0]);      	
+      }
+      else {
+      	return (1 == v.length) && (116 == v[0]); // 116 = 't'
+      }
     }
 
     if (isBinary(columnIndex)) {
@@ -3367,6 +3384,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         val = ByteConverter.int2(bytes, 0);
         break;
       case Oid.INT4:
+      case Oid.OID:
         val = ByteConverter.int4(bytes, 0);
         break;
       case Oid.INT8:

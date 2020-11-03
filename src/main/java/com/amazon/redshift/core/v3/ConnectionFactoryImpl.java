@@ -377,10 +377,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    if (pluginName != null && pluginName.length() != 0) {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
-	    
-	    // Send protocol version as 1, so server can send optimized extended RSMD.
-//	    paramList.add(new String[]{"client_protocol_version",Integer.toString(EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION)});
-	    
     } // New parameters
     
     String replication = RedshiftProperty.REPLICATION.get(info);
@@ -580,7 +576,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
               case AUTH_REQ_MD5: {
                 byte[] md5Salt = pgStream.receive(4);
                 if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqMD5(salt={0})", Utils.toHexString(md5Salt));
+                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqMD5");
                 }
 
                 if (password == null) {
@@ -592,10 +588,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 
                 byte[] digest =
                     MD5Digest.encode(user.getBytes("UTF-8"), password.getBytes("UTF-8"), md5Salt);
-
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " FE=> Password(md5digest={0})", new String(digest, "US-ASCII"));
-                }
 
                 pgStream.sendChar('p');
                 pgStream.sendInteger4(4 + digest.length + 1);
