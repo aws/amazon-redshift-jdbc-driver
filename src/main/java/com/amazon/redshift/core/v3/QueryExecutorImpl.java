@@ -70,6 +70,8 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 /**
@@ -150,6 +152,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   private RingBufferThread m_ringBufferThread = null;
   private boolean m_ringBufferStopThread = false;
   private Object m_ringBufferThreadLock = new Object();
+  
+  // Query or some execution on a socket in process
+  private final Lock m_executingLock = new ReentrantLock();  
 
   /**
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
@@ -320,89 +325,95 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     
     synchronized(this) {
 	  	waitOnLock();
-	    if (RedshiftLogger.isEnable()) {
-	      logger.log(LogLevel.DEBUG, "  simple execute, handler={0}, maxRows={1}, fetchSize={2}, flags={3}",
-	          new Object[]{handler, maxRows, fetchSize, flags});
-	    }
-	
-	    if (handler != null) {
-	    	handler.setStatementStateInQueryFromIdle();	    	
-	    }
-	    
-	    if (parameters == null) {
-	      parameters = SimpleQuery.NO_PARAMETERS;
-	    }
-	
-	    flags = updateQueryMode(flags);
-	
-	    boolean describeOnly = (QUERY_DESCRIBE_ONLY & flags) != 0;
-	
-	    ((V3ParameterList) parameters).convertFunctionOutParameters();
-	
-	    // Check parameters are all set..
-	    if (!describeOnly) {
-	      ((V3ParameterList) parameters).checkAllParametersSet();
-	    }
-	
-	    boolean autosave = false;
-	    try {
-	      try {
-	        handler = sendQueryPreamble(handler, flags);
-	        autosave = sendAutomaticSavepoint(query, flags);
-	        sendQuery(query, (V3ParameterList) parameters, maxRows, fetchSize, flags,
-	            handler, null);
-	        if ((flags & QueryExecutor.QUERY_EXECUTE_AS_SIMPLE) != 0) {
-	          // Sync message is not required for 'Q' execution as 'Q' ends with ReadyForQuery message
-	          // on its own
-	        } else {
-	        	sendFlush();
-	          sendSync(true);
-	        }
-	        processResults(handler, flags, fetchSize, (query.getSubqueries() != null));
-	        estimatedReceiveBufferBytes = 0;
-	      } catch (RedshiftBindException se) {
-	        // There are three causes of this error, an
-	        // invalid total Bind message length, a
-	        // BinaryStream that cannot provide the amount
-	        // of data claimed by the length argument, and
-	        // a BinaryStream that throws an Exception
-	        // when reading.
-	        //
-	        // We simply do not send the Execute message
-	        // so we can just continue on as if nothing
-	        // has happened. Perhaps we need to
-	        // introduce an error here to force the
-	        // caller to rollback if there is a
-	        // transaction in progress?
-	        //
-	        sendSync(true);
-	        processResults(handler, flags, 0, (query.getSubqueries() != null));
-	        estimatedReceiveBufferBytes = 0;
-	        handler
-	            .handleError(new RedshiftException(GT.tr("Unable to bind parameter values for statement."),
-	                RedshiftState.INVALID_PARAMETER_VALUE, se.getIOException(), logger));
-	      }
-	    } catch (IOException e) {
-	      abort();
-	      handler.handleError(
-	          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
-	              RedshiftState.CONNECTION_FAILURE, e, logger));
-	    } catch (SQLException sqe) {
-	      if(RedshiftLogger.isEnable())
-	      	logger.logError(sqe);
-	    	
-	    	throw sqe;
-	    }
-	
-	    try {
-	      handler.handleCompletion();
-	      if (cleanupSavePoints) {
-	        releaseSavePoint(autosave, flags);
-	      }
-	    } catch (SQLException e) {
-	      rollbackIfRequired(autosave, e);
-	    }
-    }
+	  	try {
+	  		m_executingLock.lock();	  		
+		    if (RedshiftLogger.isEnable()) {
+		      logger.log(LogLevel.DEBUG, "  simple execute, handler={0}, maxRows={1}, fetchSize={2}, flags={3}",
+		          new Object[]{handler, maxRows, fetchSize, flags});
+		    }
+		
+		    if (handler != null) {
+		    	handler.setStatementStateInQueryFromIdle();	    	
+		    }
+		    
+		    if (parameters == null) {
+		      parameters = SimpleQuery.NO_PARAMETERS;
+		    }
+		
+		    flags = updateQueryMode(flags);
+		
+		    boolean describeOnly = (QUERY_DESCRIBE_ONLY & flags) != 0;
+		
+		    ((V3ParameterList) parameters).convertFunctionOutParameters();
+		
+		    // Check parameters are all set..
+		    if (!describeOnly) {
+		      ((V3ParameterList) parameters).checkAllParametersSet();
+		    }
+		
+		    boolean autosave = false;
+		    try {
+		      try {
+		        handler = sendQueryPreamble(handler, flags);
+		        autosave = sendAutomaticSavepoint(query, flags);
+		        sendQuery(query, (V3ParameterList) parameters, maxRows, fetchSize, flags,
+		            handler, null);
+		        if ((flags & QueryExecutor.QUERY_EXECUTE_AS_SIMPLE) != 0) {
+		          // Sync message is not required for 'Q' execution as 'Q' ends with ReadyForQuery message
+		          // on its own
+		        } else {
+		        	sendFlush();
+		          sendSync(true);
+		        }
+		        processResults(handler, flags, fetchSize, (query.getSubqueries() != null));
+		        estimatedReceiveBufferBytes = 0;
+		      } catch (RedshiftBindException se) {
+		        // There are three causes of this error, an
+		        // invalid total Bind message length, a
+		        // BinaryStream that cannot provide the amount
+		        // of data claimed by the length argument, and
+		        // a BinaryStream that throws an Exception
+		        // when reading.
+		        //
+		        // We simply do not send the Execute message
+		        // so we can just continue on as if nothing
+		        // has happened. Perhaps we need to
+		        // introduce an error here to force the
+		        // caller to rollback if there is a
+		        // transaction in progress?
+		        //
+		        sendSync(true);
+		        processResults(handler, flags, 0, (query.getSubqueries() != null));
+		        estimatedReceiveBufferBytes = 0;
+		        handler
+		            .handleError(new RedshiftException(GT.tr("Unable to bind parameter values for statement."),
+		                RedshiftState.INVALID_PARAMETER_VALUE, se.getIOException(), logger));
+		      }
+		    } catch (IOException e) {
+		      abort();
+		      handler.handleError(
+		          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
+		              RedshiftState.CONNECTION_FAILURE, e, logger));
+		    } catch (SQLException sqe) {
+		      if(RedshiftLogger.isEnable())
+		      	logger.logError(sqe);
+		    	
+		    	throw sqe;
+		    }
+		
+		    try {
+		      handler.handleCompletion();
+		      if (cleanupSavePoints) {
+		        releaseSavePoint(autosave, flags);
+		      }
+		    } catch (SQLException e) {
+		      rollbackIfRequired(autosave, e);
+		    }
+	  	} 
+	  	finally {
+	  		m_executingLock.unlock();
+	  	}
+    } // synchronized
   }
 
   private boolean sendAutomaticSavepoint(Query query, int flags) throws IOException {
@@ -526,80 +537,87 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	
     synchronized(this) {
 	    waitOnLock();
-	    if (RedshiftLogger.isEnable()) {
-	      logger.log(LogLevel.DEBUG, "  batch execute {0} queries, handler={1}, maxRows={2}, fetchSize={3}, flags={4}",
-	          new Object[]{queries.length, batchHandler, maxRows, fetchSize, flags});
-	    }
-	
-	    if (batchHandler != null) {
-	    	batchHandler.setStatementStateInQueryFromIdle();	    	
-	    }
-	    
-	    flags = updateQueryMode(flags);
-	
-	    boolean describeOnly = (QUERY_DESCRIBE_ONLY & flags) != 0;
-	    // Check parameters and resolve OIDs.
-	    if (!describeOnly) {
-	      for (ParameterList parameterList : parameterLists) {
-	        if (parameterList != null) {
-	          ((V3ParameterList) parameterList).checkAllParametersSet();
-	        }
-	      }
-	    }
-	
-	    boolean autosave = false;
-	    ResultHandler handler = batchHandler;
 	    try {
-	      handler = sendQueryPreamble(batchHandler, flags);
-	      autosave = sendAutomaticSavepoint(queries[0], flags);
-	      estimatedReceiveBufferBytes = 0;
+	    	m_executingLock.lock();
+	    	
+		    if (RedshiftLogger.isEnable()) {
+		      logger.log(LogLevel.DEBUG, "  batch execute {0} queries, handler={1}, maxRows={2}, fetchSize={3}, flags={4}",
+		          new Object[]{queries.length, batchHandler, maxRows, fetchSize, flags});
+		    }
+		
+		    if (batchHandler != null) {
+		    	batchHandler.setStatementStateInQueryFromIdle();	    	
+		    }
+		    
+		    flags = updateQueryMode(flags);
+		
+		    boolean describeOnly = (QUERY_DESCRIBE_ONLY & flags) != 0;
+		    // Check parameters and resolve OIDs.
+		    if (!describeOnly) {
+		      for (ParameterList parameterList : parameterLists) {
+		        if (parameterList != null) {
+		          ((V3ParameterList) parameterList).checkAllParametersSet();
+		        }
+		      }
+		    }
+		
+		    boolean autosave = false;
+		    ResultHandler handler = batchHandler;
+		    try {
+		      handler = sendQueryPreamble(batchHandler, flags);
+		      autosave = sendAutomaticSavepoint(queries[0], flags);
+		      estimatedReceiveBufferBytes = 0;
+		
+		      for (int i = 0; i < queries.length; ++i) {
+		        Query query = queries[i];
+		        V3ParameterList parameters = (V3ParameterList) parameterLists[i];
+		        if (parameters == null) {
+		          parameters = SimpleQuery.NO_PARAMETERS;
+		        }
+		
+		        sendQuery(query, parameters, maxRows, fetchSize, flags, handler, batchHandler);
+		
+		        if (handler.getException() != null) {
+		          break;
+		        }
+		      }
+		
+		      if (handler.getException() == null) {
+		        if ((flags & QueryExecutor.QUERY_EXECUTE_AS_SIMPLE) != 0) {
+		          // Sync message is not required for 'Q' execution as 'Q' ends with ReadyForQuery message
+		          // on its own
+		        } else {
+		        	sendFlush();
+		          sendSync(true);
+		        }
+		        processResults(handler, flags, fetchSize, true);
+		        estimatedReceiveBufferBytes = 0;
+		      }
+		    } catch (IOException e) {
+		      abort();
+		      handler.handleError(
+		          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
+		              RedshiftState.CONNECTION_FAILURE, e, logger));
+		    } catch (SQLException sqe) {
+			      if(RedshiftLogger.isEnable())
+			      	logger.logError(sqe);
+			    	
+			    	throw sqe;
+		    }
 	
-	      for (int i = 0; i < queries.length; ++i) {
-	        Query query = queries[i];
-	        V3ParameterList parameters = (V3ParameterList) parameterLists[i];
-	        if (parameters == null) {
-	          parameters = SimpleQuery.NO_PARAMETERS;
-	        }
-	
-	        sendQuery(query, parameters, maxRows, fetchSize, flags, handler, batchHandler);
-	
-	        if (handler.getException() != null) {
-	          break;
-	        }
-	      }
-	
-	      if (handler.getException() == null) {
-	        if ((flags & QueryExecutor.QUERY_EXECUTE_AS_SIMPLE) != 0) {
-	          // Sync message is not required for 'Q' execution as 'Q' ends with ReadyForQuery message
-	          // on its own
-	        } else {
-	        	sendFlush();
-	          sendSync(true);
-	        }
-	        processResults(handler, flags, fetchSize, true);
-	        estimatedReceiveBufferBytes = 0;
-	      }
-	    } catch (IOException e) {
-	      abort();
-	      handler.handleError(
-	          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
-	              RedshiftState.CONNECTION_FAILURE, e, logger));
-	    } catch (SQLException sqe) {
-		      if(RedshiftLogger.isEnable())
-		      	logger.logError(sqe);
-		    	
-		    	throw sqe;
+		    try {
+		      handler.handleCompletion();
+		      if (cleanupSavePoints) {
+		        releaseSavePoint(autosave, flags);
+		      }
+		    } catch (SQLException e) {
+		      rollbackIfRequired(autosave, e);
+		    }
 	    }
-
-	    try {
-	      handler.handleCompletion();
-	      if (cleanupSavePoints) {
-	        releaseSavePoint(autosave, flags);
-	      }
-	    } catch (SQLException e) {
-	      rollbackIfRequired(autosave, e);
+	    finally {
+	    	m_executingLock.unlock();	    	
 	    }
-    }
+    } // synchronized
   }
 
   private ResultHandler sendQueryPreamble(final ResultHandler delegateHandler, int flags)
@@ -2429,39 +2447,45 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	
     synchronized(this) {
 	    waitOnLock();
-	    final Portal portal = (Portal) cursor;
-	
-	    // Insert a ResultHandler that turns bare command statuses into empty datasets
-	    // (if the fetch returns no rows, we see just a CommandStatus..)
-	    final ResultHandler delegateHandler = handler;
-	    handler = new ResultHandlerDelegate(delegateHandler) {
-	      @Override
-	      public void handleCommandStatus(String status, long updateCount, long insertOID) {
-	        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null, null);
-	      }
-	    };
-	
-	    // Now actually run it.
-	
 	    try {
-	      processDeadParsedQueries();
-	      processDeadPortals();
-	
-	      sendExecute(portal.getQuery(), portal, fetchSize);
-      	sendFlush();
-	      sendSync(true);
-	
-	      processResults(handler, 0, fetchSize, (portal.getQuery().getSubqueries() != null), initRowCount);
-	      estimatedReceiveBufferBytes = 0;
-	    } catch (IOException e) {
-	      abort();
-	      handler.handleError(
-	          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
-	              RedshiftState.CONNECTION_FAILURE, e));
+	    	m_executingLock.lock();
+		    final Portal portal = (Portal) cursor;
+		
+		    // Insert a ResultHandler that turns bare command statuses into empty datasets
+		    // (if the fetch returns no rows, we see just a CommandStatus..)
+		    final ResultHandler delegateHandler = handler;
+		    handler = new ResultHandlerDelegate(delegateHandler) {
+		      @Override
+		      public void handleCommandStatus(String status, long updateCount, long insertOID) {
+		        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null, null);
+		      }
+		    };
+		
+		    // Now actually run it.
+		
+		    try {
+		      processDeadParsedQueries();
+		      processDeadPortals();
+		
+		      sendExecute(portal.getQuery(), portal, fetchSize);
+	      	sendFlush();
+		      sendSync(true);
+		
+		      processResults(handler, 0, fetchSize, (portal.getQuery().getSubqueries() != null), initRowCount);
+		      estimatedReceiveBufferBytes = 0;
+		    } catch (IOException e) {
+		      abort();
+		      handler.handleError(
+		          new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
+		              RedshiftState.CONNECTION_FAILURE, e));
+		    }
+		
+		    handler.handleCompletion();
 	    }
-	
-	    handler.handleCompletion();
-    }
+	    finally {
+	    	m_executingLock.unlock();	    	
+	    }
+    } // synchronized
   }
 
   /*
@@ -2851,52 +2875,57 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   																						Thread ringBufferThread)
   {
   	synchronized(m_ringBufferThreadLock) {
-			// Wait for full read of any executing command
-			if(m_ringBufferThread != null)
-			{
-				long joinWaitTime = 120*1000; // 2 min
-				
-				try
+  		try {
+	  		m_executingLock.lock();
+				// Wait for full read of any executing command
+				if(m_ringBufferThread != null)
 				{
-					if(calledFromConnectionClose)
+					long joinWaitTime = 120*1000; // 2 min
+					
+					try
 					{
-						// Interuupt the current thread
-						m_ringBufferStopThread = true;
-						m_ringBufferThread.interrupt();
-						return;
-					}
-					else
-					if (calledFromResultsetClose)
-					{
-						// Drain results from the socket 
-						if (queueRows != null)
-							queueRows.setSkipRows();
-						
-						// Wait for thread associated with result to terminate.
-						if (ringBufferThread != null) {
-							ringBufferThread.join(joinWaitTime);
+						if(calledFromConnectionClose)
+						{
+							// Interrupt the current thread
+							m_ringBufferStopThread = true;
+							m_ringBufferThread.interrupt();
+							return;
 						}
-						
-						if (queueRows != null)
-							queueRows.close();
+						else
+						if (calledFromResultsetClose)
+						{
+							// Drain results from the socket 
+							if (queueRows != null)
+								queueRows.setSkipRows();
+							
+							// Wait for thread associated with result to terminate.
+							if (ringBufferThread != null) {
+								ringBufferThread.join(joinWaitTime);
+							}
+							
+							if (queueRows != null)
+								queueRows.close();
+						}
+						else {
+							// Application is trying to execute another SQL on same connection.
+							// Wait for current thread to terminate.
+							m_ringBufferThread.join(); // joinWaitTime
+						}
 					}
-					else {
-						// Application is trying to execute another SQL on same connection.
-						// Wait for current thread to terminate.
-						m_ringBufferThread.join(joinWaitTime);
+					catch(Throwable th)
+					{
+						// Ignore it
 					}
 				}
-				catch(Throwable th)
-				{
-					// Ignore it
+				else {
+					// Buffer thread is terminated.
+					if (queueRows != null && calledFromResultsetClose)
+						queueRows.close();
 				}
-			}
-			else {
-				// Buffer thread is terminated.
-				if (queueRows != null && calledFromResultsetClose)
-					queueRows.close();
-			}
-			
+  		}
+  		finally {
+	  		m_executingLock.unlock();
+  		}
   	}
   }
   
@@ -2998,7 +3027,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	@Override
   	public void run() 
   	{
-			// TODO: Do we have to synchronize on this?
+  		// TODO: Do we have to synchronize on this?  		
   		try
   		{
   			// Process result

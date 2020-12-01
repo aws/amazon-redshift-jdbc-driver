@@ -1906,7 +1906,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   	
   	String sql;
   	
-  	if (isDatabaseMetadataCurrentDbOnly()) {
+  	if (isSingleDatabaseMetaData()) {
   		// Behavious same as before i.e. returns only single database.
   		Field[] f = new Field[1];
       List<Tuple> v = new ArrayList<Tuple>();
@@ -1916,12 +1916,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       v.add(new Tuple(tuple));
 
       return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-  	}
-  	else if (!isMultiDatabasesCatalogEnableInServer()) { 
-    	// As DataAPI needed list of databases, the driver returns multiple databases,
-  		// using the pg_database.
-	  	sql = "SELECT datname as TABLE_CAT FROM pg_database " + 
-	  		  					" WHERE datistemplate = 'false' and datname!='padb_harvest'";
   	}
   	else {
   		// Datasharing/federation support enable, so get databases using the new view.
