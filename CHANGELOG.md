@@ -6,7 +6,7 @@ Changelog
 ------------
 - Fix synchronization issue. [ilesh Garish]
 
-[2.0.0.]
+[2.0.0.0]
 ------------
 - Fixes from security review. [ilesh Garish]
 - Update README.md. [iggarish]
