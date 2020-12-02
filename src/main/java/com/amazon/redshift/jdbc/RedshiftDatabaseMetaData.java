@@ -1087,7 +1087,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN NULL "
             + " WHEN 'nvarchar' THEN NULL "
             + " WHEN 'text' THEN NULL "
-            + " WHEN 'date' THEN NULL "
+            + " WHEN 'date' THEN 10 "
             + " WHEN 'timestamp' THEN 6 "
             + " WHEN 'smallint' THEN 5 "
             + " WHEN 'int2' THEN 5 "
@@ -1286,7 +1286,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN NULL "
             + " WHEN 'nvarchar' THEN NULL "
             + " WHEN 'text' THEN NULL "
-            + " WHEN 'date' THEN NULL "
+            + " WHEN 'date' THEN 10 "
             + " WHEN 'timestamp' THEN 6 "
             + " WHEN 'smallint' THEN 5 "
             + " WHEN 'int2' THEN 5 "
@@ -1442,7 +1442,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " THEN generate_series(array_lower(proargnames, 1), array_upper(proargnames, 1))-1"
             + " ELSE generate_series(array_lower(proargnames, 1), array_upper(proargnames, 1)+1)-1 "
             + " END AS pos"
-            + " FROM pg_catalog.pg_proc_info p ) AS s ON (pos >= 0 AND pos <= pronargs+1)");
+            + " FROM pg_catalog.pg_proc_info p ) AS s ON (pos >= 0)");
     
     procedureColQuery.append(" WHERE true ");
     
