@@ -34,8 +34,5 @@ Changelog
 - Added initial content in README file. [ilesh Garish]
 - Added link of open issues and close issues. [ilesh Garish]
 - Initial version. [Ilesh Garish]
-
-  cr https://code.amazon.com/reviews/CR-30494465
-- Initial commit. [Amazon GitHub Automation]
-
+ 
 
