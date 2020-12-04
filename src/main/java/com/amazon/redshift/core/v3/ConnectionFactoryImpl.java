@@ -72,6 +72,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   // Server protocol versions
   public static int BASE_SERVER_PROTOCOL_VERSION = 0;
   public static int EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 1;
+  public static int DEFAULT_SERVER_PROTOCOL_VERSION = EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION;
   
   private ISSPIClient createSSPI(RedshiftStream pgStream,
       String spnServiceClass,
@@ -377,6 +378,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    if (pluginName != null && pluginName.length() != 0) {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
+	    
+      // Send protocol version.
+      String clientProtocolVersion = info.getProperty("client_protocol_version", Integer.toString(DEFAULT_SERVER_PROTOCOL_VERSION)); // Undocumented property to lower the protocol version.
+      paramList.add(new String[]{"client_protocol_version",clientProtocolVersion});
     } // New parameters
     
     String replication = RedshiftProperty.REPLICATION.get(info);
