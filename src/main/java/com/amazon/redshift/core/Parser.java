@@ -16,7 +16,9 @@ import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Basic query parser infrastructure.
@@ -61,6 +63,7 @@ public class Parser {
 
     StringBuilder nativeSql = new StringBuilder(query.length() + 10);
     List<Integer> bindPositions = null; // initialized on demand
+    Set<String> redshiftBindNames = null; // initialized on demand
     List<NativeQuery> nativeQueries = null;
     boolean isCurrentReWriteCompatible = false;
     boolean isValuesFound = false;
@@ -78,6 +81,10 @@ public class Parser {
     int keyWordCount = 0;
     int keywordStart = -1;
     int keywordEnd = -1;
+    
+    boolean jdbcParameterMarker = false;
+    boolean redshiftParameterMarker = false;
+    
     for (int i = 0; i < aChars.length; ++i) {
       char aChar = aChars[i];
       boolean isKeyWordChar = false;
@@ -102,7 +109,39 @@ public class Parser {
           break;
 
         case '$': // possibly dollar quote start
+        	int savPos = i;
           i = Parser.parseDollarQuotes(aChars, i);
+          if (savPos == i && withParameters) {
+          	i = Parser.parseDollarParam(aChars, i);
+          	if (i != savPos) {
+              if(jdbcParameterMarker) {
+              	// Throw an exception, if application uses $ and ? both as parameter marker.
+                throw new RedshiftException(GT.tr("Redshift parameter marker and JDBC parameter marker in same SQL command is not allowed."),
+                    RedshiftState.UNEXPECTED_ERROR);
+              }
+          		
+          		redshiftParameterMarker = true;
+          		// Get $ and all digits
+          		String paramName = new String(aChars, savPos, i - savPos + 1);
+              nativeSql.append(aChars, fragmentStart, (i + 1) - fragmentStart);
+              fragmentStart = i + 1; // Point at after the last digit
+          		// We found $n parameter marker 
+              if (redshiftBindNames == null) {
+              	redshiftBindNames = new HashSet<String>();
+              }
+              
+              if (bindPositions == null) {
+                bindPositions = new ArrayList<Integer>();
+              }
+              
+              // is it unique?
+              if (!redshiftBindNames.contains(paramName)) {
+              	redshiftBindNames.add(paramName);
+	              int dollarSignPos = nativeSql.length() - (i - savPos) - 1;
+	              bindPositions.add(dollarSignPos); // Point at $
+              }
+          	}
+          }
           break;
 
         // case '(' moved below to parse "values(" properly
@@ -125,6 +164,13 @@ public class Parser {
             if (!withParameters) {
               nativeSql.append('?');
             } else {
+              if(redshiftParameterMarker) {
+              	// Throw an exception, if application uses $ and ? both as parameter marker.
+                throw new RedshiftException(GT.tr("Redshift parameter marker and JDBC parameter marker in same SQL command is not allowed."),
+                    RedshiftState.UNEXPECTED_ERROR);
+              }
+            	
+            	jdbcParameterMarker = true;
               if (bindPositions == null) {
                 bindPositions = new ArrayList<Integer>();
               }
@@ -261,7 +307,7 @@ public class Parser {
           valuesBraceOpenPosition = nativeSql.length() + i - fragmentStart;
         }
       }
-    }
+    } // Loop for each char
 
     if (!isValuesFound || !isCurrentReWriteCompatible || valuesBraceClosePosition == -1
         || (bindPositions != null
@@ -500,6 +546,34 @@ public class Parser {
     }
     return offset;
   }
+  
+  /**
+   * Skip all digits for backend parameter marker e.g. $1, $10 etc. 
+   * 
+   * @param query User query
+   * @param offset start offset
+   * @return offset of the ending digit
+   */
+  private static int parseDollarParam(final char[] query, int offset) {
+  	int numDigits = 0;
+  	int savOffset = offset;
+  	
+  	// Skip $
+  	offset++;
+  	
+  	// Loop for each digits
+  	while(offset < query.length) {
+  		if (Character.isDigit(query[offset])) {
+  			offset++;
+  			numDigits++;
+  		}
+  		else
+  			break;
+  	}
+  	
+  	return savOffset + numDigits;
+  }
+  
 
   /**
    * Test if the {@code -} character at {@code offset} starts a {@code --} style line comment,
