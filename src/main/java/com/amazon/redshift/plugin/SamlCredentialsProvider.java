@@ -236,6 +236,10 @@ public abstract class SamlCredentialsProvider implements IPlugin
         {
             throw new SdkClientException("Unable to load AWS credentials from ADFS");
         }
+        if(RedshiftLogger.isEnable()) {
+            Date now = new Date();
+            m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
+        }
         return credentials;
     }
 

@@ -54,6 +54,10 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
         
         if (credentials != null && !credentials.isExpired())
         {
+            if(RedshiftLogger.isEnable()) {
+                Date now = new Date();
+                m_log.logInfo(now + ": Using existing entry for PluginProfilesConfigFile.getCredentials cache with expiration " + credentials.getExpiration());
+            }
             return credentials;
         }
 
@@ -78,6 +82,10 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
             credentials = assumeRole(profile, provider);
             credentials.setMetadata(srcCred.getMetadata());
             cache.put(profileName, credentials);
+            if(RedshiftLogger.isEnable()) {
+                Date now = new Date();
+                m_log.logInfo(now + ": Adding new role based entry for PluginProfilesConfigFile.getCredentials cache with expiration " + credentials.getExpiration());
+            }
             return credentials;
         }
 
@@ -189,6 +197,10 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
         credentials.setMetadata(metadata);
 
         cache.put(profileName, credentials);
+        if(RedshiftLogger.isEnable()) {
+            Date now = new Date();
+            m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
+        }
         return credentials;
     }
 

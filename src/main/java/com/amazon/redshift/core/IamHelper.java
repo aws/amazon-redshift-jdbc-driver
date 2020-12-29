@@ -33,7 +33,9 @@ import com.amazon.redshift.util.RedshiftState;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +45,11 @@ import java.util.Set;
 
 public final class IamHelper
 {
+	private static final int MAX_AMAZONCLIENT_RETRY = 5;
+	private static final int MAX_AMAZONCLIENT_RETRY_DELAY_MS = 1000;
+
+	private static Map<String, GetClusterCredentialsResult> credentialsCache = new HashMap<String, GetClusterCredentialsResult>();
+
     private IamHelper()
     {
     }
@@ -545,6 +552,34 @@ public final class IamHelper
                 settings.m_port = endpoint.getPort();
             }
 
+            GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log);
+            settings.m_username = result.getDbUser();
+            settings.m_password = result.getDbPassword();
+            if(RedshiftLogger.isEnable()) {
+                Date now = new Date();
+                log.logInfo(now + ": Using GetClusterCredentialsResult with expiration " + result.getExpiration());
+            }
+        }
+        catch (AmazonClientException e)
+        {
+        	RedshiftException err =  new RedshiftException(GT.tr("IAM error retrieving temp credentials: {0}",
+										e.getMessage()),
+        					RedshiftState.UNEXPECTED_ERROR,e);
+
+          if(RedshiftLogger.isEnable())
+						log.log(LogLevel.ERROR, err.toString());
+
+          throw err;
+        }
+    }
+
+    private static synchronized GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings, AmazonRedshift client, RedshiftLogger log) throws AmazonClientException
+    {
+        String key = getCredentialsCacheKey(settings);
+        GetClusterCredentialsResult credentials = credentialsCache.get(key);
+        if (credentials == null || credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+        {
+            credentialsCache.remove(key);
             GetClusterCredentialsRequest request = new GetClusterCredentialsRequest();
             request.setClusterIdentifier(settings.m_clusterIdentifier);
             if (settings.m_iamDuration > 0)
@@ -556,24 +591,56 @@ public final class IamHelper
             request.setDbUser(settings.m_dbUser == null ? settings.m_username : settings.m_dbUser);
             request.setAutoCreate(settings.m_autocreate);
             request.setDbGroups(settings.m_dbGroups);
-            
-            if(RedshiftLogger.isEnable())
-            	log.logDebug(request.toString());
 
-            GetClusterCredentialsResult result = client.getClusterCredentials(request);
-            settings.m_username = result.getDbUser();
-            settings.m_password = result.getDbPassword();
-        }
-        catch (AmazonClientException e)
-        {
-        	RedshiftException err =  new RedshiftException(GT.tr("IAM error retrieving temp credentials: {0}", 
-										e.getMessage()),
-        					RedshiftState.UNEXPECTED_ERROR,e);         	
+            if (RedshiftLogger.isEnable())
+                log.logInfo(request.toString());
 
-          if(RedshiftLogger.isEnable())
-						log.log(LogLevel.ERROR, err.toString());
-        	
-          throw err;
+            for (int i = 0; i < MAX_AMAZONCLIENT_RETRY; ++i)
+            {
+                try
+                {
+                    credentials = client.getClusterCredentials(request);
+                    break;
+                } catch (AmazonClientException ace)
+                {
+                    if (ace.getMessage().contains("Rate exceeded") && i < MAX_AMAZONCLIENT_RETRY-1)
+                    {
+                        if(RedshiftLogger.isEnable())
+                            log.logInfo("getClusterCredentialsResult caught 'Rate exceeded' error...");
+                        try
+                        {
+                            Thread.sleep(MAX_AMAZONCLIENT_RETRY_DELAY_MS);
+                        }
+                        catch (InterruptedException ex)
+                        {
+                            Thread.currentThread().interrupt();
+                        }
+                        continue;
+                    } else
+                    {
+                        throw ace;
+                    }
+                }
+            }
+
+            credentialsCache.put(key, credentials);
         }
+        return credentials;
     }
+
+	private static String getCredentialsCacheKey(RedshiftJDBCSettings settings)
+	{
+        String dbGroups = "";
+        if (settings.m_dbGroups != null && !settings.m_dbGroups.isEmpty())
+        {
+            Collections.sort(settings.m_dbGroups);
+            dbGroups = String.join(",", settings.m_dbGroups);
+        }
+        return settings.m_clusterIdentifier + ";" +
+                (settings.m_dbUser == null ? settings.m_username : settings.m_dbUser) + ";" +
+                (settings.m_Schema == null ? "" : settings.m_Schema) + ";" +
+                dbGroups + ";" +
+                settings.m_autocreate + ";" +
+                settings.m_iamDuration;
+	}
 }

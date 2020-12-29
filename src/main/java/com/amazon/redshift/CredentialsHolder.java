@@ -69,7 +69,7 @@ public class CredentialsHolder implements AWSCredentials
 
     public boolean isExpired()
     {
-        return m_expiration != null && m_expiration.before(new Date());
+        return m_expiration != null && m_expiration.before(new Date(System.currentTimeMillis() - 60 * 1000 * 5));
     }
 
     public Date getExpiration()
