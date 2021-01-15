@@ -111,7 +111,14 @@ public class Parser {
         case '$': // possibly dollar quote start
         	int savPos = i;
           i = Parser.parseDollarQuotes(aChars, i);
-          if (savPos == i && withParameters) {
+          
+          // PREPARE SQL command has own way of replacing $ marker.
+          // Those are not JDBC Bind values but values pass during EXECUTE SQL call.
+          // Also check for whether it is part of an identifier or not.
+          if (savPos == i 
+          			&& withParameters 
+          			&& currentCommandType != SqlCommandType.PREPARE
+          			&& keywordStart == -1) {
           	i = Parser.parseDollarParam(aChars, i);
           	if (i != savPos) {
               if(jdbcParameterMarker) {
@@ -291,6 +298,10 @@ public class Parser {
             currentCommandType = command;
           }
         }
+        else if (wordLength == 7 && parsePrepareKeyword(aChars, keywordStart)) {
+        	currentCommandType = SqlCommandType.PREPARE;
+        }
+        
         if (inParen != 0 || aChar == ')') {
           // RETURNING and VALUES cannot be present in braces
         } else if (wordLength == 9 && parseReturningKeyword(aChars, keywordStart)) {
@@ -693,6 +704,27 @@ public class Parser {
         && (query[offset + 3] | 32) == 'e';
   }
 
+  /**
+   * Parse string to check presence of PREPARE keyword regardless of case.
+   *
+   * @param query char[] of the query statement
+   * @param offset position of query to start checking
+   * @return boolean indicates presence of word
+   */
+  public static boolean parsePrepareKeyword(final char[] query, int offset) {
+    if (query.length < (offset + 7)) {
+      return false;
+    }
+
+    return (query[offset] | 32) == 'p'
+        && (query[offset + 1] | 32) == 'r'
+        && (query[offset + 2] | 32) == 'e'
+        && (query[offset + 3] | 32) == 'p'
+		    && (query[offset + 4] | 32) == 'a'
+		    && (query[offset + 5] | 32) == 'r'
+		    && (query[offset + 6] | 32) == 'e';
+  }
+  
   /**
    * Parse string to check presence of RETURNING keyword regardless of case.
    *

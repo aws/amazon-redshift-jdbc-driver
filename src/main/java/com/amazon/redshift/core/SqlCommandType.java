@@ -23,5 +23,6 @@ public enum SqlCommandType {
   DELETE,
   MOVE,
   SELECT,
-  WITH;
+  WITH,
+  PREPARE;
 }
