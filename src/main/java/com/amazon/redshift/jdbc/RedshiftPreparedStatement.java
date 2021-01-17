@@ -1181,8 +1181,13 @@ class RedshiftPreparedStatement extends RedshiftStatementImpl implements Prepare
           flags);
       ResultWrapper wrapper = handler.getResults();
       if (wrapper != null) {
+      	// Keep reference to close the result
+      	firstUnclosedResult = wrapper;
         rs = wrapper.getResultSet();
       }
+      
+      // Describe only execution is done.
+			handler.setStatementStateIdleFromInQuery();
     }
 
     ResultSetMetaData rc;
