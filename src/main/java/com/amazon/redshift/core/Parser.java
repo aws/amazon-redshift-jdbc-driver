@@ -291,15 +291,15 @@ public class Parser {
               isCurrentReWriteCompatible = false;
             }
           }
+          else if (wordLength == 7 && parsePrepareKeyword(aChars, keywordStart)) {
+          	currentCommandType = SqlCommandType.PREPARE;
+          }
         } else if (currentCommandType == SqlCommandType.WITH
             && inParen == 0) {
           SqlCommandType command = parseWithCommandType(aChars, i, keywordStart, wordLength);
           if (command != null) {
             currentCommandType = command;
           }
-        }
-        else if (wordLength == 7 && parsePrepareKeyword(aChars, keywordStart)) {
-        	currentCommandType = SqlCommandType.PREPARE;
         }
         
         if (inParen != 0 || aChar == ')') {
