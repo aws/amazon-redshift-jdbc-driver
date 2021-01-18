@@ -2240,13 +2240,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
 
     int col = columnIndex - 1;
-    if (Oid.BOOL == fields[col].getOID()) {
+    if (Oid.BOOL == fields[col].getOID()
+    		|| Oid.BIT == fields[col].getOID()) {
       final byte[] v = thisRow.get(col);
       if (isBinary(columnIndex)) {
       	return (1 == v.length) && (1 == v[0]);      	
       }
       else {
-      	return (1 == v.length) && (116 == v[0]); // 116 = 't'
+      	return (1 == v.length) 
+      					&& (116 == v[0] // 116 = 't'
+      							|| 1 == v[0]
+      							|| '1' == v[0]); 
       }
     }
 
