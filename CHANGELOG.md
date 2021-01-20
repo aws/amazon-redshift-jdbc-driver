@@ -4,8 +4,8 @@ Changelog
 
 v2.0.0.2 (2021-01-19)
 ------------
-- Fix GitHub Issue#8 (https://github.com/aws/amazon-redshift-jdbc-driver/issues/8). [ilesh Garish]
-- Fix GitHub Issue#6 (https://github.com/aws/amazon-redshift-jdbc-driver/issues/6). [ilesh Garish]
+- Fix GitHub [Issue#8](https://github.com/aws/amazon-redshift-jdbc-driver/issues/8). [ilesh Garish]
+- Fix GitHub [Issue#6](https://github.com/aws/amazon-redshift-jdbc-driver/issues/6). [ilesh Garish]
 - Support caching of credentials to protect against AWS API limit issue.
   [ilesh Garish]
 - Support JWT provider plugin. [ilesh Garish]
