@@ -53,7 +53,7 @@ tasks.withType(JavaCompile) {
 }
 
 processResources {
-    filesMatching('version.properties') {
+    filesMatching('redshift_jdbc_driver.properties') {
         expand project.properties
     }
 }

@@ -34,7 +34,7 @@ public final class DriverInfo {
 
   static {
     String version = "2.0.0.0";
-    try (InputStream resourceAsStream = DriverInfo.class.getClassLoader().getResourceAsStream("version.properties")) {
+    try (InputStream resourceAsStream = DriverInfo.class.getClassLoader().getResourceAsStream("redshift_jdbc_driver.properties")) {
       Properties versionFromBuild = new Properties();
       versionFromBuild.load(resourceAsStream);
       version = versionFromBuild.getProperty("version");
