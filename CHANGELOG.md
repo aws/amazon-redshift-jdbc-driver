@@ -2,12 +2,29 @@ Changelog
 =========
 
 
-[2.0.0.1]
+v2.0.0.2 (2021-01-19)
 ------------
+- Fix GitHub Issue#8. [ilesh Garish]
+- Fix GitHub Issue#6. [ilesh Garish]
+- Support caching of credentials to protect against AWS API limit issue.
+  [ilesh Garish]
+- Support JWT provider plugin. [ilesh Garish]
+- Update README.md. [iggarish]
+- Enable client_protocol_version startup parameter. [ilesh Garish]
+- Added .gitignore file. [ilesh Garish]
+- Support Redshift parameter marker in a query. [ilesh Garish]
+- SQLProcedureColumns not returning all SP parameters due to inproper
+  handling of multiple out parameters. [ilesh Garish]
+
+
+v2.0.0.1 (2020-12-02)
+---------------------
+- Generate CHANGELOG.md file. [ilesh Garish]
 - Fix synchronization issue. [ilesh Garish]
 
-[2.0.0.0]
-------------
+
+v2.0.0.0 (2020-11-03)
+---------------------
 - Fixes from security review. [ilesh Garish]
 - Update README.md. [iggarish]
 - Browser plugin fix, multi databases support. [ilesh Garish]
@@ -34,5 +51,6 @@ Changelog
 - Added initial content in README file. [ilesh Garish]
 - Added link of open issues and close issues. [ilesh Garish]
 - Initial version. [Ilesh Garish]
- 
+- Initial commit. [Amazon GitHub Automation]
+
 
