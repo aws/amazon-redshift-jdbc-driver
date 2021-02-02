@@ -522,7 +522,8 @@ public abstract class SamlCredentialsProvider implements IPlugin
 
         HttpClientBuilder builder = HttpClients.custom()
                 .setDefaultRequestConfig(rc)
-                .setRedirectStrategy(new LaxRedirectStrategy());
+                .setRedirectStrategy(new LaxRedirectStrategy())
+                .useSystemProperties(); // this is needed for proxy setting using system properties.
 
         if (m_sslInsecure)
         {
