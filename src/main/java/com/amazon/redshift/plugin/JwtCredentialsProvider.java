@@ -6,6 +6,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleWithWebIdentityRequest;
@@ -17,8 +18,10 @@ import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Date;
@@ -51,8 +54,10 @@ public abstract class JwtCredentialsProvider implements IPlugin
     protected String m_dbGroupsFilter;
     protected Boolean m_forceLowercase;
     protected Boolean m_autoCreate;
+    protected String m_stsEndpoint;
     protected String m_region;
     protected RedshiftLogger m_log;
+    
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
 
@@ -162,6 +167,10 @@ public abstract class JwtCredentialsProvider implements IPlugin
         {
             m_region = value;
         }
+        else if (RedshiftProperty.STS_ENDPOINT_URL.getName().equalsIgnoreCase(key))
+        {
+            m_stsEndpoint = value;
+        }
     }
 
     @Override
@@ -224,8 +233,9 @@ public abstract class JwtCredentialsProvider implements IPlugin
 
             AWSCredentialsProvider p = new AWSStaticCredentialsProvider(new AnonymousAWSCredentials());
             AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
-            builder.setRegion(m_region);
-            AWSSecurityTokenService stsSvc = builder.withCredentials(p).build();
+            
+            AWSSecurityTokenService stsSvc =
+            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p);
             AssumeRoleWithWebIdentityResult result = stsSvc.assumeRoleWithWebIdentity(jwtRequest);
             Credentials cred = result.getCredentials();
             Date expiration = cred.getExpiration();
@@ -234,7 +244,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
             CredentialsHolder credentials = CredentialsHolder.newInstance(c, expiration);
             m_cache.put(getCacheKey(), credentials);
         } 
-        catch (IOException e)
+        catch (Exception e)
         {
           if (RedshiftLogger.isEnable())
         		m_log.logError(e);

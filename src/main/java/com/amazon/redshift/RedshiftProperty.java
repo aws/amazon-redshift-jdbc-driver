@@ -899,6 +899,13 @@ public enum RedshiftProperty {
   ENDPOINT_URL("EndpointUrl",
   							null,
   							"The Redshift endpoint url"),
+
+  /**
+   * The STS endpoint url.
+   */
+  STS_ENDPOINT_URL("StsEndpointUrl",
+  							null,
+  							"The STS endpoint url"),
   
   /**
    * The AWS profile name for credentials.

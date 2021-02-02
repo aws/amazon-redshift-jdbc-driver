@@ -24,6 +24,7 @@ import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 
 public class PluginProfilesConfigFile extends ProfilesConfigFile
 {
@@ -207,11 +208,14 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
     private CredentialsHolder assumeRole(BasicProfile profile, AWSCredentialsProvider provider)
     {
         AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
-        if (!StringUtils.isNullOrEmpty(m_settings.m_awsRegion)) {
-            builder.setRegion(m_settings.m_awsRegion);
-        }
-        AWSSecurityTokenService stsSvc = builder.withCredentials(provider).build();
 
+        AWSSecurityTokenService stsSvc;
+				try {
+					stsSvc = RequestUtils.buildSts(m_settings.m_stsEndpoint, m_settings.m_awsRegion, builder, provider);
+				} catch (Exception e) {
+          	throw new SdkClientException("Profile Plugin error: " + e.getMessage(), e);
+				}
+        
         String roleArn = profile.getRoleArn();
         String roleSessionName = profile.getRoleSessionName();
         if (StringUtils.isNullOrEmpty(roleSessionName))

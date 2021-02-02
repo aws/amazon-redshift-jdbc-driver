@@ -208,6 +208,11 @@ public class RedshiftJDBCSettings
     public String m_endpoint;
 
     /**
+     * The AWS endpoint url for STS.
+     */
+    public String m_stsEndpoint;
+    
+    /**
      * The AWS region where the cluster specified by m_clusterIdentifier is located.
      */
     public String m_awsRegion;

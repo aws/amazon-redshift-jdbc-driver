@@ -72,7 +72,8 @@ public final class IamHelper
     		try {
 	        // IAM requires an SSL connection to work. Make sure that m_authMech is set to
 	        // SSL level VERIFY_CA or higher.
-	        if (settings.m_authMech.ordinal() < AuthMech.VERIFY_CA.ordinal())
+	        if (settings.m_authMech == null
+	        		|| settings.m_authMech.ordinal() < AuthMech.VERIFY_CA.ordinal())
 	        {
 	            settings.m_authMech = AuthMech.VERIFY_CA;
 	        }
@@ -80,6 +81,7 @@ public final class IamHelper
 	        String clusterId = RedshiftConnectionImpl.getRequiredConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);
 	        String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
 	        String endpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.ENDPOINT_URL.getName(), info);
+	        String stsEndpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.STS_ENDPOINT_URL.getName(), info);
 	        String userName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.UID.getName(), info);
 	        if (userName == null)
 	        	userName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.USER.getName(), info);	
@@ -140,7 +142,16 @@ public final class IamHelper
 	        {
 	            settings.m_endpoint = System.getProperty("redshift.endpoint-url");
 	        }
-	
+
+	        if (null != stsEndpointUrl)
+	        {
+	            settings.m_stsEndpoint = stsEndpointUrl;
+	        }
+	        else
+	        {
+	            settings.m_stsEndpoint = System.getProperty("sts.endpoint-url");
+	        }
+	        
 	        if (null != userName)
 	        {
 	            settings.m_username = userName;

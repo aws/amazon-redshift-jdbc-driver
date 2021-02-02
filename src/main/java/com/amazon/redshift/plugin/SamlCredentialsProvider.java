@@ -18,6 +18,7 @@ import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.ssl.NonValidatingFactory;
 
 import java.io.ByteArrayInputStream;
@@ -83,6 +84,7 @@ public abstract class SamlCredentialsProvider implements IPlugin
     protected String m_dbGroupsFilter;
     protected Boolean m_forceLowercase;
     protected Boolean m_autoCreate;
+    protected String m_stsEndpoint;
     protected String m_region;
     protected RedshiftLogger m_log;
 
@@ -205,6 +207,10 @@ public abstract class SamlCredentialsProvider implements IPlugin
         else if (RedshiftProperty.AWS_REGION.getName().equalsIgnoreCase(key))
         {
             m_region = value;
+        }
+        else if (RedshiftProperty.STS_ENDPOINT_URL.getName().equalsIgnoreCase(key))
+        {
+            m_stsEndpoint = value;
         }
     }
 
@@ -336,8 +342,10 @@ public abstract class SamlCredentialsProvider implements IPlugin
 
             AWSCredentialsProvider p = new AWSStaticCredentialsProvider(new AnonymousAWSCredentials());
             AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
-            builder.setRegion(m_region);
-            AWSSecurityTokenService stsSvc = builder.withCredentials(p).build();
+            
+            AWSSecurityTokenService stsSvc =
+            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p);
+            
             AssumeRoleWithSAMLResult result = stsSvc.assumeRoleWithSAML(samlRequest);
             Credentials cred = result.getCredentials();
             Date expiration = cred.getExpiration();
@@ -369,6 +377,13 @@ public abstract class SamlCredentialsProvider implements IPlugin
           throw new SdkClientException("SAML error: " + e.getMessage(), e);
         }
         catch (XPathExpressionException e)
+        {
+          if (RedshiftLogger.isEnable())
+        		m_log.logError(e);
+        	
+          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        }
+        catch (Exception e)
         {
           if (RedshiftLogger.isEnable())
         		m_log.logError(e);
