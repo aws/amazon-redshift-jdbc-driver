@@ -1887,7 +1887,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     boolean bothRowsAndStatus = (flags & QueryExecutor.QUERY_BOTH_ROWS_AND_STATUS) != 0;
     boolean useRingBuffer = enableFetchRingBuffer 
     												&& (!handler.wantsScrollableResultSet()) // Scrollable cursor
-    												&& (!subQueries); // Multiple results
+    												&& (!subQueries) // Multiple results
+    												&& (!bothRowsAndStatus); // RETURNING clause 
 
     List<Tuple> tuples = null;
 
