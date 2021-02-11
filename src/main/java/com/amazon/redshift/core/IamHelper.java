@@ -531,7 +531,7 @@ public final class IamHelper
             if (settings.m_endpoint != null)
             {
                 EndpointConfiguration cfg = new EndpointConfiguration(
-                        settings.m_endpoint, null);
+                        settings.m_endpoint, settings.m_awsRegion);
                 builder.setEndpointConfiguration(cfg);
             }
             else if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty())
