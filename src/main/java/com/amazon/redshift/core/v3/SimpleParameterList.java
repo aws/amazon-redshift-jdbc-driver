@@ -40,13 +40,19 @@ class SimpleParameterList implements V3ParameterList {
   private static final byte BINARY = 4;
 
   SimpleParameterList(int paramCount, TypeTransferModeRegistry transferModeRegistry) {
+  	this(paramCount, transferModeRegistry, null);
+  }
+
+  SimpleParameterList(int paramCount, TypeTransferModeRegistry transferModeRegistry, 
+  										 int[] redshiftParamMarkers) {
     this.paramValues = new Object[paramCount];
     this.paramTypes = new int[paramCount];
     this.encoded = new byte[paramCount][];
     this.flags = new byte[paramCount];
     this.transferModeRegistry = transferModeRegistry;
+    this.redshiftParamMarkers = redshiftParamMarkers;
   }
-
+  
   @Override
   public void registerOutParameter(int index, int sqlType) throws SQLException {
     if (index < 1 || index > paramValues.length) {
@@ -271,6 +277,23 @@ class SimpleParameterList implements V3ParameterList {
             RedshiftState.INVALID_PARAMETER_VALUE);
       }
     }
+    
+  	// Check for server parameter marker binding positions
+    if (redshiftParamMarkers != null
+    			&& redshiftParamMarkers.length > 0) {
+    	for(int i = 0; i < redshiftParamMarkers.length; i++) {
+    		int paramIndex = redshiftParamMarkers[i] - 1;
+        if (
+        		paramIndex >= paramTypes.length
+        		||
+        			(direction(paramIndex) != OUT 
+        		  	&& paramIndex < paramValues.length
+        		  	&& paramValues[paramIndex] == null)) {
+          throw new RedshiftException(GT.tr("Not all parameters have been populated. No value specified for parameter {0}.", paramIndex + 1),
+              RedshiftState.INVALID_PARAMETER_VALUE);
+        }
+    	}
+    }
   }
 
   @Override
@@ -493,6 +516,8 @@ class SimpleParameterList implements V3ParameterList {
   private final byte[] flags;
   private final byte[][] encoded;
   private final TypeTransferModeRegistry transferModeRegistry;
+  private final int[] redshiftParamMarkers; 
+
 
   /**
    * Marker object representing NULL; this distinguishes "parameter never set" from "parameter set

@@ -799,7 +799,7 @@ public enum RedshiftProperty {
    */
   STRING_TYPE(
     "stringtype",
-    null,
+    "unspecified",
     "The type to bind String parameters as (usually 'varchar', 'unspecified' allows implicit casting to other types)",
     false,
     new String[] {"unspecified", "varchar"}),

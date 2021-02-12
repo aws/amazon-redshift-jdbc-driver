@@ -48,7 +48,7 @@ class SimpleQuery implements Query {
       return NO_PARAMETERS;
     }
 
-    return new SimpleParameterList(getBindCount(), transferModeRegistry);
+    return new SimpleParameterList(getBindCount(), transferModeRegistry, nativeQuery.redshiftParamMarkers);
   }
 
   public String toString(ParameterList parameters) {

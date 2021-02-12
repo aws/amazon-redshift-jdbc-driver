@@ -64,6 +64,7 @@ public class Parser {
     StringBuilder nativeSql = new StringBuilder(query.length() + 10);
     List<Integer> bindPositions = null; // initialized on demand
     Set<String> redshiftBindNames = null; // initialized on demand
+    List<Integer> redshiftParamMarkers = null; // initialized on demand
     List<NativeQuery> nativeQueries = null;
     boolean isCurrentReWriteCompatible = false;
     boolean isValuesFound = false;
@@ -141,11 +142,16 @@ public class Parser {
                 bindPositions = new ArrayList<Integer>();
               }
               
+              if (redshiftParamMarkers == null) {
+              	redshiftParamMarkers = new ArrayList<Integer>();
+              }
+              
               // is it unique?
               if (!redshiftBindNames.contains(paramName)) {
               	redshiftBindNames.add(paramName);
 	              int dollarSignPos = nativeSql.length() - (i - savPos) - 1;
 	              bindPositions.add(dollarSignPos); // Point at $
+	              redshiftParamMarkers.add(Integer.parseInt(paramName.substring(1)));
               }
           	}
           }
@@ -225,7 +231,8 @@ public class Parser {
                     SqlCommand.createStatementTypeInfo(
                         currentCommandType, isBatchedReWriteConfigured, valuesBraceOpenPosition,
                         valuesBraceClosePosition,
-                        isReturningPresent, nativeQueries.size())));
+                        isReturningPresent, nativeQueries.size()), 
+                    (redshiftParamMarkers != null) ? toIntArray(redshiftParamMarkers) : null));
               }
             }
             prevCommandType = currentCommandType;
@@ -351,7 +358,8 @@ public class Parser {
         toIntArray(bindPositions), !splitStatements,
         SqlCommand.createStatementTypeInfo(currentCommandType,
             isBatchedReWriteConfigured, valuesBraceOpenPosition, valuesBraceClosePosition,
-            isReturningPresent, (nativeQueries == null ? 0 : nativeQueries.size())));
+            isReturningPresent, (nativeQueries == null ? 0 : nativeQueries.size())), 
+        	(redshiftParamMarkers != null) ? toIntArray(redshiftParamMarkers) : null);
 
     if (nativeQueries == null) {
       return Collections.singletonList(lastQuery);

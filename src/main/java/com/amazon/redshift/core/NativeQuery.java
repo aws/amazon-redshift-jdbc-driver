@@ -18,6 +18,7 @@ public class NativeQuery {
   public final int[] bindPositions;
   public final SqlCommand command;
   public final boolean multiStatement;
+  public final int[] redshiftParamMarkers;
 
   static {
     for (int i = 1; i < BIND_NAMES.length; i++) {
@@ -30,11 +31,17 @@ public class NativeQuery {
   }
 
   public NativeQuery(String nativeSql, int[] bindPositions, boolean multiStatement, SqlCommand dml) {
+  	this(nativeSql, bindPositions, multiStatement, dml, null);
+  }
+  
+  public NativeQuery(String nativeSql, int[] bindPositions, boolean multiStatement, SqlCommand dml, 
+  										int[] redshiftParamMarkers) {
     this.nativeSql = nativeSql;
     this.bindPositions =
         bindPositions == null || bindPositions.length == 0 ? NO_BINDS : bindPositions;
     this.multiStatement = multiStatement;
     this.command = dml;
+    this.redshiftParamMarkers = redshiftParamMarkers;
   }
 
   /**
