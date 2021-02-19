@@ -1,5 +1,7 @@
 package com.amazon.redshift.plugin.utils;
 
+import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
@@ -20,10 +22,16 @@ public class RequestUtils
     public static AWSSecurityTokenService buildSts(String stsEndpoint, 
     																						String region,
     																						AWSSecurityTokenServiceClientBuilder builder,
-    																						AWSCredentialsProvider p) 
+    																						AWSCredentialsProvider p,
+    																						RedshiftLogger log) 
     																					throws Exception {
 	    
 	    AWSSecurityTokenService stsSvc;
+	    ClientConfiguration clientConfig = getProxyClientConfig(log);
+	    
+	    if (clientConfig != null) {
+	    	builder.setClientConfiguration(clientConfig);
+	    }
 	    
 	    if (isCustomStsEndpointUrl(stsEndpoint)) {
 	    	EndpointConfiguration endpointConfiguration = new EndpointConfiguration(stsEndpoint, null);
@@ -38,6 +46,48 @@ public class RequestUtils
 	    }
 	    
 	    return stsSvc;
+    }
+    
+    public static ClientConfiguration getProxyClientConfig(RedshiftLogger log) {
+	    boolean useProxy = false;
+	    ClientConfiguration clientConfig = null;
+	    
+	    try {
+	    	String useProxyStr = System.getProperty("http.useProxy");
+	    	
+	    	if(useProxyStr != null) {
+	    		useProxy = Boolean.parseBoolean(useProxyStr);
+	    	}
+	    }
+	    catch(Exception ex) {
+	    	// Ignore
+        if (RedshiftLogger.isEnable())
+      		log.logError(ex);
+	    }
+	    
+	    if (useProxy) {
+	      clientConfig = new ClientConfiguration();
+	    	String proxyHost = System.getProperty("https.proxyHost");
+	    	String proxyPort = System.getProperty("https.proxyPort");
+	    	
+	    	if (proxyHost != null)
+	    		clientConfig.setProxyHost(proxyHost);
+	    	
+	    	if (proxyPort != null)
+	    		clientConfig.setProxyPort(Integer.parseInt(proxyPort));
+	      
+        if (RedshiftLogger.isEnable())
+    			log.logDebug(
+            String.format("useProxy: %s proxyHost: %s proxyPort:%s" , 
+            								useProxy, proxyHost, proxyPort));
+	    }
+	    else {
+        if (RedshiftLogger.isEnable())
+      			log.logDebug(
+              String.format("useProxy: %s", useProxy));
+	    }
+	    
+	    return clientConfig;
     }
     
     private static boolean isCustomStsEndpointUrl(String stsEndpoint) throws Exception {

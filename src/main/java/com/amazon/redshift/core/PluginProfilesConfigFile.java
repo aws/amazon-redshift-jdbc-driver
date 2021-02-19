@@ -211,7 +211,7 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
 
         AWSSecurityTokenService stsSvc;
 				try {
-					stsSvc = RequestUtils.buildSts(m_settings.m_stsEndpoint, m_settings.m_awsRegion, builder, provider);
+					stsSvc = RequestUtils.buildSts(m_settings.m_stsEndpoint, m_settings.m_awsRegion, builder, provider,m_log);
 				} catch (Exception e) {
           	throw new SdkClientException("Profile Plugin error: " + e.getMessage(), e);
 				}

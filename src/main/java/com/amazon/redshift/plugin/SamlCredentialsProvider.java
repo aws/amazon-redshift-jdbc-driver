@@ -1,5 +1,6 @@
 package com.amazon.redshift.plugin;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -342,9 +343,11 @@ public abstract class SamlCredentialsProvider implements IPlugin
 
             AWSCredentialsProvider p = new AWSStaticCredentialsProvider(new AnonymousAWSCredentials());
             AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
+            ClientConfiguration config = null;
+            builder.withClientConfiguration(config);
             
             AWSSecurityTokenService stsSvc =
-            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p);
+            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p, m_log);
             
             AssumeRoleWithSAMLResult result = stsSvc.assumeRoleWithSAML(samlRequest);
             Credentials cred = result.getCredentials();

@@ -235,7 +235,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
             AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
             
             AWSSecurityTokenService stsSvc =
-            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p);
+            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p, m_log);
             AssumeRoleWithWebIdentityResult result = stsSvc.assumeRoleWithWebIdentity(jwtRequest);
             Credentials cred = result.getCredentials();
             Date expiration = cred.getExpiration();

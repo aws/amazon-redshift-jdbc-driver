@@ -1,6 +1,7 @@
 package com.amazon.redshift.core;
 
 import com.amazonaws.AmazonClientException;
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -27,6 +28,7 @@ import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -528,6 +530,12 @@ public final class IamHelper
         {
             AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
 
+      	    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
+      	    
+      	    if (clientConfig != null) {
+      	    	builder.setClientConfiguration(clientConfig);
+      	    }
+            
             if (settings.m_endpoint != null)
             {
                 EndpointConfiguration cfg = new EndpointConfiguration(
