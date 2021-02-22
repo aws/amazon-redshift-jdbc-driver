@@ -1584,7 +1584,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       // fetchSize > maxRows, use maxRows (nb: fetchSize cannot be 0 if usePortal == true)
       rows = maxRows;
     } else {
-      rows = fetchSize; // maxRows > fetchSize
+      rows = (enableFetchRingBuffer) 
+      					? maxRows // Disable server cursor, when client cursor is enabled.
+      					: fetchSize; // maxRows > fetchSize
     }
 
     sendParse(query, params, oneShot);
