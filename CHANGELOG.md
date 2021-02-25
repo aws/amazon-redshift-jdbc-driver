@@ -1,9 +1,21 @@
 Changelog
 =========
 
+v2.0.0.3 (2021-02-25)
+---------------------
+ - Fix [issue#9](https://github.com/aws/amazon-redshift-jdbc-driver/issues/9). [ilesh Garish]
+ - Support for proxy connection to STS. [ilesh Garish]
+ - Server parameter marker changes, stringtype connetcion parameter default value change to unspecified. [ilesh Garish]
+ - Added region as part of endpoint config for vpc endpoint. [ilesh Garish]
+ - EndpointURL couldn't set as a region. [ilesh Garish]
+ - Support GeneratedKeys from RETURNING clause. [ilesh Garish]
+ - Added custom sts endpoint support in all plugins. [ilesh Garish]
+ - Fix for IDP HTTPS Proxy properties support. [ilesh Garish]
+ - Fix ExceptionInInitializerError caused by NPE in DriverInfo static initializer. [Steven Nguyen]
+
 
 v2.0.0.2 (2021-01-19)
-------------
+---------------------
 - Fix GitHub [Issue#8](https://github.com/aws/amazon-redshift-jdbc-driver/issues/8). [ilesh Garish]
 - Fix GitHub [Issue#6](https://github.com/aws/amazon-redshift-jdbc-driver/issues/6). [ilesh Garish]
 - Support caching of credentials to protect against AWS API limit issue.
