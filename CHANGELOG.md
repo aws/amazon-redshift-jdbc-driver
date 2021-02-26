@@ -11,7 +11,7 @@ v2.0.0.3 (2021-02-25)
  - Support GeneratedKeys from RETURNING clause. [ilesh Garish]
  - Added custom sts endpoint support in all plugins. [ilesh Garish]
  - Fix for IDP HTTPS Proxy properties support. [ilesh Garish]
- - Fix ExceptionInInitializerError caused by NPE in DriverInfo static initializer. [Steven Nguyen]
+ - Fix [issue#7](https://github.com/aws/amazon-redshift-jdbc-driver/issues/7). [Steven Nguyen]
 
 
 v2.0.0.2 (2021-01-19)
