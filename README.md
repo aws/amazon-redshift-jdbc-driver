@@ -34,7 +34,7 @@ Here are download links for the latest release:
 * https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.0.0.3/redshift-jdbc42-2.0.0.3.zip 
 * https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.0.0.3/redshift-jdbc42-2.0.0.3.jar 
 
-One can download from Maven Central. groupId: com.amazon.redshift and artifactId:redshift-jdbc42:
+It also available on Maven Central, groupId: com.amazon.redshift and artifactId: redshift-jdbc42
 
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42)
 
