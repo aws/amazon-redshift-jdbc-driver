@@ -254,6 +254,16 @@ public class Driver implements java.sql.Driver {
       	connLogger.logFunction(true, temp, RedshiftLogger.maskSecureInfoInProps(info));
       	
       	connLogger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
+      	
+/*	    	String useProxyStr = System.getProperty("http.useProxy");
+	    	String proxyHost = System.getProperty("https.proxyHost");
+	    	String proxyPort = System.getProperty("https.proxyPort");
+
+	    	connLogger.logDebug(
+            String.format("useProxy: %s proxyHost: %s proxyPort:%s" , 
+            								useProxyStr, proxyHost, proxyPort));
+*/	    	
+	    	
       }
 
       // Enforce login timeout, if specified, by running the connection

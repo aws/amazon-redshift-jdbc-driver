@@ -1,5 +1,6 @@
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.util.IOUtils;
@@ -99,15 +100,20 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             entity.setContentType("application/json");
             httpost.setEntity(entity);
             responseAuthenticate = httpClient.execute(httpost);
+            String content = EntityUtils.toString(responseAuthenticate.getEntity());
 
+          	if(RedshiftLogger.isEnable())
+          		m_log.log(LogLevel.DEBUG, "oktaAuthentication https response:" + content);
+            
             StatusLine statusLine = responseAuthenticate.getStatusLine();
             int requestStatus = statusLine.getStatusCode();
+            
             if (requestStatus != 200)
             {
                 throw new IOException(statusLine.getReasonPhrase());
             }
             //Retrieve and parse the Okta response for session token
-            JsonNode json = mapper.readTree(EntityUtils.toString(responseAuthenticate.getEntity()));
+            JsonNode json = mapper.readTree(content);
 
             if ("SUCCESS".equals(json.get("status").asText()))
             {

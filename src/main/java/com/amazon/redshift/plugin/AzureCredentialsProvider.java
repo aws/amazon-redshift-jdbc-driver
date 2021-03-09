@@ -6,6 +6,7 @@ import com.amazonaws.util.StringUtils;
 import com.amazonaws.util.json.Jackson;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 
 import org.apache.commons.codec.binary.Base64;
@@ -184,6 +185,9 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
             // with Azure
             if (resp.getStatusLine().getStatusCode() != 200)
             {
+            	if(RedshiftLogger.isEnable())
+            		m_log.log(LogLevel.DEBUG, "azureOauthBasedAuthentication https response: " + content);
+            	
                 String errorMessage =
                     "Authentication failed on the Azure server. Please check the tenant, user, password, client secret, and client id.";
                 JsonNode errorDescriptionNode = entityJson.findValue("error_description");

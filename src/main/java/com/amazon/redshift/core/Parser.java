@@ -200,6 +200,7 @@ public class Parser {
             if (!whitespaceOnly) {
               numberOfStatements++;
               nativeSql.append(aChars, fragmentStart, i - fragmentStart);
+              nativeSql.append(';');
               whitespaceOnly = true;
             }
             fragmentStart = i + 1;

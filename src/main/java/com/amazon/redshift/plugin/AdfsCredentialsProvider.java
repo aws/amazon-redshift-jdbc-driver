@@ -21,6 +21,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
+import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.util.IOUtils;
@@ -146,6 +147,9 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
             CloseableHttpResponse resp = client.execute(get);
             if (resp.getStatusLine().getStatusCode() != 200)
             {
+            	if(RedshiftLogger.isEnable())
+            		m_log.log(LogLevel.DEBUG, "formBasedAuthentication https response:" + EntityUtils.toString(resp.getEntity()));
+            	
                 throw new IOException(
                         "Failed send request: " + resp.getStatusLine().getReasonPhrase());
             }

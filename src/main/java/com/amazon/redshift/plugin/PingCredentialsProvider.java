@@ -86,6 +86,9 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
             resp = client.execute(get);
             if (resp.getStatusLine().getStatusCode() != 200)
             {
+            	if(RedshiftLogger.isEnable())
+            		m_log.log(LogLevel.DEBUG, "getSamlAssertion https response:" + EntityUtils.toString(resp.getEntity()));
+            	
                 throw new IOException(
                         "Failed send request: " + resp.getStatusLine().getReasonPhrase());
             }

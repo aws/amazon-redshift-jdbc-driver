@@ -327,10 +327,16 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             CloseableHttpClient client = getHttpClient();
             CloseableHttpResponse resp = client.execute(post))
         {
-            checkAndThrowsWithMessage(
-                resp.getStatusLine().getStatusCode() != 200,
-                "Unexpected response:  " + resp.getStatusLine().getReasonPhrase());
-            return EntityUtils.toString(resp.getEntity());
+        	String content = EntityUtils.toString(resp.getEntity());
+        	
+        	if(RedshiftLogger.isEnable())
+        		m_log.log(LogLevel.DEBUG, "fetchSamlResponse https response:" + content);
+        	
+          checkAndThrowsWithMessage(
+              resp.getStatusLine().getStatusCode() != 200,
+              "Unexpected response:  " + resp.getStatusLine().getReasonPhrase());
+            
+          return content;
         }
         catch (GeneralSecurityException ex)
         {
@@ -349,6 +355,9 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     private String extractSamlAssertion(String content)
     {
         String encodedSamlAssertion;
+      	if(RedshiftLogger.isEnable())
+      		m_log.logDebug("content: {0}", content);
+        
         JsonNode accessTokenField = Jackson.jsonNodeOf(content).findValue("access_token");
         checkAndThrowsWithMessage(accessTokenField == null, "Failed to find access_token");
         encodedSamlAssertion = accessTokenField.textValue();
