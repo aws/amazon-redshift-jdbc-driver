@@ -88,8 +88,11 @@ public abstract class SamlCredentialsProvider implements IPlugin
     protected String m_stsEndpoint;
     protected String m_region;
     protected RedshiftLogger m_log;
+    protected Boolean m_disableCache = false;
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
+    
+    private CredentialsHolder m_lastRefreshCredentials; // Used when cache is disable.
 
     /**
      * The custom log factory class.
@@ -213,6 +216,10 @@ public abstract class SamlCredentialsProvider implements IPlugin
         {
             m_stsEndpoint = value;
         }
+        else if (RedshiftProperty.IAM_DISABLE_CACHE.getName().equalsIgnoreCase(key))
+        {
+            m_disableCache = Boolean.valueOf(value);
+        }
     }
 
     @Override
@@ -224,14 +231,38 @@ public abstract class SamlCredentialsProvider implements IPlugin
     @Override
     public CredentialsHolder getCredentials()
     {
-        String key = getCacheKey();
-        CredentialsHolder credentials = m_cache.get(key);
+    		CredentialsHolder credentials = null;
+    		
+    		if(!m_disableCache) {
+    			String key = getCacheKey();
+    			credentials = m_cache.get(key);
+    		}
+    		
         if (credentials == null || credentials.isExpired())
         {
-            refresh();
+	          if(RedshiftLogger.isEnable()) 
+	            m_log.logInfo("SAML getCredentials NOT from cache");
+        	
+	          synchronized(this) {
+	          	
+	          	refresh();
+	          	
+	          	if(m_disableCache) {
+	          		credentials = m_lastRefreshCredentials;
+	          		m_lastRefreshCredentials = null;
+	          	}
+	          }
         }
-        // if the SAML response has dbUser argument, it will be picked up at this point.
-        credentials = m_cache.get(key);
+        else {
+          credentials.setRefresh(false);
+          if(RedshiftLogger.isEnable()) 
+            m_log.logInfo("SAML getCredentials from cache");
+        }
+        
+        if(!m_disableCache) {
+          // if the SAML response has dbUser argument, it will be picked up at this point.
+        	credentials = m_cache.get(getCacheKey());
+        }
 
         // if dbUser argument has been passed in the connection string, add it to metadata.
         if (!StringUtils.isNullOrEmpty(m_dbUser))
@@ -243,6 +274,7 @@ public abstract class SamlCredentialsProvider implements IPlugin
         {
             throw new SdkClientException("Unable to load AWS credentials from ADFS");
         }
+        
         if(RedshiftLogger.isEnable()) {
             Date now = new Date();
             m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
@@ -356,7 +388,12 @@ public abstract class SamlCredentialsProvider implements IPlugin
                     cred.getSecretAccessKey(), cred.getSessionToken());
             CredentialsHolder credentials = CredentialsHolder.newInstance(c, expiration);
             credentials.setMetadata(readMetadata(doc));
-            m_cache.put(getCacheKey(), credentials);
+            credentials.setRefresh(true);
+            
+            if(!m_disableCache)
+            	m_cache.put(getCacheKey(), credentials);
+            else
+              m_lastRefreshCredentials = credentials;
         }
         catch (IOException e)
         {
@@ -398,10 +435,17 @@ public abstract class SamlCredentialsProvider implements IPlugin
           currentThread.setContextClassLoader(cl);
         }
     }
+    
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	// Override this in each derived plugin such as Azure, Browser, Okta, Ping etc.
+    	return "";
+    }
 
     private String getCacheKey()
     {
-        return m_userName + m_password + m_idpHost + m_idpPort + m_duration + m_preferredRole;
+    		String pluginSpecificKey = getPluginSpecificCacheKey();
+        return m_userName + m_password + m_idpHost + m_idpPort + m_duration + m_preferredRole + pluginSpecificKey;
     }
 
     private IamMetadata readMetadata(Document doc) throws XPathExpressionException

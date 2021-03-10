@@ -49,6 +49,14 @@ public final class IamHelper
 {
 	private static final int MAX_AMAZONCLIENT_RETRY = 5;
 	private static final int MAX_AMAZONCLIENT_RETRY_DELAY_MS = 1000;
+	
+	private enum CredentialProviderType {
+		NONE,
+		PROFILE,
+		IAM_KEYS_WITH_SESSION,
+		IAM_KEYS,
+		PLUGIN
+	};
 
 	private static Map<String, GetClusterCredentialsResult> credentialsCache = new HashMap<String, GetClusterCredentialsResult>();
 
@@ -115,6 +123,7 @@ public final class IamHelper
 	        
 	        String hosts = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.HOST.getName(),info);
 	        String ports = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.PORT.getName(),info);
+	        String iamDisableCache = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_DISABLE_CACHE.getName(), info);
 	
 	        settings.m_clusterIdentifier = clusterId;
 	        if (settings.m_clusterIdentifier.isEmpty())
@@ -267,7 +276,10 @@ public final class IamHelper
 	
 	        settings.m_autocreate =
 	                iamAutoCreate == null ? null : Boolean.valueOf(iamAutoCreate);
-	
+
+	        settings.m_iamDisableCache =
+	        		iamDisableCache == null ? false : Boolean.valueOf(iamDisableCache);
+	        
 	        settings.m_forceLowercase =
 	        		    iamForceLowercase == null ? null : Boolean.valueOf(iamForceLowercase);
 	        		
@@ -307,6 +319,8 @@ public final class IamHelper
     private static void setIAMCredentials(RedshiftJDBCSettings settings, RedshiftLogger log) throws RedshiftException
     {
         AWSCredentialsProvider provider;
+        CredentialProviderType providerType = CredentialProviderType.NONE;
+        boolean idpCredentialsRefresh = false;
 
         if (!StringUtils.isNullOrEmpty(settings.m_credentialsProvider))
         {
@@ -346,6 +360,8 @@ public final class IamHelper
                 if (provider instanceof IPlugin)
                 {
                     IPlugin plugin = ((IPlugin) provider);
+                    
+                    providerType = CredentialProviderType.PLUGIN;
                     plugin.setLogger(log);
                     for (Map.Entry<String, String> entry : settings.m_pluginArgs.entrySet())
                     {
@@ -396,6 +412,7 @@ public final class IamHelper
 
             ProfilesConfigFile pcf = new PluginProfilesConfigFile(settings, log);
             provider = new ProfileCredentialsProvider(pcf, settings.m_profile);
+            providerType = CredentialProviderType.PROFILE;
         }
         else if (!StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID))
         {
@@ -407,12 +424,14 @@ public final class IamHelper
                         settings.m_iamAccessKeyID,
                         settings.m_iamSecretKey,
                         settings.m_iamSessionToken);
+                providerType = CredentialProviderType.IAM_KEYS_WITH_SESSION;
             }
             else
             {
                 credentials = new BasicAWSCredentials(
                         settings.m_iamAccessKeyID,
                         settings.m_iamSecretKey);
+                providerType = CredentialProviderType.IAM_KEYS;
             }
 
             provider = new AWSStaticCredentialsProvider(credentials);
@@ -429,6 +448,8 @@ public final class IamHelper
         AWSCredentials credentials = provider.getCredentials();
         if (credentials instanceof CredentialsHolder)
         {
+        		idpCredentialsRefresh = ((CredentialsHolder) credentials).isRefresh();
+        	
             // autoCreate, user and password from URL take priority.
             CredentialsHolder.IamMetadata im = ((CredentialsHolder) credentials).getMetadata();
             if (null != im)
@@ -514,7 +535,7 @@ public final class IamHelper
           throw err;
         }
 
-        setClusterCredentials(provider, settings, log);
+        setClusterCredentials(provider, settings, log, providerType, idpCredentialsRefresh);
     }
 
     /**
@@ -523,7 +544,11 @@ public final class IamHelper
      *
      * @throws RedshiftException   If getting the cluster credentials fails.
      */
-    private static void setClusterCredentials(AWSCredentialsProvider credProvider, RedshiftJDBCSettings settings, RedshiftLogger log) 
+    private static void setClusterCredentials(AWSCredentialsProvider credProvider, 
+    															RedshiftJDBCSettings settings, 
+    															RedshiftLogger log,
+    															CredentialProviderType providerType,
+    															boolean idpCredentialsRefresh) 
     					throws RedshiftException
     {
         try
@@ -571,7 +596,7 @@ public final class IamHelper
                 settings.m_port = endpoint.getPort();
             }
 
-            GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log);
+            GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log, providerType, idpCredentialsRefresh);
             settings.m_username = result.getDbUser();
             settings.m_password = result.getDbPassword();
             if(RedshiftLogger.isEnable()) {
@@ -592,13 +617,31 @@ public final class IamHelper
         }
     }
 
-    private static synchronized GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings, AmazonRedshift client, RedshiftLogger log) throws AmazonClientException
+    private static synchronized GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings, 
+    															AmazonRedshift client, 
+    															RedshiftLogger log,
+    															CredentialProviderType providerType,
+    															boolean idpCredentialsRefresh) throws AmazonClientException
     {
-        String key = getCredentialsCacheKey(settings);
-        GetClusterCredentialsResult credentials = credentialsCache.get(key);
-        if (credentials == null || credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+        String key = null;
+        GetClusterCredentialsResult credentials = null;
+        		
+        if(!settings.m_iamDisableCache) {
+	        key = getCredentialsCacheKey(settings, providerType);
+	        credentials = credentialsCache.get(key);
+        }
+
+        if (credentials == null
+        			|| (providerType == CredentialProviderType.PLUGIN
+        						&& idpCredentialsRefresh)
+        			|| credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
         {
-            credentialsCache.remove(key);
+	          if (RedshiftLogger.isEnable())
+	            log.logInfo("GetClusterCredentials NOT from cache");
+        	
+	          if(!settings.m_iamDisableCache)	          
+	          	credentialsCache.remove(key);
+	          
             GetClusterCredentialsRequest request = new GetClusterCredentialsRequest();
             request.setClusterIdentifier(settings.m_clusterIdentifier);
             if (settings.m_iamDuration > 0)
@@ -642,24 +685,62 @@ public final class IamHelper
                 }
             }
 
-            credentialsCache.put(key, credentials);
+            if(!settings.m_iamDisableCache)
+            	credentialsCache.put(key, credentials);
         }
+        else {
+          if (RedshiftLogger.isEnable())
+            log.logInfo("GetClusterCredentials from cache");
+        }
+        
         return credentials;
     }
 
-	private static String getCredentialsCacheKey(RedshiftJDBCSettings settings)
+	private static String getCredentialsCacheKey(RedshiftJDBCSettings settings, CredentialProviderType providerType)
 	{
+				String key;
         String dbGroups = "";
+        
         if (settings.m_dbGroups != null && !settings.m_dbGroups.isEmpty())
         {
             Collections.sort(settings.m_dbGroups);
             dbGroups = String.join(",", settings.m_dbGroups);
         }
-        return settings.m_clusterIdentifier + ";" +
+        
+        key = settings.m_clusterIdentifier + ";" +
                 (settings.m_dbUser == null ? settings.m_username : settings.m_dbUser) + ";" +
                 (settings.m_Schema == null ? "" : settings.m_Schema) + ";" +
                 dbGroups + ";" +
                 settings.m_autocreate + ";" +
                 settings.m_iamDuration;
+        
+        switch (providerType) {
+	        case PROFILE: {
+	        	key += ";" + settings.m_profile; 
+	        	break;
+	        }
+	        
+	        case IAM_KEYS_WITH_SESSION: {
+	        	key += ";" + settings.m_iamAccessKeyID
+	        				 + ";" + settings.m_iamSecretKey
+	        				 + ";" + settings.m_iamSessionToken
+	        				 ; 
+	        	break;
+	        }
+
+	        case IAM_KEYS: {
+	        	key += ";" + settings.m_iamAccessKeyID
+	        				 + ";" + settings.m_iamSecretKey
+	        				 ; 
+	        	break;
+	        }
+	        
+	        default: {
+	        	break;
+	        }
+	        
+        } // Switch
+        
+      return key;
 	}
 }

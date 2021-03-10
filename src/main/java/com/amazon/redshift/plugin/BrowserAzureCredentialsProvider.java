@@ -229,6 +229,14 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
                 super.addParameter(key, value);
         }
     }
+    
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_idp_tenant != null) ? m_idp_tenant : "")
+    					+ ((m_clientId != null) ? m_clientId : "")
+    					;
+    }
+    
 
     /**
      * First authentication phase:

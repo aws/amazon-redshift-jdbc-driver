@@ -251,4 +251,9 @@ public class RedshiftJDBCSettings
      * A String to pass as an argument to the selectorProvider constructor.
      */
 //    public String m_selectorProviderArg;
+    
+    /**
+     * Disable IAM credentials cache.
+     */
+    public boolean m_iamDisableCache;
 }

@@ -133,6 +133,14 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
         }
     }
 
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_idpTenant != null) ? m_idpTenant : "")
+    					+ ((m_clientId != null) ? m_clientId : "")
+    					+ ((m_clientSecret != null) ? m_clientSecret : "")
+    					;
+    }
+    
     /**
      * Method to initiate a POST request to grab the SAML Assertion from Microsoft Azure and convert it to a
      * SAML Response.

@@ -57,9 +57,10 @@ public abstract class JwtCredentialsProvider implements IPlugin
     protected String m_stsEndpoint;
     protected String m_region;
     protected RedshiftLogger m_log;
-    
+    protected Boolean m_disableCache = false;
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
+    private CredentialsHolder m_lastRefreshCredentials; // Used when cache is disable.
 
     /**
      * The custom log factory class.
@@ -171,6 +172,10 @@ public abstract class JwtCredentialsProvider implements IPlugin
         {
             m_stsEndpoint = value;
         }
+        else if (RedshiftProperty.IAM_DISABLE_CACHE.getName().equalsIgnoreCase(key))
+        {
+            m_disableCache = Boolean.valueOf(value);
+        }
     }
 
     @Override
@@ -182,14 +187,37 @@ public abstract class JwtCredentialsProvider implements IPlugin
     @Override
     public CredentialsHolder getCredentials()
     {
-        String key = getCacheKey();
-        CredentialsHolder credentials = m_cache.get(key);
+    		CredentialsHolder credentials = null;
+    		
+  			if(!m_disableCache) {
+	        String key = getCacheKey();
+	        credentials = m_cache.get(key);
+  			}
+  			
         if (credentials == null || credentials.isExpired())
         {
-            refresh();
+          if(RedshiftLogger.isEnable()) 
+            m_log.logInfo("JWT getCredentials NOT from cache");
+        	
+          synchronized(this) {
+          	
+          	refresh();
+          	
+          	if(m_disableCache) {
+          		credentials = m_lastRefreshCredentials;
+          		m_lastRefreshCredentials = null;
+          	}
+          }
+        }
+        else {
+          credentials.setRefresh(false);
+          if(RedshiftLogger.isEnable()) 
+            m_log.logInfo("SAML getCredentials from cache");
         }
 
-        credentials = m_cache.get(key);
+  			if(!m_disableCache) {
+  				credentials = m_cache.get(getCacheKey());
+  			}
         
         // if dbUser argument has been passed in the connection string, add it to metadata.
 /*        if (!StringUtils.isNullOrEmpty(m_dbUser))
@@ -242,7 +270,13 @@ public abstract class JwtCredentialsProvider implements IPlugin
             AWSCredentials c = new BasicSessionCredentials(cred.getAccessKeyId(),
                     cred.getSecretAccessKey(), cred.getSessionToken());
             CredentialsHolder credentials = CredentialsHolder.newInstance(c, expiration);
-            m_cache.put(getCacheKey(), credentials);
+            
+            credentials.setRefresh(true);
+            
+            if(!m_disableCache)
+            	m_cache.put(getCacheKey(), credentials);
+            else
+              m_lastRefreshCredentials = credentials;
         } 
         catch (Exception e)
         {
@@ -257,9 +291,17 @@ public abstract class JwtCredentialsProvider implements IPlugin
         }
     }
 
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	// Override this in each derived plugin.
+    	return "";
+    }
+    
     private String getCacheKey()
     {
-        return  m_roleArn + m_jwt +  m_roleSessionName + m_duration;
+  		String pluginSpecificKey = getPluginSpecificCacheKey();
+    	
+      return  m_roleArn + m_jwt +  m_roleSessionName + m_duration + pluginSpecificKey;
     }
 
     protected void checkRequiredParameters() throws IOException

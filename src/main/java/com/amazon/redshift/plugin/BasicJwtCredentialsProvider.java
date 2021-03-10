@@ -15,6 +15,11 @@ public class BasicJwtCredentialsProvider extends JwtCredentialsProvider
     {
     }
 
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return "";
+    }
+    
     /**
      * This method needs to return the JWT string returned by the specific JWT provider
      * being used for this implementation. How you get this string will depend on the specific JWT

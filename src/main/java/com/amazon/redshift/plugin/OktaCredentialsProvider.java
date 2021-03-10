@@ -42,6 +42,14 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             m_app_name = value;
         }
     }
+    
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_app_id != null) ? m_app_id : "")
+    					+ ((m_app_name != null) ? m_app_name : "")
+    					;
+    }
+    
 
     @Override
     protected String getSamlAssertion() throws IOException

@@ -55,7 +55,12 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
           		m_log.logDebug("m_loginToRp: ", m_loginToRp);
         }
     }
-     
+    
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_loginToRp != null) ? m_loginToRp : "");
+    }
+    
     protected String getSamlAssertion() throws IOException
     {
         if (StringUtils.isNullOrEmpty(m_idpHost))

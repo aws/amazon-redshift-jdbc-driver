@@ -122,6 +122,13 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
                 super.addParameter(key, value);
         }
     }
+    
+    @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_login_url != null) ? m_login_url : "")
+    					;
+    }
+    
 
     /**
      * Authentication consists of:

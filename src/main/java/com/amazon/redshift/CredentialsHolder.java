@@ -10,6 +10,7 @@ public class CredentialsHolder implements AWSCredentials
     protected AWSCredentials m_credentials;
     private Date m_expiration;
     private IamMetadata m_metadata;
+    private boolean refresh; // true means newly added, false means from cache.
 
     protected CredentialsHolder(AWSCredentials credentials)
     {
@@ -94,7 +95,15 @@ public class CredentialsHolder implements AWSCredentials
         }
         return m_metadata;
     }
+    
+    public void setRefresh(boolean flag) {
+    	refresh = flag;
+    }
 
+    public boolean isRefresh() {
+    	return refresh;
+    }
+    
     public void setMetadata(IamMetadata metadata)
     {
         this.m_metadata = metadata;

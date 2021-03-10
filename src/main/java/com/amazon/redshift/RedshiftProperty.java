@@ -883,6 +883,15 @@ public enum RedshiftProperty {
   IAM_AUTH("IAMAuth",
   				 "false",
   				 "Indicates whether use IAM authentication"),
+
+  /**
+   * Disable IAM credentials cache.
+   * Enable cache gives protection against throttling API calls.
+   * Default value is false.
+   */
+  IAM_DISABLE_CACHE("IAMDisableCache",
+  				 "false",
+  				 "Indicates to disable credential cache. Enable cache gives protection against throttling API calls"),
   
   /**
    * The AWS region where the cluster is located.

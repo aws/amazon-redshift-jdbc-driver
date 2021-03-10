@@ -53,6 +53,12 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
     }
 
     @Override
+    public String getPluginSpecificCacheKey() {
+    	return ((m_partnerSpId != null) ? m_partnerSpId : "")
+    					;
+    }
+    
+    @Override
     protected String getSamlAssertion() throws IOException
     {
         checkRequiredParameters();

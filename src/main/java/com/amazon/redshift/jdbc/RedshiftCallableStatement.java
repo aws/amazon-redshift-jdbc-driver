@@ -33,7 +33,7 @@ import java.sql.Types;
 import java.util.Calendar;
 import java.util.Map;
 
-class RedshiftCallableStatement extends RedshiftPreparedStatement implements CallableStatement {
+public class RedshiftCallableStatement extends RedshiftPreparedStatement implements CallableStatement {
   // Used by the callablestatement style methods
   private boolean isFunction;
   // functionReturnType contains the user supplied value to check
