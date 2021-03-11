@@ -6,22 +6,23 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleWithWebIdentityRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleWithWebIdentityResult;
 import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.util.StringUtils;
+import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.CredentialsHolder.IamMetadata;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Date;
@@ -31,6 +32,7 @@ import java.util.Map;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.LogFactory;
+
 
 public abstract class JwtCredentialsProvider implements IPlugin
 {
@@ -50,10 +52,11 @@ public abstract class JwtCredentialsProvider implements IPlugin
     protected int m_duration;
     
     protected String m_dbUser;
-    protected String m_dbGroups;
+/*    protected String m_dbGroups;
     protected String m_dbGroupsFilter;
     protected Boolean m_forceLowercase;
     protected Boolean m_autoCreate;
+*/    
     protected String m_stsEndpoint;
     protected String m_region;
     protected RedshiftLogger m_log;
@@ -146,9 +149,10 @@ public abstract class JwtCredentialsProvider implements IPlugin
         }
         else if (RedshiftProperty.DB_USER.getName().equalsIgnoreCase(key))
         {
-            m_dbUser = value;
+        	// Do not read dbUser from connection, as it derives from token.
+          // m_dbUser = value;
         }
-        else if (RedshiftProperty.DB_GROUPS.getName().equalsIgnoreCase(key))
+/*        else if (RedshiftProperty.DB_GROUPS.getName().equalsIgnoreCase(key))
         {
             m_dbGroups = value;
         }
@@ -164,6 +168,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
         {
             m_autoCreate = Boolean.valueOf(value);
         }
+*/        
         else if (RedshiftProperty.AWS_REGION.getName().equalsIgnoreCase(key))
         {
             m_region = value;
@@ -247,9 +252,11 @@ public abstract class JwtCredentialsProvider implements IPlugin
             String[] decodedjwt = decodeJwt(m_jwt);
 
             if (RedshiftLogger.isEnable())
-            		m_log.logDebug(
-                    String.format("JWT : %s", jwt));
-                    
+          		m_log.logDebug(
+                  String.format("JWT : %s", jwt));
+            
+            m_dbUser = deriveDatabaseUser(decodedjwt);
+
             AssumeRoleWithWebIdentityRequest jwtRequest = new AssumeRoleWithWebIdentityRequest();
             jwtRequest.setWebIdentityToken(jwt);
             jwtRequest.setRoleArn(m_roleArn);
@@ -270,7 +277,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
             AWSCredentials c = new BasicSessionCredentials(cred.getAccessKeyId(),
                     cred.getSecretAccessKey(), cred.getSessionToken());
             CredentialsHolder credentials = CredentialsHolder.newInstance(c, expiration);
-            
+            credentials.setMetadata(readMetadata());
             credentials.setRefresh(true);
             
             if(!m_disableCache)
@@ -337,5 +344,52 @@ public abstract class JwtCredentialsProvider implements IPlugin
     	else
     		return null;
     	
+    }
+    
+    protected String deriveDatabaseUser(String[] decodedJwt) {
+      String databaseUser = null;
+      
+    	if (decodedJwt != null && decodedJwt.length == 3) {
+    		// Use payload
+    		String payload = decodedJwt[1];
+    		String[] claims = { "DbUser", "upn", "preferred_username", "email" };
+    		
+        JsonNode entityJson = Jackson.jsonNodeOf(payload);
+        JsonNode userTokenField;
+    		
+    		for(String claim : claims) {
+    			userTokenField = entityJson.findValue(claim);
+    			if (userTokenField != null) {
+    				databaseUser = userTokenField.textValue();
+    				if (!StringUtils.isNullOrEmpty(databaseUser)) {
+    					
+    	        if (RedshiftLogger.isEnable())
+    	      		m_log.logDebug(
+    	              String.format("JWT claim: %s as database user: %s", claim, databaseUser));
+    					
+    					break;
+    				}
+    			}
+    		} // Loop
+    		
+				if (StringUtils.isNullOrEmpty(databaseUser)) {
+	        throw new SdkClientException("No database user claim found in JWT");
+				}
+				
+	    	return databaseUser;
+    	}
+    	else {
+        throw new SdkClientException("JWT decoding error");
+    	}
+    }
+    
+    private IamMetadata readMetadata() 
+    {
+        IamMetadata metadata = new IamMetadata();
+        
+        metadata.setDbUser(m_dbUser);
+        metadata.setAutoCreate(true);
+        
+        return metadata;
     }
 }
