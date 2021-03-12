@@ -3200,7 +3200,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
           + " FROM pg_catalog.pg_namespace n, pg_catalog.pg_class c, pg_catalog.pg_user u "
           + " WHERE c.relnamespace = n.oid "
           + " AND c.relowner = u.usesysid "
-          + " AND c.relkind IN ('r','p') ";
+          + " AND c.relkind IN ('r','p','v','m','f') ";
 
     sql += getCatalogFilterCondition(catalog);
     
