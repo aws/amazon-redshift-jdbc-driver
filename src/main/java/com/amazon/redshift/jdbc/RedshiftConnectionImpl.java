@@ -225,7 +225,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     m_settings = new RedshiftJDBCSettings();
     
     // IAM 
-    setAuthMech(info);
+    boolean sslExplicitlyDisabled = setAuthMech(info);
 
     // This need to be called after setAuthMech() and before checking some required settings.
     // host, port, username and password may be set in setIAMProperties().
@@ -233,6 +233,11 @@ public class RedshiftConnectionImpl implements BaseConnection {
     m_settings.m_iamAuth = (iamAuth == null) ? false : Boolean.parseBoolean(iamAuth);
     if (m_settings.m_iamAuth)
     {
+    	if (sslExplicitlyDisabled) {
+	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
+	      			RedshiftState.UNEXPECTED_ERROR);
+    	}
+    	
       if (RedshiftLogger.isEnable())
         logger.log(LogLevel.DEBUG, "Start IAM authentication");
     	
@@ -2188,7 +2193,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
    *
    * @throws RedshiftException        If an unspecified error occurs.
    */
-  private void setAuthMech(Properties info) throws RedshiftException
+  private boolean setAuthMech(Properties info) throws RedshiftException
   {
       //If key word ssl is specified in connection string either with nothing or true,
       //SSL is set to be required.
@@ -2281,6 +2286,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
       {
           m_settings.m_authMech = AuthMech.VERIFY_CA;
       }
+      
+      return sslExplicitlyDisabled;
   }
   
   /**
