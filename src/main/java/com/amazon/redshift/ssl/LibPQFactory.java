@@ -383,11 +383,70 @@ public class LibPQFactory extends WrappedFactory {
       }
       catch (Exception e)
       {
-        // Error retrieving the available trust managers
-      	throw new RedshiftException(
-            GT.tr("Error loading the provided keystore."),
-            			RedshiftState.CONNECTION_FAILURE, e);
+      	return fallbackKeyStores(keystorePath, passphrase, e);      	
       }
+  }
+  
+  /*
+   * BouncyCastle is very strict about key store type. JDK8 has default type JKS, 
+   * while JDK11 has default type PKCS12. 
+   * So JDK11 with BouncyCastle provider throws error - java.io.IOException: stream does not represent a PKCS12 key store.
+   * This fallback mechanism fix the issue as it tries different key store types.
+   */
+  private KeyStore fallbackKeyStores(String keystorePath, 
+  							String passphrase,
+  							Exception originalEx) throws RedshiftException
+  {
+  	String[] keystoreTypes = {"JKS", "PKCS12", "JCEKS"};
+  	
+  	for(String keystoreType:keystoreTypes) 
+  	{
+	  	try
+	    {
+		      InputStream keystoreStream = null;
+		
+		      try
+		      {
+		          keystoreStream = new FileInputStream(new File(keystorePath));
+		      }
+		      catch (Exception e)
+		      {
+		        // Error retrieving the available trust managers
+		      	throw new RedshiftException(
+		            GT.tr("Error loading the keystore  {0}.", keystorePath),
+		            			RedshiftState.CONNECTION_FAILURE, e);
+		      }
+		      
+	        // Load the keystore
+	        KeyStore keystore = KeyStore.getInstance(keystoreType);
+	        char[] passphraseArray = null;
+	        if (null != passphrase)
+	        {
+	            passphraseArray = passphrase.toCharArray();
+	        }
+	        keystore.load(keystoreStream, passphraseArray);
+	        keystoreStream.close();
+	
+	        loadDefaultCA(keystore, "redshift.crt");
+	        loadDefaultCA(keystore, "bjs.redshift.crt");
+	        loadDefaultCA(keystore, "pdt.redshift.crt");
+	        return keystore;
+		    }
+	  		catch (RedshiftException rsex) 
+	  		{
+	  			// inner exception of stream, propagate to caller
+	  			throw rsex;
+	  		}
+		    catch (Exception e)
+		    {
+		    	// Ignore and try another keystore type in the loop.
+		    }
+	    } // Loop
+  	
+	    // Error retrieving the available trust managers
+	  	throw new RedshiftException(
+	        GT.tr("Error loading the provided keystore."),
+	        			RedshiftState.CONNECTION_FAILURE, originalEx);
   }
   
   /**
