@@ -69,6 +69,12 @@ public class TypeInfoCache implements TypeInfo {
   public static final String SUPER_NAME = "super";
   public static final int SUPEROID = Oid.SUPER;
   
+  public static final String TID_NAME = "tid";
+  public static final String TID_ARRAY_NAME = "_tid";
+  public static final String XID_NAME = "xid";
+  public static final String XID_ARRAY_NAME = "_xid";
+  
+  
   // basic rs types info:
   // 0 - type name
   // 1 - type oid
@@ -89,6 +95,8 @@ public class TypeInfoCache implements TypeInfo {
       {"timestamp without time zone", Oid.TIMESTAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMP_ARRAY},
       {"timestamp with time zone", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMPTZ_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRYHEX, Types.LONGVARBINARY, "[B", Oid.GEOMETRYHEX_ARRAY},
+      {XID_NAME, Oid.XIDOID, Types.INTEGER, "java.lang.Integer", Oid.XIDARRAYOID},
+      {TID_NAME, Oid.TIDOID, Types.VARCHAR, "java.lang.String", Oid.TIDARRAYOID},
       
       // Actual types
       {"int2", Oid.INT2, Types.SMALLINT, "java.lang.Integer", Oid.INT2_ARRAY},
@@ -648,6 +656,7 @@ public class TypeInfoCache implements TypeInfo {
 
       case Oid.OID:
       case Oid.INT4:
+      case Oid.XIDOID:
         return 10;
 
       case Oid.INT8:
@@ -675,6 +684,8 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.BPCHAR:
       case Oid.VARCHAR:
       case Oid.SUPER:
+      case Oid.TIDOID:
+      	
         if (typmod == -1) {
           return unknownLength;
         }
@@ -785,6 +796,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.INT2:
         return 6; // -32768 to +32767
       case Oid.INT4:
+      case Oid.XIDOID:
         return 11; // -2147483648 to +2147483647
       case Oid.OID:
         return 10; // 0 to 4294967295
@@ -846,6 +858,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.VARCHAR:
       case Oid.BPCHAR:
       case Oid.SUPER:
+      case Oid.TIDOID:
         if (typmod == -1) {
           return unknownLength;
         }

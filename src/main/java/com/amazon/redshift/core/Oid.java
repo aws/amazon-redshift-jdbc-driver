@@ -83,7 +83,13 @@ public class Oid {
   public static final int GEOMETRYHEX_ARRAY = UNSPECIFIED;
   public static final int SUPER = 4000;
   public static final int SUPER_ARRAY = UNSPECIFIED;
+  
+  public static final int TIDOID = 27; // VARCHAR
+  public static final int TIDARRAYOID = 1010;
 
+  public static final int XIDOID = 28; // INTEGER
+  public static final int XIDARRAYOID = 1011;
+  
   private static final Map<Integer, String> OID_TO_NAME = new HashMap<Integer, String>(100);
   private static final Map<String, Integer> NAME_TO_OID = new HashMap<String, Integer>(100);
 
