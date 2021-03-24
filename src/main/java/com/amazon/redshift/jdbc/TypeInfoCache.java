@@ -95,7 +95,7 @@ public class TypeInfoCache implements TypeInfo {
       {"timestamp without time zone", Oid.TIMESTAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMP_ARRAY},
       {"timestamp with time zone", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMPTZ_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRYHEX, Types.LONGVARBINARY, "[B", Oid.GEOMETRYHEX_ARRAY},
-      {XID_NAME, Oid.XIDOID, Types.INTEGER, "java.lang.Integer", Oid.XIDARRAYOID},
+      {XID_NAME, Oid.XIDOID, Types.BIGINT, "java.lang.Long", Oid.XIDARRAYOID},
       {TID_NAME, Oid.TIDOID, Types.VARCHAR, "java.lang.String", Oid.TIDARRAYOID},
       
       // Actual types
@@ -656,10 +656,10 @@ public class TypeInfoCache implements TypeInfo {
 
       case Oid.OID:
       case Oid.INT4:
-      case Oid.XIDOID:
         return 10;
 
       case Oid.INT8:
+      case Oid.XIDOID:
         return 19;
 
       case Oid.FLOAT4:
@@ -796,11 +796,11 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.INT2:
         return 6; // -32768 to +32767
       case Oid.INT4:
-      case Oid.XIDOID:
         return 11; // -2147483648 to +2147483647
       case Oid.OID:
         return 10; // 0 to 4294967295
       case Oid.INT8:
+      case Oid.XIDOID:
         return 20; // -9223372036854775808 to +9223372036854775807
       case Oid.FLOAT4:
         // varies based upon the extra_float_digits GUC.

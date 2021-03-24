@@ -149,11 +149,14 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
                 @Override
                 public Object apply(List<NameValuePair> nameValuePairs)
                 {
+                	if (RedshiftLogger.isEnable())
+                		m_log.logDebug("nameValuePairs: {0}", nameValuePairs);
+                	
                     return findParameter(SAML_RESPONSE_PARAM_NAME, nameValuePairs);
                 }
             });
         Server server =
-            new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout));
+            new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout), m_log);
         server.listen();
         
       	if(RedshiftLogger.isEnable())
@@ -166,12 +169,19 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
         }
         catch (IOException ex)
         {
+        	if (RedshiftLogger.isEnable())
+        		m_log.logError(ex);
+        	
             server.stop();
             throw ex;
         }
         server.waitForResult();
 
         Object result = requestHandler.getResult();
+        
+      	if (RedshiftLogger.isEnable())
+      		m_log.logDebug("result: {0}", result);
+        
         if (result instanceof InternalPluginException)
         {
             throw (InternalPluginException) result;

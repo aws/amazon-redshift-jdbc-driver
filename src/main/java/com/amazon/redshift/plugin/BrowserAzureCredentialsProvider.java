@@ -176,6 +176,9 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         }
         catch (InternalPluginException | URISyntaxException ex)
         {
+        	if (RedshiftLogger.isEnable())
+        		m_log.logError(ex);
+        	
             // Wrap any exception to be compatible with SamlCredentialsProvider API
             throw new IOException(ex);
         }
@@ -275,7 +278,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
                 }
             });
         Server server =
-            new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout));
+            new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout), m_log);
         server.listen();
         int localPort = server.getLocalPort();
         this.redirectUri = "http://localhost:" + localPort + REDSHIFT_PATH;
@@ -289,10 +292,18 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         }
         catch (URISyntaxException | IOException ex)
         {
+        	if (RedshiftLogger.isEnable())
+        		m_log.logError(ex);
+        	
             server.stop();
             throw ex;
         }
+        
         Object result = requestHandler.getResult();
+        
+      	if (RedshiftLogger.isEnable())
+      		m_log.logDebug("result: {0}", result);
+        
         if (result instanceof InternalPluginException)
         {
             throw (InternalPluginException) result;
@@ -350,6 +361,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         {
         	if(RedshiftLogger.isEnable())
         		m_log.log(LogLevel.ERROR,ex.getMessage(),ex);
+        	
           throw new InternalPluginException(ex);
         }
     }
@@ -372,8 +384,10 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         checkAndThrowsWithMessage(
             isNullOrEmpty(encodedSamlAssertion),
             "Invalid access_token value.");
+        
       	if(RedshiftLogger.isEnable())
       		m_log.log(LogLevel.DEBUG, "Successfully got SAML assertion");
+      	
         return newStringUtf8(Base64.decodeBase64(encodedSamlAssertion));
     }
 

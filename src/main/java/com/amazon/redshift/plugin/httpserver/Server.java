@@ -1,5 +1,6 @@
 package com.amazon.redshift.plugin.httpserver;
 
+import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.InternalPluginException;
 import org.apache.http.HttpException;
 import org.apache.http.HttpServerConnection;
@@ -65,6 +66,9 @@ public class Server
      * Instance of ListenerThread.
      */
     private ListenerThread m_listener;
+    
+    private RedshiftLogger m_log;
+    
 
     /**
      * Ad-hoc http server.
@@ -73,8 +77,10 @@ public class Server
      * @param handler  functional callback. put all necessary functionality here
      * @param waitTime how long does server wait for interaction.
      */
-    public Server(int port, RequestHandler handler, Duration waitTime)
+    public Server(int port, RequestHandler handler, Duration waitTime,
+         				RedshiftLogger log)
     {
+    		this.m_log = log;
         this.m_port = port;
         this.m_handler = handler;
         this.m_ipAddress = InetAddress.getLoopbackAddress();
@@ -119,6 +125,9 @@ public class Server
         }
         catch (Throwable ex)
         {
+        	if (RedshiftLogger.isEnable())
+        		m_log.logError(ex.getMessage());
+        	
             if (serverSocket != null)
             {
                 serverSocket.close();
@@ -142,6 +151,8 @@ public class Server
         {
             // do nothing.
             // resources would be closed by listener thread.
+        	if (RedshiftLogger.isEnable())
+        		m_log.logError(e);
         }
     }
 
@@ -208,11 +219,15 @@ public class Server
             catch (SocketTimeoutException ex)
             {
                 // do nothing. There was no connection during timeout
+            	if (RedshiftLogger.isEnable())
+            		m_log.logError(ex);
             }
             catch (HttpException | IOException e)
             {
                 // Thread can`t throw any checked exceptions from run(), so it needs to be wrapped
                 // into RuntimeException.
+	            	if (RedshiftLogger.isEnable())
+	            		m_log.logError(e);
                 throw InternalServerException.wrap(e);
             }
             finally
@@ -223,6 +238,16 @@ public class Server
                     {
                         conn.shutdown();
                     }
+                }
+                catch (IOException e)
+                {
+                    // do nothing
+  	            	if (RedshiftLogger.isEnable())
+  	            		m_log.logError(e);
+                }
+                
+                try
+                {
                     if (!serverSocket.isClosed())
                     {
                         serverSocket.close();
@@ -231,6 +256,8 @@ public class Server
                 catch (IOException e)
                 {
                     // do nothing
+  	            	if (RedshiftLogger.isEnable())
+  	            		m_log.logError(e);
                 }
             }
         }
