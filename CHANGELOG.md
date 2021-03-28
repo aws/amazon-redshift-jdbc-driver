@@ -1,6 +1,22 @@
 Changelog
 =========
 
+v2.0.0.4 (2021-03-28)
+---------------------
+- Added more logging for Browser plugins. [ilesh Garish]
+- Map XID to Integer and TID to VARCHAR. [ilesh Garish]
+- Fix [issue#14](https://github.com/aws/amazon-redshift-jdbc-driver/issues/14). [ilesh Garish]
+- SSL should not be disable in IAM authentication. [ilesh Garish]
+- Changes for OUT and INOUT proc params to get size of the param in
+  getProcedureColumns. [ilesh Garish]
+- Return metadata privileges for views and foreign tables. [Jeremy
+  Mailen]
+- Change getProcedureColumns() to get param length. [ilesh Garish]
+- Read database user from JWT. [ilesh Garish]
+- Fix [issue#12](https://github.com/aws/amazon-redshift-jdbc-driver/issues/12). [ilesh Garish]
+- Log error response of SAML request. [ilesh Garish]
+
+
 v2.0.0.3 (2021-02-25)
 ---------------------
  - Fix [issue#9](https://github.com/aws/amazon-redshift-jdbc-driver/issues/9). [ilesh Garish]
