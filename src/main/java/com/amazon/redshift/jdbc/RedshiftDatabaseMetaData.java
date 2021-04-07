@@ -1045,6 +1045,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN 1 "
             + " WHEN 'nvarchar' THEN 12 "
             + " WHEN 'date' THEN 91 "
+            + " WHEN 'time' THEN 92 "
+            + " WHEN 'time without time zone' THEN 92 "
+            + " WHEN 'timetz' THEN 2013 "
+            + " WHEN 'time with time zone' THEN 2013 "
             + " WHEN 'timestamp' THEN 93 "
             + " WHEN 'timestamp without time zone' THEN 93 "
             + " WHEN 'timestamptz' THEN 2014 "
@@ -1087,7 +1091,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN NULL "
             + " WHEN 'nvarchar' THEN NULL "
             + " WHEN 'date' THEN 10 "
-            + " WHEN 'timestamp' THEN 6 "
+            + " WHEN 'time' THEN 15 "
+            + " WHEN 'time without time zone' THEN 15 "
+            + " WHEN 'timetz' THEN 21 "
+            + " WHEN 'time with time zone' THEN 21 "
+            + " WHEN 'timestamp' THEN 29 "
+            + " WHEN 'timestamp without time zone' THEN 29 "
+            + " WHEN 'timestamptz' THEN 35 "
+            + " WHEN 'timestamp with time zone' THEN 35 "
             + " WHEN 'smallint' THEN 5 "
             + " WHEN 'int2' THEN 5 "
             + " WHEN 'integer' THEN 10 "
@@ -1115,7 +1126,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN NULL "
             + " WHEN 'nvarchar' THEN NULL "
             + " WHEN 'date' THEN 6 "
+            + " WHEN 'time' THEN 15 "
+            + " WHEN 'time without time zone' THEN 15 "
+            + " WHEN 'timetz' THEN 21 "
+            + " WHEN 'time with time zone' THEN 21 "
             + " WHEN 'timestamp' THEN 6 "
+            + " WHEN 'timestamp without time zone' THEN 6 "
+            + " WHEN 'timestamptz' THEN 35 "
+            + " WHEN 'timestamp with time zone' THEN 35 "
             + " WHEN 'smallint' THEN 2 "
             + " WHEN 'int2' THEN 2 "
             + " WHEN 'integer' THEN 4 "
@@ -1147,6 +1165,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'float' THEN 17 "
             + " WHEN 'float8' THEN 17 "
             + " WHEN 'numeric' THEN 0 "
+            + " WHEN 'time' THEN 6 "
+            + " WHEN 'time without time zone' THEN 6 "
+            + " WHEN 'timetz' THEN 6 "
+            + " WHEN 'time with time zone' THEN 6 "
             + " WHEN 'timestamp' THEN 6 "
             + " WHEN 'timestamp without time zone' THEN 6 "
             + " WHEN 'timestamptz' THEN 6 "
@@ -1170,6 +1192,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'bpchar' THEN 1 "
             + " WHEN 'nvarchar' THEN 12 "
             + " WHEN 'date' THEN 91 "
+            + " WHEN 'time' THEN 92 "
+            + " WHEN 'time without time zone' THEN 92 "
+            + " WHEN 'timetz' THEN 2013 "
+            + " WHEN 'time with time zone' THEN 2013 "
             + " WHEN 'timestamp' THEN 93 "
             + " WHEN 'timestamp without time zone' THEN 93 "
             + " WHEN 'timestamptz' THEN 2014 "
@@ -2019,8 +2045,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'bpchar' THEN 1 ");
       result.append("when 'nvarchar' THEN 12 ");
       result.append("when 'date' THEN 91 ");
+      result.append("when 'time' THEN 92 ");
+      result.append("when 'time without time zone' THEN 92 ");
+      result.append("when 'timetz' THEN 2013 ");
+      result.append("when 'time with time zone' THEN 2013 ");
       result.append("when 'timestamp' THEN 93 ");
       result.append("when 'timestamp without time zone' THEN 93 ");
+      result.append("when 'timestamptz' THEN 2014 ");
+      result.append("when 'timestamp with time zone' THEN 2014 ");
       result.append("when 'smallint' THEN 5 ");
       result.append("when 'int2' THEN 5 ");
       result.append("when 'integer' THEN 4 ");
@@ -2036,8 +2068,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'float' THEN 6 ");
       result.append("when 'numeric' THEN 2 ");
       result.append("when '_float4' THEN 2003 ");
-      result.append("when 'timestamptz' THEN 2014 ");
-      result.append("when 'timestamp with time zone' THEN 2014 ");
       result.append("when '_aclitem' THEN 2003 ");
       result.append("when '_text' THEN 2003 ");
       result.append("when 'bytea' THEN -2 ");
@@ -2062,7 +2092,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'bpchar' THEN atttypmod -4 ");
       result.append("when 'nvarchar' THEN atttypmod -4 ");
       result.append("when 'date' THEN 13 ");
+      result.append("when 'time' THEN 15 ");
+      result.append("when 'time without time zone' THEN 15 ");
+      result.append("when 'timetz' THEN 21 ");
+      result.append("when 'time with time zone' THEN 21 ");
       result.append("when 'timestamp' THEN 29 ");
+      result.append("when 'timestamp without time zone' THEN 29 ");
+      result.append("when 'timestamptz' THEN 35 ");
+      result.append("when 'timestamp with time zone' THEN 35 ");
       result.append("when 'smallint' THEN 5 ");
       result.append("when 'int2' THEN 5 ");
       result.append("when 'integer' THEN 10 ");
@@ -2078,7 +2115,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'float' THEN 17 ");
       result.append("when 'numeric' THEN (atttypmod - 4) >> 16 ");
       result.append("when '_float4' THEN 8 ");
-      result.append("when 'timestamptz' THEN 35 ");
       result.append("when 'oid' THEN 10 ");
       result.append("when '_int4' THEN 10 ");
       result.append("when '_int2' THEN 5 ");
@@ -2099,6 +2135,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'float4' then 8 ");
       result.append("when 'float8' then 17 ");
       result.append("when 'numeric' then (atttypmod - 4) & 65535 ");
+      result.append("when 'time without time zone' then 6 ");
+      result.append("when 'timetz' then 6 ");
+      result.append("when 'time with time zone' then 6 ");
+      result.append("when 'timestamp without time zone' then 6 ");
       result.append("when 'timestamp' then 6 ");
       result.append("when 'geometry' then NULL ");
       result.append("when 'super' then NULL ");
@@ -2124,6 +2164,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'bpchar' THEN 1 ");
       result.append("when 'nvarchar' THEN 12 ");
       result.append("when 'date' THEN 91 ");
+      result.append("when 'time' THEN 92 ");
+      result.append("when 'time without time zone' THEN 92 ");
+      result.append("when 'timetz' THEN 2013 ");
+      result.append("when 'time with time zone' THEN 2013 ");
+      result.append("when 'timestamp with time zone' THEN 2014 ");
       result.append("when 'timestamp' THEN 93 ");
       result.append("when 'timestamp without time zone' THEN 93 ");
       result.append("when 'smallint' THEN 5 ");
@@ -2167,7 +2212,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'bpchar' THEN atttypmod -4 ");
       result.append("when 'nvarchar' THEN atttypmod -4 ");
       result.append("when 'date' THEN 13 ");
+      result.append("when 'time' THEN 15 ");
+      result.append("when 'time without time zone' THEN 15 ");
+      result.append("when 'timetz' THEN 21 ");
+      result.append("when 'time with time zone' THEN 21 ");
       result.append("when 'timestamp' THEN 29 ");
+      result.append("when 'timestamp without time zone' THEN 29 ");
+      result.append("when 'timestamptz' THEN 35 ");
+      result.append("when 'timestamp with time zone' THEN 35 ");
       result.append("when 'smallint' THEN 5 ");
       result.append("when 'int2' THEN 5 ");
       result.append("when 'integer' THEN 10 ");
@@ -2183,7 +2235,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'float' THEN 17 ");
       result.append("when 'numeric' THEN ((atttypmod - 4) >> 16) & 65535 ");
       result.append("when '_float4' THEN 8 ");
-      result.append("when 'timestamptz' THEN 35 ");
       result.append("when 'oid' THEN 10 ");
       result.append("when '_int4' THEN 10 ");
       result.append("when '_int2' THEN 5 ");
@@ -2259,8 +2310,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'nvarchar' THEN 12 ");
       result.append("WHEN '\"char\"' THEN 1 ");
       result.append("WHEN 'date' THEN 91 ");
+      result.append("when 'time' THEN 92 ");
+      result.append("when 'time without time zone' THEN 92 ");
+      result.append("when 'timetz' THEN 2013 ");
+      result.append("when 'time with time zone' THEN 2013 ");
       result.append("WHEN 'timestamp' THEN 93 ");
       result.append("WHEN 'timestamp without time zone' THEN 93 ");
+      result.append("when 'timestamptz' THEN 2014 ");
       result.append("WHEN 'timestamp with time zone' THEN 2014 ");
       result.append("WHEN 'smallint' THEN 5 ");
       result.append("WHEN 'int2' THEN 5 ");
@@ -2292,6 +2348,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'bigint' THEN 'int8' ");
       result.append("WHEN 'real' THEN 'float4' ");
       result.append("WHEN 'double precision' THEN 'float8' ");
+      result.append("WHEN 'time without time zone' THEN 'time' ");
+      result.append("WHEN 'time with time zone' THEN 'timetz' ");
       result.append("WHEN 'timestamp without time zone' THEN 'timestamp' ");
       result.append("WHEN 'timestamp with time zone' THEN 'timestamptz' ");
       result.append("ELSE columntype END) AS TYPE_NAME,  ");
@@ -2308,8 +2366,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'bpchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
       result.append("WHEN 'nvarchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
       result.append("WHEN 'date' THEN 13 ");
+      result.append("WHEN 'time' THEN 15 ");
+      result.append("WHEN 'time without time zone' THEN 15 ");
+      result.append("WHEN 'timetz' THEN 21 ");
       result.append("WHEN 'timestamp' THEN 29 ");
       result.append("WHEN 'timestamp without time zone' THEN 29 ");
+      result.append("WHEN 'time with time zone' THEN 21 ");
+      result.append("WHEN 'timestamptz' THEN 35 ");
+      result.append("WHEN 'timestamp with time zone' THEN 35 ");
       result.append("WHEN 'smallint' THEN 5 ");
       result.append("WHEN 'int2' THEN 5 ");
       result.append("WHEN 'integer' THEN 10 ");
@@ -2325,8 +2389,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'float' THEN 17");
       result.append("WHEN 'numeric' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
       result.append("WHEN '_float4' THEN 8 ");
-      result.append("WHEN 'timestamptz' THEN 35 ");
-      result.append("WHEN 'timestamp with time zone' THEN 35 ");
       result.append("WHEN 'oid' THEN 10 ");
       result.append("WHEN '_int4' THEN 10 ");
       result.append("WHEN '_int2' THEN 5 ");
@@ -2359,8 +2421,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'nvarchar' THEN 12 ");
       result.append("WHEN '\"char\"' THEN 1 ");
       result.append("WHEN 'date' THEN 91 ");
+      result.append("WHEN 'time' THEN 92 ");
+      result.append("WHEN 'time without time zone' THEN 92 ");
+      result.append("WHEN 'timetz' THEN 2013 ");
+      result.append("WHEN 'time with time zone' THEN 2013 ");
       result.append("WHEN 'timestamp' THEN 93 ");
       result.append("WHEN 'timestamp without time zone' THEN 93 ");
+      result.append("WHEN 'timestamptz' THEN 2014 ");
       result.append("WHEN 'timestamp with time zone' THEN 2014 ");
       result.append("WHEN 'smallint' THEN 5 ");
       result.append("WHEN 'int2' THEN 5 ");
@@ -2376,7 +2443,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'float8' THEN 8 ");
       result.append("WHEN 'float' THEN 6 ");
       result.append("WHEN 'numeric' THEN 2 ");
-      result.append("WHEN 'timestamptz' THEN 2014 ");
       result.append("WHEN 'bytea' THEN -2 ");
       result.append("WHEN 'oid' THEN -5 ");
       result.append("WHEN 'name' THEN 12 ");
@@ -2448,8 +2514,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'nvarchar' THEN 12 "
     + " WHEN '\"char\"' THEN 1 "
     + " WHEN 'date' THEN 91 "
+    + " WHEN 'time' THEN 92 "
+    + " WHEN 'time without time zone' THEN 92 "
+    + " WHEN 'timetz' THEN 2013 "
+    + " WHEN 'time with time zone' THEN 2013 "
     + " WHEN 'timestamp' THEN 93 "
     + " WHEN 'timestamp without time zone' THEN 93 "
+    + " WHEN 'timestamptz' THEN 2014 "
     + " WHEN 'timestamp with time zone' THEN 2014 "
     + " WHEN 'smallint' THEN 5 "
     + " WHEN 'int2' THEN 5 "
@@ -2465,7 +2536,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'float8' THEN 8 "
     + " WHEN 'float' THEN 6 "
     + " WHEN 'numeric' THEN 2 "
-    + " WHEN 'timestamptz' THEN 2014 "
     + " WHEN 'bytea' THEN -2 "
     + " WHEN 'oid' THEN -5 "
     + " WHEN 'name' THEN 12 "
@@ -2482,6 +2552,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'bigint' THEN 'int8' "
     + " WHEN 'real' THEN 'float4' "
     + " WHEN 'double precision' THEN 'float8' "
+    + " WHEN 'time without time zone' THEN 'time' "
+    + " WHEN 'time with time zone' THEN 'timetz' "
     + " WHEN 'timestamp without time zone' THEN 'timestamp' "
     + " WHEN 'timestamp with time zone' THEN 'timestamptz' "
     + " ELSE data_type "
@@ -2499,8 +2571,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'bpchar' THEN character_maximum_length "
     + " WHEN 'nvarchar' THEN character_maximum_length "
     + " WHEN 'date' THEN 13 "
+    + " WHEN 'time' THEN 15 "
+    + " WHEN 'time without time zone' THEN 15 "
+    + " WHEN 'timetz' THEN 21 "
+    + " WHEN 'time with time zone' THEN 21 "
     + " WHEN 'timestamp' THEN 29 "
     + " WHEN 'timestamp without time zone' THEN 29 "
+    + " WHEN 'timestamptz' THEN 35 "
+    + " WHEN 'timestamp with time zone' THEN 35 "
     + " WHEN 'smallint' THEN 5 "
     + " WHEN 'int2' THEN 5 "
     + " WHEN 'integer' THEN 10 "
@@ -2516,8 +2594,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'float' THEN 17 "
     + " WHEN 'numeric' THEN numeric_precision "
     + " WHEN '_float4' THEN 8 "
-    + " WHEN 'timestamptz' THEN 35 "
-    + " WHEN 'timestamp with time zone' THEN 35 "
     + " WHEN 'oid' THEN 10 "
     + " WHEN '_int4' THEN 10 "
     + " WHEN '_int2' THEN 5 "
@@ -2532,8 +2608,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'double precision' THEN 17 "
     + " WHEN 'float8' THEN 17 "
     + " WHEN 'numeric' THEN numeric_scale "
+    + " WHEN 'time' THEN 6 "
+    + " WHEN 'time without time zone' THEN 6 "
+    + " WHEN 'timetz' THEN 6 "
+    + " WHEN 'time with time zone' THEN 6 "
     + " WHEN 'timestamp' THEN 6 "
     + " WHEN 'timestamp without time zone' THEN 6 "
+    + " WHEN 'timestamptz' THEN 6 " 
+    + " WHEN 'timestamp with time zone' THEN 6 " 
     + " WHEN 'geometry' THEN NULL "
     + " WHEN 'super' THEN NULL "
     + " ELSE 0 "
@@ -2558,8 +2640,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'nvarchar' THEN 12 "
     + " WHEN '\"char\"' THEN 1 "
     + " WHEN 'date' THEN 91 "
+    + " WHEN 'time' THEN 92 "
+    + " WHEN 'time without time zone' THEN 92 "
+    + " WHEN 'timetz' THEN 2013 "
+    + " WHEN 'time with time zone' THEN 2013 "
     + " WHEN 'timestamp' THEN 93 "
     + " WHEN 'timestamp without time zone' THEN 93 "
+    + " WHEN 'timestamptz' THEN 2014 "
     + " WHEN 'timestamp with time zone' THEN 2014 "
     + " WHEN 'smallint' THEN 5 "
     + " WHEN 'int2' THEN 5 "
@@ -2575,7 +2662,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'float8' THEN 8 "
     + " WHEN 'float' THEN 6 "
     + " WHEN 'numeric' THEN 2 "
-    + " WHEN 'timestamptz' THEN 2014 "
     + " WHEN 'bytea' THEN -2 "
     + " WHEN 'oid' THEN -5 "
     + " WHEN 'name' THEN 12 "
@@ -2597,8 +2683,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'bpchar' THEN character_maximum_length "
     + " WHEN 'nvarchar' THEN character_maximum_length "
     + " WHEN 'date' THEN 13 "
+    + " WHEN 'time' THEN 15 "
+    + " WHEN 'time without time zone' THEN 15 "
+    + " WHEN 'timetz' THEN 21 "
+    + " WHEN 'time with time zone' THEN 21 "
     + " WHEN 'timestamp' THEN 29 "
     + " WHEN 'timestamp without time zone' THEN 29 "
+    + " WHEN 'timestamptz' THEN 35 "
+    + " WHEN 'timestamp with time zone' THEN 35 "
     + " WHEN 'smallint' THEN 5 "
     + " WHEN 'int2' THEN 5 "
     + " WHEN 'integer' THEN 10 "
@@ -2614,8 +2706,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'float' THEN 17 "
     + " WHEN 'numeric' THEN numeric_precision "
     + " WHEN '_float4' THEN 8 "
-    + " WHEN 'timestamptz' THEN 35 "
-    + " WHEN 'timestamp with time zone' THEN 35 "
     + " WHEN 'oid' THEN 10 "
     + " WHEN '_int4' THEN 10 "
     + " WHEN '_int2' THEN 5 "
@@ -2682,8 +2772,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'nvarchar' THEN 12"
 	      + " WHEN '\"char\"' THEN 1"
 	      + " WHEN 'date' THEN 91"
+        + " WHEN 'time' THEN 92 "
+        + " WHEN 'time without time zone' THEN 92 "
+        + " WHEN 'timetz' THEN 2013 "
+        + " WHEN 'time with time zone' THEN 2013 "
 	      + " WHEN 'timestamp' THEN 93"
 	      + " WHEN 'timestamp without time zone' THEN 93"
+	      + " WHEN 'timestamptz' THEN 2014"
 	      + " WHEN 'timestamp with time zone' THEN 2014"
 	      + " WHEN 'smallint' THEN 5"
 	      + " WHEN 'int2' THEN 5"
@@ -2699,7 +2794,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'float8' THEN 8"
 	      + " WHEN 'float' THEN 6"
 	      + " WHEN 'numeric' THEN 2"
-	      + " WHEN 'timestamptz' THEN 2014"
 	      + " WHEN 'bytea' THEN -2"
 	      + " WHEN 'oid' THEN -5"
 	      + " WHEN 'name' THEN 12"
@@ -2718,6 +2812,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'bigint' THEN 'int8'"
 	      + " WHEN 'real' THEN 'float4'"
 	      + " WHEN 'double precision' THEN 'float8'"
+        + " WHEN 'time without time zone' THEN 'time'"
+        + " WHEN 'time with time zone' THEN 'timetz'"
 	      + " WHEN 'timestamp without time zone' THEN 'timestamp'"
 	      + " WHEN 'timestamp with time zone' THEN 'timestamptz'"
 	      + " ELSE data_type"
@@ -2735,8 +2831,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'bpchar' THEN character_maximum_length"
 	      + " WHEN 'nvarchar' THEN character_maximum_length"
 	      + " WHEN 'date' THEN 13"
+        + " WHEN 'time' THEN 15 "
+        + " WHEN 'time without time zone' THEN 15 "
+        + " WHEN 'timetz' THEN 21 "
+        + " WHEN 'time with time zone' THEN 21 "
 	      + " WHEN 'timestamp' THEN 29"
 	      + " WHEN 'timestamp without time zone' THEN 29"
+	      + " WHEN 'timestamptz' THEN 35"
+	      + " WHEN 'timestamp with time zone' THEN 35"
 	      + " WHEN 'smallint' THEN 5"
 	      + " WHEN 'int2' THEN 5"
 	      + " WHEN 'integer' THEN 10"
@@ -2752,8 +2854,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'float' THEN 17"
 	      + " WHEN 'numeric' THEN numeric_precision"
 	      + " WHEN '_float4' THEN 8"
-	      + " WHEN 'timestamptz' THEN 35"
-	      + " WHEN 'timestamp with time zone' THEN 35"
 	      + " WHEN 'oid' THEN 10"
 	      + " WHEN '_int4' THEN 10"
 	      + " WHEN '_int2' THEN 5"
@@ -2768,8 +2868,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'double precision' THEN 17"
 	      + " WHEN 'float8' THEN 17"
 	      + " WHEN 'numeric' THEN numeric_scale"
+        + " WHEN 'time' THEN 6"
+        + " WHEN 'time without time zone' THEN 6"
+        + " WHEN 'timetz' THEN 6"
+        + " WHEN 'time with time zone' THEN 6"
 	      + " WHEN 'timestamp' THEN 6"
 	      + " WHEN 'timestamp without time zone' THEN 6"
+	      + " WHEN 'timestamptz' THEN 6"
+	      + " WHEN 'timestamp with time zone' THEN 6"
         + " WHEN 'geometry' THEN NULL"
         + " WHEN 'super' THEN NULL"
 	      + " ELSE 0"
@@ -2794,8 +2900,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'nvarchar' THEN 12"
 	      + " WHEN '\"char\"' THEN 1"
 	      + " WHEN 'date' THEN 91"
+        + " WHEN 'time' THEN 92 "
+        + " WHEN 'time without time zone' THEN 92 "
+        + " WHEN 'timetz' THEN 2013 "
+        + " WHEN 'time with time zone' THEN 2013 "
 	      + " WHEN 'timestamp' THEN 93"
 	      + " WHEN 'timestamp without time zone' THEN 93"
+	      + " WHEN 'timestamptz' THEN 2014"
 	      + " WHEN 'timestamp with time zone' THEN 2014"
 	      + " WHEN 'smallint' THEN 5"
 	      + " WHEN 'int2' THEN 5"
@@ -2811,7 +2922,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'float8' THEN 8"
 	      + " WHEN 'float' THEN 6"
 	      + " WHEN 'numeric' THEN 2"
-	      + " WHEN 'timestamptz' THEN 2014"
 	      + " WHEN 'bytea' THEN -2"
 	      + " WHEN 'oid' THEN -5"
 	      + " WHEN 'name' THEN 12"
@@ -2833,8 +2943,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'bpchar' THEN character_maximum_length"
 	      + " WHEN 'nvarchar' THEN character_maximum_length"
 	      + " WHEN 'date' THEN 13"
+        + " WHEN 'time' THEN 15"
+        + " WHEN 'time without time zone' THEN 15"
+        + " WHEN 'timetz' THEN 21"
+        + " WHEN 'time with time zone' THEN 21"
 	      + " WHEN 'timestamp' THEN 29"
 	      + " WHEN 'timestamp without time zone' THEN 29"
+	      + " WHEN 'timestamptz' THEN 35"
+	      + " WHEN 'timestamp with time zone' THEN 35"
 	      + " WHEN 'smallint' THEN 5"
 	      + " WHEN 'int2' THEN 5"
 	      + " WHEN 'integer' THEN 10"
@@ -2850,8 +2966,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      + " WHEN 'float' THEN 17"
 	      + " WHEN 'numeric' THEN numeric_precision"
 	      + " WHEN '_float4' THEN 8"
-	      + " WHEN 'timestamptz' THEN 35"
-	      + " WHEN 'timestamp with time zone' THEN 35"
 	      + " WHEN 'oid' THEN 10"
 	      + " WHEN '_int4' THEN 10"
 	      + " WHEN '_int2' THEN 5"
@@ -2919,8 +3033,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN left(external_type, 8) = 'nvarchar' THEN 12" 
     + " WHEN external_type = '\"char\"' THEN 1" 
     + " WHEN external_type = 'date' THEN 91" 
+    + " WHEN external_type = 'time' THEN 92 "
+    + " WHEN external_type = 'time without time zone' THEN 92 "
+    + " WHEN external_type = 'timetz' THEN 2013 "
+    + " WHEN external_type = 'time with time zone' THEN 2013 "
     + " WHEN external_type = 'timestamp' THEN 93" 
     + " WHEN external_type = 'timestamp without time zone' THEN 93" 
+    + " WHEN external_type = 'timestamptz' THEN 2014" 
     + " WHEN external_type = 'timestamp with time zone' THEN 2014"
     + " WHEN external_type = 'smallint' THEN 5"
     + " WHEN external_type = 'int2' THEN 5"
@@ -2941,7 +3060,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = '_float8' THEN 8" 
     + " WHEN external_type = 'float' THEN 6" 
     + " WHEN left(external_type, 7) = 'numeric' THEN 2" 
-    + " WHEN external_type = 'timestamptz' THEN 2014" 
     + " WHEN external_type = 'bytea' THEN -2" 
     + " WHEN external_type = 'oid' THEN -5" 
     + " WHEN external_type = 'name' THEN 12" 
@@ -2955,6 +3073,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN left(external_type, 7) = 'decimal' THEN 'numeric'" 
     + " WHEN left(external_type, 7) = 'numeric' THEN 'numeric'" 
     + " WHEN external_type = 'double' THEN 'double precision'" 
+    + " WHEN external_type = 'time without time zone' THEN 'time'"
+    + " WHEN external_type = 'time with time zone' THEN 'timetz'"
     + " WHEN external_type = 'timestamp without time zone' THEN 'timestamp'" 
     + " WHEN external_type = 'timestamp with time zone' THEN 'timestamptz'" 
     + " ELSE external_type END AS TYPE_NAME," 
@@ -2969,8 +3089,15 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN left(external_type, 5) = 'nchar' THEN regexp_substr(external_type, '[0-9]+', 5)::integer" 
     + " WHEN left(external_type, 6) = 'bpchar' THEN regexp_substr(external_type, '[0-9]+', 6)::integer" 
     + " WHEN left(external_type, 8) = 'nvarchar' THEN regexp_substr(external_type, '[0-9]+', 8)::integer" 
-    + " WHEN external_type = 'date' THEN 13 WHEN external_type = 'timestamp' THEN 29" 
+    + " WHEN external_type = 'date' THEN 13 "
+    + " WHEN external_type = 'time' THEN 15 "
+    + " WHEN external_type = 'time without time zone' THEN 15 "
+    + " WHEN external_type = 'timetz' THEN 21 "
+    + " WHEN external_type = 'time with time zone' THEN 21 "
+    + " WHEN external_type = 'timestamp' THEN 29 " 
     + " WHEN external_type = 'timestamp without time zone' THEN 29" 
+    + " WHEN external_type = 'timestamptz' THEN 35" 
+    + " WHEN external_type = 'timestamp with time zone' THEN 35" 
     + " WHEN external_type = 'smallint' THEN 5" 
     + " WHEN external_type = 'int2' THEN 5" 
     + " WHEN external_type = 'integer' THEN 10" 
@@ -2989,8 +3116,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'float' THEN 17" 
     + " WHEN left(external_type, 7) = 'numeric' THEN regexp_substr(external_type, '[0-9]+', 7)::integer" 
     + " WHEN external_type = '_float4' THEN 8" 
-    + " WHEN external_type = 'timestamptz' THEN 35" 
-    + " WHEN external_type = 'timestamp with time zone' THEN 35" 
     + " WHEN external_type = 'oid' THEN 10" 
     + " WHEN external_type = '_int4' THEN 10" 
     + " WHEN external_type = '_int2' THEN 5" 
@@ -3005,8 +3130,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'float8' THEN 17" 
     + " WHEN left(external_type, 7) = 'numeric' THEN regexp_substr(external_type, '[0-9]+', 10)::integer" 
     + " WHEN left(external_type, 7) = 'decimal' THEN regexp_substr(external_type, '[0-9]+', 10)::integer" 
+    + " WHEN external_type = 'time' THEN 6 "
+    + " WHEN external_type = 'time without time zone' THEN 6 "
+    + " WHEN external_type = 'timetz' THEN 6 "
+    + " WHEN external_type = 'time with time zone' THEN 6 "
     + " WHEN external_type = 'timestamp' THEN 6" 
     + " WHEN external_type = 'timestamp without time zone' THEN 6" 
+    + " WHEN external_type = 'timestamptz' THEN 6" 
+    + " WHEN external_type = 'timestamp with time zone' THEN 6" 
     + " WHEN external_type = 'geometry' THEN NULL"
     + " WHEN external_type = 'super' THEN NULL"
     + " ELSE 0 END AS DECIMAL_DIGITS," 
@@ -3027,8 +3158,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN left(external_type, 8) = 'nvarchar' THEN 12" 
     + " WHEN external_type = '\"char\"' THEN 1" 
     + " WHEN external_type = 'date' THEN 91" 
+    + " WHEN external_type = 'time' THEN 92 "
+    + " WHEN external_type = 'time without time zone' THEN 92 "
+    + " WHEN external_type = 'timetz' THEN 2013 "
+    + " WHEN external_type = 'time with time zone' THEN 2013 "
     + " WHEN external_type = 'timestamp' THEN 93" 
     + " WHEN external_type = 'timestamp without time zone' THEN 93" 
+    + " WHEN external_type = 'timestamptz' THEN 2014" 
     + " WHEN external_type = 'timestamp with time zone' THEN 2014" 
     + " WHEN external_type = 'smallint' THEN 5" 
     + " WHEN external_type = 'int2' THEN 5" 
@@ -3049,7 +3185,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = '_float8' THEN 8" 
     + " WHEN external_type = 'float' THEN 6" 
     + " WHEN left(external_type, 7) = 'numeric' THEN 2" 
-    + " WHEN external_type = 'timestamptz' THEN 2014" 
     + " WHEN external_type = 'bytea' THEN -2" 
     + " WHEN external_type = 'oid' THEN -5" 
     + " WHEN external_type = 'name' THEN 12" 
