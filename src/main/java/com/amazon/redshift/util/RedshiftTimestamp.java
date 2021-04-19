@@ -181,9 +181,7 @@ public class RedshiftTimestamp extends Timestamp {
   	if (s == null)
   		return super.toString();
   	else {
-  		String s2 = getRedshiftString();
-//  		System.out.println(" s=" + s + " s2=" + s2);
-  		return s2;
+        return getRedshiftString();
   	}
   }
   

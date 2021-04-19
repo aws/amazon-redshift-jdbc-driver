@@ -125,6 +125,7 @@ javadoc {
     
     failOnError = false
     maxMemory = "2G"
+    options.encoding = "UTF-8"
 }
 
 

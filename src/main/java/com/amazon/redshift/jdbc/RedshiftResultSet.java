@@ -68,6 +68,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 //JCP! endif
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -514,10 +515,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         // Here we just truncate date to 00:00 in a given time zone
         return connection.getTimestampUtils().convertToDate(timestamp.getTime(), tz);
       } else {
-        throw new RedshiftException(
-            GT.tr("Cannot convert the column of type {0} to requested type {1}.",
-                Oid.toString(oid), "date"),
-            RedshiftState.DATA_TYPE_MISMATCH);
+        	return connection.getTimestampUtils().toDate(cal, getString(i));
       }
     }
 
@@ -605,21 +603,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.TIMESTAMPTZ || oid == Oid.TIMESTAMP) {
         boolean hasTimeZone = oid == Oid.TIMESTAMPTZ;
         TimeZone tz = cal.getTimeZone();
-        return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone);
+        return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone, cal);
       } else {
         // JDBC spec says getTimestamp of Time and Date must be supported
         long millis;
         if (oid == Oid.TIME || oid == Oid.TIMETZ) {
           millis = getTime(i, cal).getTime();
+          return new Timestamp(millis);
         } else if (oid == Oid.DATE) {
           millis = getDate(i, cal).getTime();
-        } else {
-          throw new RedshiftException(
-              GT.tr("Cannot convert the column of type {0} to requested type {1}.",
-                  Oid.toString(oid), "timestamp"),
-              RedshiftState.DATA_TYPE_MISMATCH);
-        }
-        return new Timestamp(millis);
+          return new Timestamp(millis);
+        } 
       }
     }
 
@@ -1781,18 +1775,35 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
           // boolean needs to be formatted as t or f instead of true or false
           case Types.BIT:
           case Types.BOOLEAN:
-            rowBuffer.set(columnIndex, connection
-                .encodeString(((Boolean) valueObject).booleanValue() ? "t" : "f"));
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[1];
+	            ByteConverter.bool(val, 0, ((Boolean) valueObject).booleanValue());
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+              rowBuffer.set(columnIndex, connection
+                  .encodeString(((Boolean) valueObject).booleanValue() ? "t" : "f"));
+            }
             break;
             //
             // toString() isn't enough for date and time types; we must format it correctly
             // or we won't be able to re-parse it.
             //
           case Types.DATE:
-            rowBuffer.set(columnIndex, connection
-                .encodeString(
-                    connection.getTimestampUtils().toString(
-                        getDefaultCalendar(), (Date) valueObject)));
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[4];
+	            TimeZone tz = null;
+	            connection.getTimestampUtils().toBinDate(tz, val, (Date) valueObject);
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+	            rowBuffer.set(columnIndex, connection
+	                .encodeString(
+	                    connection.getTimestampUtils().toString(
+	                        getDefaultCalendar(), (Date) valueObject)));
+            }
             break;
 
           case Types.TIME:
@@ -1803,9 +1814,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
             break;
 
           case Types.TIMESTAMP:
-            rowBuffer.set(columnIndex, connection.encodeString(
-                connection.getTimestampUtils().toString(
-                    getDefaultCalendar(), (Timestamp) valueObject)));
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[8];
+	            connection.getTimestampUtils().toBinTimestamp(null, val, (Timestamp) valueObject);
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+	            rowBuffer.set(columnIndex, connection.encodeString(
+	                connection.getTimestampUtils().toString(
+	                    getDefaultCalendar(), (Timestamp) valueObject)));
+            }
             break;
 
           case Types.NULL:
@@ -1828,7 +1847,103 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
               }
             }
             break;
+            
+          case Types.SMALLINT:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[2];
+	            ByteConverter.int2(val, 0, Integer.valueOf(String.valueOf(valueObject)));
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+            
+          	break;
+          	
+          case Types.INTEGER:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[4];
+	            ByteConverter.int4(val, 0, Integer.valueOf(String.valueOf(valueObject)));
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+            
+          	break;
 
+          case Types.BIGINT:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+	            byte[] val = new byte[8];
+	            ByteConverter.int8(val, 0, Long.valueOf(String.valueOf(valueObject)));
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+            
+          	break;
+
+          case Types.FLOAT:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+              byte[] val = new byte[4];
+              ByteConverter.float4(val, 0, Float.parseFloat(String.valueOf(valueObject)));
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+
+          case Types.DOUBLE:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+              byte[] val = new byte[8];
+              ByteConverter.float8(val, 0, Double.parseDouble(String.valueOf(valueObject)));
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+            
+          	break;
+
+          case Types.DECIMAL:
+          case Types.NUMERIC:
+            if (isBinary(columnIndex + 1)
+            		&& valueObject != null) {
+          	  Field field = fields[columnIndex];
+          	  int mod = field.getMod();
+          	  int serverPrecision;
+          	  int serverScale;
+          	  
+          	  serverPrecision =  (mod == -1) 
+          	  										? 0
+          	  										: ((mod - 4) & 0xFFFF0000) >> 16;
+          	    
+          	  serverScale =  (mod == -1) 
+          	  									? 0
+          	  									: (mod - 4) & 0xFFFF;
+            	
+              byte[] val = ByteConverter.redshiftNumeric(new BigDecimal(String.valueOf(valueObject)), serverPrecision, serverScale);
+	            rowBuffer.set(columnIndex, val);
+            }
+            else {
+            	// Does as default switch case
+              rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
+            }
+            
+          	break;
+          	
+          	
           default:
             rowBuffer.set(columnIndex, connection.encodeString(String.valueOf(valueObject)));
             break;
@@ -2137,7 +2252,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     // varchar in binary is same as text, other binary fields are converted to their text format
     if (isBinary(columnIndex) 
-    			&& !isCharType(columnIndex)) {
+    			&& !isCharType(columnIndex)
+    			&& !isGeometry(columnIndex)
+    			&& !isGeometryHex(columnIndex)) {
       Field field = fields[columnIndex - 1];
       Object obj = internalGetObject(columnIndex, field);
       if (obj == null) {
@@ -2255,7 +2372,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
 
     if (isBinary(columnIndex)) {
-      return BooleanTypeUtil.castToBoolean(readDoubleValue(thisRow.get(col), fields[col].getOID(), "boolean"));
+    	try {
+	      return BooleanTypeUtil.castToBoolean(readDoubleValue(thisRow.get(col), fields[col].getOID(), "boolean", columnIndex));
+    	}
+    	catch (RedshiftException ex) {
+    		// Try using getObject. The readDoubleValue() call fails, when a column type is VARCHAR. 
+    		return BooleanTypeUtil.castToBoolean(getObject(columnIndex));
+    	}
     }
 
     return BooleanTypeUtil.castToBoolean(getObject(columnIndex));
@@ -2279,7 +2402,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       // there is no Oid for byte so must always do conversion from
       // some other numeric type
       return (byte) readLongValue(thisRow.get(col), fields[col].getOID(), Byte.MIN_VALUE,
-          Byte.MAX_VALUE, "byte");
+          Byte.MAX_VALUE, "byte", columnIndex);
     }
 
     String s = getString(columnIndex);
@@ -2331,7 +2454,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.INT2) {
         return ByteConverter.int2(thisRow.get(col), 0);
       }
-      return (short) readLongValue(thisRow.get(col), oid, Short.MIN_VALUE, Short.MAX_VALUE, "short");
+      return (short) readLongValue(thisRow.get(col), oid, Short.MIN_VALUE, Short.MAX_VALUE, "short", columnIndex);
     }
 
     return toShort(getFixedString(columnIndex));
@@ -2353,7 +2476,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.INT4) {
         return ByteConverter.int4(thisRow.get(col), 0);
       }
-      return (int) readLongValue(thisRow.get(col), oid, Integer.MIN_VALUE, Integer.MAX_VALUE, "int");
+      return (int) readLongValue(thisRow.get(col), oid, Integer.MIN_VALUE, Integer.MAX_VALUE, "int", columnIndex);
     }
 
     Encoding encoding = connection.getEncoding();
@@ -2382,7 +2505,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.INT8) {
         return ByteConverter.int8(thisRow.get(col), 0);
       }
-      return readLongValue(thisRow.get(col), oid, Long.MIN_VALUE, Long.MAX_VALUE, "long");
+      return readLongValue(thisRow.get(col), oid, Long.MIN_VALUE, Long.MAX_VALUE, "long", columnIndex);
     }
 
     Encoding encoding = connection.getEncoding();
@@ -2597,7 +2720,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.FLOAT4) {
         return ByteConverter.float4(thisRow.get(col), 0);
       }
-      return (float) readDoubleValue(thisRow.get(col), oid, "float");
+      return (float) readDoubleValue(thisRow.get(col), oid, "float", columnIndex);
     }
 
     return toFloat(getFixedString(columnIndex));
@@ -2619,7 +2742,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.FLOAT8) {
         return ByteConverter.float8(thisRow.get(col), 0);
       }
-      return readDoubleValue(thisRow.get(col), oid, "double");
+      return readDoubleValue(thisRow.get(col), oid, "double", columnIndex);
     }
 
     return toDouble(getFixedString(columnIndex));
@@ -2632,6 +2755,24 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return (BigDecimal) getNumeric(columnIndex, scale, false);
   }
 
+  private Number getRedshiftNumeric(int columnIndex) {
+	  Field field = fields[columnIndex - 1];
+	  int mod = field.getMod();
+	  int serverPrecision;
+	  int serverScale;
+	  
+	  serverPrecision =  (mod == -1) 
+	  										? 0
+	  										: ((mod - 4) & 0xFFFF0000) >> 16;
+	    
+	  serverScale =  (mod == -1) 
+	  									? 0
+	  									: (mod - 4) & 0xFFFF;
+	    
+	  
+	  return ByteConverter.redshiftNumeric(thisRow.get(columnIndex - 1), serverPrecision, serverScale);
+  }
+  
   private Number getNumeric(int columnIndex, int scale, boolean allowNaN) throws SQLException {
     checkResultSet(columnIndex);
     if (wasNullFlag) {
@@ -2652,7 +2793,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         }
         return toBigDecimal(trimMoney(String.valueOf(obj)), scale);
       } else {
-        Number num = ByteConverter.numeric(thisRow.get(columnIndex - 1));
+//        Number num = ByteConverter.numeric(thisRow.get(columnIndex - 1));
+      	Number num = getRedshiftNumeric(columnIndex);
+
         if (allowNaN && Double.isNaN(num.doubleValue())) {
           return Double.NaN;
         }
@@ -2699,7 +2842,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     if (isBinary(columnIndex)) {
       // If the data is already binary then just return it
-      return thisRow.get(columnIndex - 1);
+      return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
     }
     if (fields[columnIndex - 1].getOID() == Oid.BYTEA) {
       return trimBytes(columnIndex, RedshiftBytea.toBytes(thisRow.get(columnIndex - 1)));
@@ -3339,7 +3482,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    * @return The value as double.
    * @throws RedshiftException If the field type is not supported numeric type.
    */
-  private double readDoubleValue(byte[] bytes, int oid, String targetType) throws RedshiftException {
+  private double readDoubleValue(byte[] bytes, int oid, String targetType, int columnIndex) throws RedshiftException {
     // currently implemented binary encoded fields
     switch (oid) {
       case Oid.INT2:
@@ -3354,7 +3497,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       case Oid.FLOAT8:
         return ByteConverter.float8(bytes, 0);
       case Oid.NUMERIC:
-        return ByteConverter.numeric(bytes).doubleValue();
+//        return ByteConverter.numeric(bytes).doubleValue();
+      	return getRedshiftNumeric(columnIndex).doubleValue();
     }
     throw new RedshiftException(GT.tr("Cannot convert the column of type {0} to requested type {1}.",
         Oid.toString(oid), targetType), RedshiftState.DATA_TYPE_MISMATCH);
@@ -3379,7 +3523,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    * @throws RedshiftException If the field type is not supported numeric type or if the value is out of
    *         range.
    */
-  private long readLongValue(byte[] bytes, int oid, long minVal, long maxVal, String targetType)
+  private long readLongValue(byte[] bytes, int oid, long minVal, long maxVal, String targetType, int columnIndex)
       throws RedshiftException {
     long val;
     // currently implemented binary encoded fields
@@ -3392,6 +3536,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         val = ByteConverter.int4(bytes, 0);
         break;
       case Oid.INT8:
+      case Oid.XIDOID:
         val = ByteConverter.int8(bytes, 0);
         break;
       case Oid.FLOAT4:
@@ -3401,7 +3546,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         val = (long) ByteConverter.float8(bytes, 0);
         break;
       case Oid.NUMERIC:
-        Number num = ByteConverter.numeric(bytes);
+//        Number num = ByteConverter.numeric(bytes);
+      	Number num = getRedshiftNumeric(columnIndex);
+        
         if (num instanceof  BigDecimal) {
           val = ((BigDecimal) num).setScale(0 , RoundingMode.DOWN).longValueExact();
         } else {

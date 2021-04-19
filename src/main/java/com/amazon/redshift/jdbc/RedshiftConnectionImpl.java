@@ -42,6 +42,7 @@ import com.amazon.redshift.util.LruCache;
 import com.amazon.redshift.util.RedshiftBinaryObject;
 import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftInterval;
 import com.amazon.redshift.util.RedshiftState;
 
 import java.io.IOException;
@@ -736,7 +737,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
         if (byteValue != null && obj instanceof RedshiftBinaryObject) {
           RedshiftBinaryObject binObj = (RedshiftBinaryObject) obj;
           binObj.setByteValue(byteValue, 0);
-        } else {
+        }
+        else if (byteValue != null && obj instanceof RedshiftInterval) {
+        	RedshiftInterval intervalObj = (RedshiftInterval) obj;
+        	intervalObj.setValue(new String(byteValue));
+        }
+        else {
           obj.setValue(value);
         }
       } else {

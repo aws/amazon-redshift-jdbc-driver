@@ -82,17 +82,18 @@ public class Oid {
   public static final int GEOMETRYHEX_ARRAY = 0; // UNSPECIFIED
   public static final int SUPER = 4000;
   public static final int SUPER_ARRAY = 0; // UNSPECIFIED
-  
   public static final int TIDOID = 27; // VARCHAR
   public static final int TIDARRAYOID = 1010;
 
   public static final int XIDOID = 28; // INTEGER
   public static final int XIDARRAYOID = 1011;
 
+  public static final int ACLITEM = 1033; // In Binary mode treat it as VARCHAR, as data comes from server same as VARCHAR.
+  public static final int ACLITEM_ARRAY = 1034;
+
   // Keep this as last field to log correctly. As we have many UNSPECIFIED values.
   public static final int UNSPECIFIED = 0;
-  
-  
+
   private static final Map<Integer, String> OID_TO_NAME = new HashMap<Integer, String>(100);
   private static final Map<String, Integer> NAME_TO_OID = new HashMap<String, Integer>(100);
 

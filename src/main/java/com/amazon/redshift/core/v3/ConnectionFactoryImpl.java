@@ -72,7 +72,8 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   // Server protocol versions
   public static int BASE_SERVER_PROTOCOL_VERSION = 0;
   public static int EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 1;
-  public static int DEFAULT_SERVER_PROTOCOL_VERSION = EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION;
+  public static int BINARY_PROTOCOL_VERSION = 2;
+  public static int DEFAULT_SERVER_PROTOCOL_VERSION = BINARY_PROTOCOL_VERSION;
   
   private ISSPIClient createSSPI(RedshiftStream pgStream,
       String spnServiceClass,
@@ -379,9 +380,9 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
 	    
-      // Send protocol version.
-      String clientProtocolVersion = info.getProperty("client_protocol_version", Integer.toString(DEFAULT_SERVER_PROTOCOL_VERSION)); // Undocumented property to lower the protocol version.
-      paramList.add(new String[]{"client_protocol_version",clientProtocolVersion});
+	    // Send protocol version as 2, so server can support Binary protocol (v2), send optimized extended RSMD (v1).
+	    String clientProtocolVersion = info.getProperty("client_protocol_version", Integer.toString(DEFAULT_SERVER_PROTOCOL_VERSION)); // Undocumented property to lower the protocol version.
+	    paramList.add(new String[]{"client_protocol_version",clientProtocolVersion}); 
     } // New parameters
     
     String replication = RedshiftProperty.REPLICATION.get(info);
@@ -594,6 +595,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
                 byte[] digest =
                     MD5Digest.encode(user.getBytes("UTF-8"), password.getBytes("UTF-8"), md5Salt);
 
+                if(RedshiftLogger.isEnable()) {
+                  logger.log(LogLevel.DEBUG, " FE=> Password(md5digest)");
+                }
+                
                 pgStream.sendChar('p');
                 pgStream.sendInteger4(4 + digest.length + 1);
                 pgStream.send(digest);

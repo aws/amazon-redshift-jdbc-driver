@@ -13,6 +13,7 @@ import com.amazon.redshift.util.ByteConverter;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
+import com.amazon.redshift.util.RedshiftTime;
 import com.amazon.redshift.util.RedshiftTimestamp;
 
 import java.lang.reflect.Field;
@@ -725,8 +726,15 @@ public class TimestampUtils {
     cal.setTime(x);
 
     sbuf.setLength(0);
+    
+    int nanos;
+    
+    if(x instanceof RedshiftTime)
+    	nanos = ((RedshiftTime)x).getNanos();
+    else
+    	nanos = cal.get(Calendar.MILLISECOND) * 1000000;
 
-    appendTime(sbuf, cal, cal.get(Calendar.MILLISECOND) * 1000000);
+    appendTime(sbuf, cal, nanos);
 
     // The 'time' parser for <= 7.3 doesn't like timezones.
     if (withTimeZone) {
@@ -1062,6 +1070,8 @@ public class TimestampUtils {
 
     long millis;
     int timeOffset;
+    int nanos = 0;
+    Time timeObj;
 
     if (usesDouble) {
       double time = ByteConverter.float8(bytes, 0);
@@ -1071,13 +1081,18 @@ public class TimestampUtils {
       long time = ByteConverter.int8(bytes, 0);
 
       millis = time / 1000;
+      if ((time % 1000) > 0) {
+      	// There is a microsec fraction. Server sends precision upto Micro only.
+      	nanos = (int)(time % 1000000)*1000;
+      }
     }
 
     if (bytes.length == 12) {
       timeOffset = ByteConverter.int4(bytes, 8);
       timeOffset *= -1000;
       millis -= timeOffset;
-      return new Time(millis);
+      timeObj = new Time(millis);
+      return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
     }
 
     if (tz == null) {
@@ -1088,7 +1103,9 @@ public class TimestampUtils {
     // time
     millis = guessTimestamp(millis, tz);
 
-    return convertToTime(millis, tz); // Ensure date part is 1970-01-01
+    timeObj = convertToTime(millis, tz); // Ensure date part is 1970-01-01
+    
+    return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
   }
 
   //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
@@ -1130,7 +1147,7 @@ public class TimestampUtils {
    * @return The parsed timestamp object.
    * @throws RedshiftException If binary format could not be parsed.
    */
-  public Timestamp toTimestampBin(TimeZone tz, byte[] bytes, boolean timestamptz)
+  public Timestamp toTimestampBin(TimeZone tz, byte[] bytes, boolean timestamptz,java.util.Calendar cal)
       throws RedshiftException {
 
     ParsedBinaryTimestamp parsedTimestamp = this.toParsedTimestampBin(tz, bytes, timestamptz);
@@ -1140,7 +1157,13 @@ public class TimestampUtils {
       return new Timestamp(RedshiftStatement.DATE_NEGATIVE_INFINITY);
     }
 
-    Timestamp ts = new Timestamp(parsedTimestamp.millis);
+    Timestamp ts;
+    if(timestamptz) {
+      ts = new RedshiftTimestamp(parsedTimestamp.millis, cal);
+    } else {
+      ts = new Timestamp(parsedTimestamp.millis);
+    }
+
     ts.setNanos(parsedTimestamp.nanos);
     return ts;
   }
@@ -1521,6 +1544,32 @@ public class TimestampUtils {
     ByteConverter.int4(bytes, 0, (int) (secs / 86400));
   }
 
+  /**
+   * Converts the SQL Timestamp to binary representation for {@link Oid#TIMESTAMP}.
+   *
+   * @param tz The timezone used.
+   * @param bytes The binary encoded Timestamp value.
+   * @param value value
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public void toBinTimestamp(TimeZone tz, byte[] bytes, Timestamp value) throws RedshiftException {
+    long millis = value.getTime();
+
+    if (tz == null) {
+      tz = getDefaultTz();
+    }
+    // It "getOffset" is UNTESTED
+    // See com.amazon.redshift.jdbc.AbstractJdbc2Statement.setDate(int, java.sql.Date,
+    // java.util.Calendar)
+    // The problem is we typically do not know for sure what is the exact required date/timestamp
+    // type
+    // Thus pgjdbc sticks to text transfer.
+    // millis += tz.getOffset(millis);
+
+    long secs = toPgSecs(millis / 1000);
+    ByteConverter.int8(bytes, 0, (long) (secs * 1000000));
+  }
+  
   /**
    * Converts backend's TimeZone parameter to java format.
    * Notable difference: backend's gmt-3 is GMT+03 in Java.

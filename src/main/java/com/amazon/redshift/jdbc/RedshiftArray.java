@@ -250,6 +250,8 @@ public class RedshiftArray implements java.sql.Array {
             break;
           case Oid.TEXT:
           case Oid.VARCHAR:
+          case Oid.CHAR:
+          case Oid.ACLITEM:
             Encoding encoding = connection.getEncoding();
             arr[i] = encoding.decode(fieldBytes, pos, len);
             break;
@@ -398,6 +400,8 @@ public class RedshiftArray implements java.sql.Array {
         return BigDecimal.class;
       case Oid.TEXT:
       case Oid.VARCHAR:
+      case Oid.CHAR:
+      case Oid.ACLITEM:
         return String.class;
       case Oid.BOOL:
         return Boolean.class;

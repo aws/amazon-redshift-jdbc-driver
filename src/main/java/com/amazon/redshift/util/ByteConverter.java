@@ -6,6 +6,8 @@
 package com.amazon.redshift.util;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.MathContext;
 import java.nio.CharBuffer;
 
 /**
@@ -150,6 +152,24 @@ public class ByteConverter {
   /**
    * Convert a variable length array of bytes to an integer
    * @param bytes array of bytes that can be decoded as an integer
+   * @return integer
+   */
+  
+  /**
+   * Convert a variable length array of bytes to a Number
+   * 
+   * @param bytes array of column bytes that can be decoded as Numeric
+   * @param precision precision of the defined column
+   * @param scale scale of the defined column
+   * @return Number value of the given unscaled byte array
+   */
+  public static Number redshiftNumeric(byte [] bytes, int precision, int scale) {
+    return redshiftNumeric(bytes, 0, bytes.length, precision, scale);
+  }
+  
+  /**
+   * Convert a variable length array of bytes to an integer
+   * @param bytes array of bytes that can be decoded as an integer
    * @param pos index of the start position of the bytes array for number
    * @param numBytes number of bytes to use, length is already encoded
    *                in the binary format but this is used for double checking
@@ -200,6 +220,60 @@ public class ByteConverter {
     return new BigDecimal(numString);
   }
 
+  /**
+   * Convert a variable length array of bytes to a Number
+   * 
+   * @param bytes array of column bytes that can be decoded as Numeric
+   * @param pos index of the start position of the bytes array for number
+   * @param numBytes number of bytes to use, length is already encoded
+   *                in the binary format but this is used for double checking
+   * @param precision precision of the defined column
+   * @param scale scale of the defined column
+   * @return Number value of the given unscaled byte array
+   */
+  public static Number redshiftNumeric(byte [] bytes, int pos, int numBytes, int precision, int scale) {
+    if (numBytes != 8 && numBytes != 16) {
+      throw new IllegalArgumentException("number of bytes should be 8 or 16");
+    }
+
+  	BigInteger bigInt = new BigInteger(bytes);
+  	return new BigDecimal(bigInt, scale, new MathContext(precision));
+  }
+  
+  /**
+   * Convert BigDecimal value into scaled bytes.
+   * 
+   * @param val BigDecimal value to be converted into bytes
+   * @param precision Precision of column
+   * @param scale Scale of column
+   * @return Scaled bytes of the given BigDecimal value.
+   */
+  public static byte[] redshiftNumeric(BigDecimal val, int precision, int scale) {
+  	val.setScale(scale);
+  	val.round(new MathContext(precision));
+  	byte[] bigDecimalBytes = val.unscaledValue().toByteArray();
+  	byte[] rc = bigDecimalBytes;
+  	int paddingZeros = 0;
+  	
+  	if(bigDecimalBytes.length != 8
+  			&& bigDecimalBytes.length != 16) {
+	  	if (bigDecimalBytes.length < 8) {
+	  		rc = new byte[8];
+	  		paddingZeros = 8 - bigDecimalBytes.length;
+	  	}
+	  	else if (bigDecimalBytes.length < 16) {
+	  		rc = new byte[16];
+	  		paddingZeros = 16 - bigDecimalBytes.length;
+	  	}
+  	}
+  	
+  	if (paddingZeros > 0)
+  		System.arraycopy(bigDecimalBytes, 0, rc, paddingZeros, bigDecimalBytes.length);
+
+  	return rc;  	
+  }
+  
+  
   /**
    * Parses a long value from the byte array.
    *

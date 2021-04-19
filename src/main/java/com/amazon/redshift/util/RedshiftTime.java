@@ -22,6 +22,8 @@ public class RedshiftTime extends Time {
    * The optional calendar for this time.
    */
   private Calendar calendar;
+  
+  private int nanos;
 
   /**
    * Constructs a <code>RedshiftTime</code> without a time zone.
@@ -34,6 +36,10 @@ public class RedshiftTime extends Time {
     this(time, null);
   }
 
+  public RedshiftTime(long time, int nanos) {
+    this(time, null, nanos);
+  }
+  
   /**
    * Constructs a <code>RedshiftTime</code> with the given calendar object. The calendar object is
    * optional. If absent, the driver will treat the time as <code>time without time zone</code>.
@@ -47,10 +53,27 @@ public class RedshiftTime extends Time {
    * @see Time#Time(long)
    */
   public RedshiftTime(long time, Calendar calendar) {
-    super(time);
-    this.setCalendar(calendar);
+    this(time, calendar, 0);
   }
 
+  /**
+   * Store time with nanos.
+   * 
+   * @param time milliseconds since January 1, 1970, 00:00:00 GMT; a negative number is milliseconds
+   *        before January 1, 1970, 00:00:00 GMT.
+   * @param calendar the calendar object containing the time zone or <code>null</code>.
+   * @param nanos nanos
+   */
+  public RedshiftTime(long time, Calendar calendar, int nanos) {
+    super(time);
+    this.setCalendar(calendar);
+    this.nanos = nanos;
+  }
+
+  public RedshiftTime(Time time, int nanos) {
+    this(time.getTime(), null, nanos);
+  }
+  
   /**
    * Sets the calendar object for this time.
    *
@@ -69,6 +92,15 @@ public class RedshiftTime extends Time {
     return calendar;
   }
 
+  /**
+   * Returns nano seconds of time.
+   * 
+   * @return nanos
+   */
+  public int getNanos() {
+    return nanos;
+  }
+  
   @Override
   public int hashCode() {
     final int prime = 31;
