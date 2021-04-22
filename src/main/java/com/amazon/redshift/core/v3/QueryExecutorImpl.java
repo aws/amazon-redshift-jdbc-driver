@@ -2526,6 +2526,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       	int autoincrement = (temp >> 4)  & 0x1;
       	int readOnly = (temp >> 8) & 0x1;
       	int searchable = (temp >> 12) & 0x1;
+      	int caseSensitive = 0;
+
+        if (serverProtocolVersion >= ConnectionFactoryImpl.EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION) {
+        	caseSensitive = (temp >> 1)  & 0x1;
+        }
       	
       	fields[i].setMetadata(new FieldMetadata(columnName,
       														tableName, 
@@ -2535,7 +2540,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       														 (autoincrement != 0),
       														 catalogName,
       														 (readOnly != 0),
-      														 (searchable != 0)
+      														 (searchable != 0),
+      														 (caseSensitive != 0)
       														));	
       }
 

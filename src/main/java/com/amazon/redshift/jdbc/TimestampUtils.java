@@ -1144,6 +1144,7 @@ public class TimestampUtils {
    *        already contains {@link Oid#TIMESTAMPTZ}.
    * @param bytes The binary encoded timestamp value.
    * @param timestamptz True if the binary is in GMT.
+   * @param cal Calendar to use
    * @return The parsed timestamp object.
    * @throws RedshiftException If binary format could not be parsed.
    */

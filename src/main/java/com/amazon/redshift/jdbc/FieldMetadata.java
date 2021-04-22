@@ -63,6 +63,7 @@ public class FieldMetadata implements CanEstimateSize {
   final String catalogName;
   final boolean readOnly;
   final boolean searchable;
+  final boolean caseSensitive;
 
   public FieldMetadata(String columnName) {
     this(columnName, "", "", RedshiftResultSetMetaDataImpl.columnNullableUnknown, false);
@@ -71,11 +72,12 @@ public class FieldMetadata implements CanEstimateSize {
   public FieldMetadata(String columnName, String tableName, String schemaName, int nullable,
       boolean autoIncrement) {
     this(columnName, tableName, schemaName, nullable, autoIncrement,
-  			"", false, true);
+  			"", false, true, false);
   }
   public FieldMetadata(String columnName, String tableName, String schemaName, int nullable,
       boolean autoIncrement, String catalogName, 
-      boolean readOnly, boolean searchable) {
+      boolean readOnly, boolean searchable,
+      boolean caseSensitive) {
     this.columnName = columnName;
     this.tableName = tableName;
     this.schemaName = schemaName;
@@ -85,6 +87,7 @@ public class FieldMetadata implements CanEstimateSize {
     this.catalogName = catalogName;
     this.readOnly = readOnly;
     this.searchable = searchable;
+    this.caseSensitive = caseSensitive;
   }
 
   public long getSize() {
@@ -109,6 +112,7 @@ public class FieldMetadata implements CanEstimateSize {
         + ", catalogName='" + catalogName + '\''
         + ", readOnly=" + readOnly
         + ", searchable=" + searchable
+        + ", caseSensitive=" + caseSensitive
         + '}';
   }
 }

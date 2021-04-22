@@ -81,7 +81,13 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
    */
   public boolean isCaseSensitive(int column) throws SQLException {
     Field field = getField(column);
-    return connection.getTypeInfo().isCaseSensitive(field.getOID());
+    if(connection.getQueryExecutor().getServerProtocolVersion() 
+				>= ConnectionFactoryImpl.EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION) {
+      FieldMetadata metadata = field.getMetadata();
+      return (metadata == null) ? false : metadata.caseSensitive;
+    }
+    else
+    	return connection.getTypeInfo().isCaseSensitive(field.getOID());
   }
 
   /**

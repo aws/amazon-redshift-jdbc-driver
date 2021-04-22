@@ -76,6 +76,7 @@ public class Server
      * @param port     to listen
      * @param handler  functional callback. put all necessary functionality here
      * @param waitTime how long does server wait for interaction.
+     * @param log Redshift logger
      */
     public Server(int port, RequestHandler handler, Duration waitTime,
          				RedshiftLogger log)

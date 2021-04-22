@@ -73,7 +73,8 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   public static int BASE_SERVER_PROTOCOL_VERSION = 0;
   public static int EXTENDED_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 1;
   public static int BINARY_PROTOCOL_VERSION = 2;
-  public static int DEFAULT_SERVER_PROTOCOL_VERSION = BINARY_PROTOCOL_VERSION;
+  public static int EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 3; // Case sensitivity via COLLATION_INFORMATION
+  public static int DEFAULT_SERVER_PROTOCOL_VERSION = EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION;
   
   private ISSPIClient createSSPI(RedshiftStream pgStream,
       String spnServiceClass,
