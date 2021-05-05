@@ -365,7 +365,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 		        	sendFlush();
 		          sendSync(true);
 		        }
-		        processResults(handler, flags, fetchSize, (query.getSubqueries() != null));
+		        processResults(handler, flags, fetchSize, (query.getSubqueries() != null), maxRows);
 		        estimatedReceiveBufferBytes = 0;
 		      } catch (RedshiftBindException se) {
 		        // There are three causes of this error, an
@@ -383,7 +383,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 		        // transaction in progress?
 		        //
 		        sendSync(true);
-		        processResults(handler, flags, 0, (query.getSubqueries() != null));
+		        processResults(handler, flags, 0, (query.getSubqueries() != null), maxRows);
 		        estimatedReceiveBufferBytes = 0;
 		        handler
 		            .handleError(new RedshiftException(GT.tr("Unable to bind parameter values for statement."),
@@ -590,7 +590,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 		        	sendFlush();
 		          sendSync(true);
 		        }
-		        processResults(handler, flags, fetchSize, true);
+		        processResults(handler, flags, fetchSize, true, maxRows);
 		        estimatedReceiveBufferBytes = 0;
 		      }
 		    } catch (IOException e) {
@@ -744,7 +744,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         beginFlags = updateQueryMode(beginFlags);
         sendOneQuery(beginTransactionQuery, SimpleQuery.NO_PARAMETERS, 0, 0, beginFlags);
         sendSync(true);
-        processResults(handler, 0, 0, false);
+        processResults(handler, 0, 0, false, 0);
         estimatedReceiveBufferBytes = 0;
       } catch (IOException ioe) {
         throw new RedshiftException(GT.tr("An I/O error occurred while sending to the backend."),
@@ -1088,7 +1088,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     	if(RedshiftLogger.isEnable())    	
     		logger.log(LogLevel.DEBUG, "Forcing Sync, receive buffer full or batching disallowed");
       sendSync(true);
-      processResults(resultHandler, flags, 0, (query.getSubqueries() != null));
+      processResults(resultHandler, flags, 0, (query.getSubqueries() != null), 0);
       estimatedReceiveBufferBytes = 0;
       if (batchHandler != null) {
         batchHandler.secureProgress();
@@ -1868,23 +1868,24 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     }
   }
   
-  protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries) throws IOException {
-  	processResults(handler, flags, fetchSize, subQueries, 0);
+  protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries, int maxRows) throws IOException {
+  	processResults(handler, flags, fetchSize, subQueries, 0, maxRows);
   }
 
-  protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries, int initRowCount) throws IOException {
+  protected void processResults(ResultHandler handler, int flags, int fetchSize, boolean subQueries, int initRowCount, int maxRows) throws IOException {
   	MessageLoopState msgLoopState = new MessageLoopState();
   	int[] rowCount = new int[1];
   	rowCount[0] = initRowCount;
 		// Process messages on the same application main thread.
-		processResultsOnThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
+		processResultsOnThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
   }
   
   private void processResultsOnThread(ResultHandler handler, 
   				int flags, int fetchSize, 
   				MessageLoopState msgLoopState,
   				boolean subQueries,
-  				int[] rowCount) throws IOException {
+  				int[] rowCount,
+  				int maxRows) throws IOException {
     boolean noResults = (flags & QueryExecutor.QUERY_NO_RESULTS) != 0;
     boolean bothRowsAndStatus = (flags & QueryExecutor.QUERY_BOTH_ROWS_AND_STATUS) != 0;
     boolean useRingBuffer = enableFetchRingBuffer 
@@ -2163,6 +2164,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         }
 
         case 'D': // Data Transfer (ongoing Execute response)
+        	boolean skipRow = false;
           Tuple tuple = null;
           try {
             tuple = pgStream.receiveTupleV3();
@@ -2176,8 +2178,14 @@ public class QueryExecutorImpl extends QueryExecutorBase {
             handler.handleError(e);
           }
           if (!noResults) {
-          	if(rowCount != null)
-          			rowCount[0] += 1;
+          	if(rowCount != null) {
+        			if(maxRows > 0 && rowCount[0] >= maxRows) {
+        				// Ignore any more rows until server fix not to send more rows than max rows.
+        				skipRow = true;
+        			}
+        			else
+        				rowCount[0] += 1;
+          	}
           	
           	if (useRingBuffer) {
           		boolean firstRow = false;
@@ -2188,14 +2196,16 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           		}
           		
           		// Add row in the queue
-        			try {
-        					msgLoopState.queueTuples.put(tuple);
-							} catch (InterruptedException ie) {
-									// Handle interrupted exception
-		              handler.handleError(
-		                  new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
-		                      RedshiftState.UNEXPECTED_ERROR, ie));
-							} 
+          		if(!skipRow) {
+	        			try {
+	        					msgLoopState.queueTuples.put(tuple);
+								} catch (InterruptedException ie) {
+										// Handle interrupted exception
+			              handler.handleError(
+			                  new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
+			                      RedshiftState.UNEXPECTED_ERROR, ie));
+								}
+          		}
         			
         			if(firstRow) {
                 // There was a resultset.
@@ -2204,7 +2214,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                 Field[] fields = currentQuery.getFields();
                 
         	  		// Create a new ring buffer thread to process rows
-        	  		m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
+        	  		m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
                 
                 handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, rowCount, m_ringBufferThread);
                 
@@ -2232,7 +2242,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	            if (tuples == null) {
 	              tuples = new ArrayList<Tuple>();
 	            }
-	            tuples.add(tuple);
+	            
+	            if(!skipRow)	            
+	            	tuples.add(tuple);
           	}
           }
 
@@ -2244,6 +2256,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
               length = tuple.length();
             }
           	logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
+          	if (skipRow) {
+          		logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}" 
+          					, skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
+          	}
           }
 
           break;
@@ -3009,6 +3025,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	MessageLoopState msgLoopState;
   	boolean subQueries;
   	int[] rowCount;
+  	int maxRows;
   	
   	/**
   	 * Constructor
@@ -3019,7 +3036,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   					int flags, int fetchSize, 
   					MessageLoopState msgLoopState,
   					boolean subQueries,
-  					int[] rowCount)
+  					int[] rowCount,
+  					int maxRows)
   	{
   		super("RingBufferThread");
   		this.handler = handler;
@@ -3028,6 +3046,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   		this.msgLoopState = msgLoopState;
   		this.subQueries = subQueries;
   		this.rowCount = rowCount;
+  		this.maxRows = maxRows;
   	}
   	
   	/**
@@ -3040,7 +3059,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   		try
   		{
   			// Process result
-  			processResultsOnThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount);
+  			processResultsOnThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
   		}
   		catch(Exception ex) 
   		{

@@ -249,7 +249,7 @@ public class TypeInfoCache implements TypeInfo {
       type = Types.VARCHAR;
     }
     if (type == null) {
-      type = Types.OTHER;
+      type = Types.VARCHAR;
     }
     return type;
   }
