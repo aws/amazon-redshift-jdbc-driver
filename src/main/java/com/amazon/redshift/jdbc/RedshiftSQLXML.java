@@ -133,6 +133,14 @@ public class RedshiftSQLXML implements SQLXML {
     try {
       if (sourceClass == null || DOMSource.class.equals(sourceClass)) {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        
+        // https://www.aristotle.a2z.com/implementations/255
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);        
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        
         DocumentBuilder builder = factory.newDocumentBuilder();
         builder.setErrorHandler(new NonPrintingErrorHandler());
         InputSource input = new InputSource(new StringReader(data));
@@ -193,6 +201,12 @@ public class RedshiftSQLXML implements SQLXML {
       try {
         SAXTransformerFactory transformerFactory =
             (SAXTransformerFactory) SAXTransformerFactory.newInstance();
+        
+        // https://www.aristotle.a2z.com/implementations/255
+        transformerFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        transformerFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        transformerFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        
         TransformerHandler transformerHandler = transformerFactory.newTransformerHandler();
         stringWriter = new StringWriter();
         transformerHandler.setResult(new StreamResult(stringWriter));
@@ -275,6 +289,8 @@ public class RedshiftSQLXML implements SQLXML {
         TransformerFactory factory = TransformerFactory.newInstance();
         
         // Disable External Entities (XXE) parsing for Java
+        // https://www.aristotle.a2z.com/implementations/255
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         
