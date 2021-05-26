@@ -235,10 +235,12 @@ public class TypeInfoCache implements TypeInfo {
     return sql.toString();
   }
 
-  private int getSQLTypeFromQueryResult(ResultSet rs) throws SQLException {
+  private int getSQLTypeFromQueryResult(ResultSet rs, RedshiftLogger logger) throws SQLException {
     Integer type = null;
     boolean isArray = rs.getBoolean("is_array");
     String typtype = rs.getString("typtype");
+    String typname = rs.getString("typname");
+    
     if (isArray) {
       type = Types.ARRAY;
     } else if ("c".equals(typtype)) {
@@ -247,9 +249,19 @@ public class TypeInfoCache implements TypeInfo {
       type = Types.DISTINCT;
     } else if ("e".equals(typtype)) {
       type = Types.VARCHAR;
-    }
-    if (type == null) {
+    } else if ("p".equals(typtype)) {
       type = Types.VARCHAR;
+    } else if ("b".equals(typtype)
+    						&& typname.equals("oidvector")) {
+	    type = Types.VARCHAR;
+	  }
+
+    if (type == null) {
+    	if(RedshiftLogger.isEnable()
+    			&& logger != null)
+    		logger.log(LogLevel.DEBUG, " isArray=" + isArray + " typname= " + typname + " typtype=" + typtype);
+
+    	type = Types.OTHER;
     }
     return type;
   }
@@ -269,7 +281,7 @@ public class TypeInfoCache implements TypeInfo {
     ResultSet rs = getAllTypeInfoStatement.getResultSet();
     while (rs.next()) {
       String typeName = rs.getString("typname");
-      Integer type = getSQLTypeFromQueryResult(rs);
+      Integer type = getSQLTypeFromQueryResult(rs, logger);
       if (!rsNameToSQLType.containsKey(typeName)) {
         rsNameToSQLType.put(typeName, type);
       }
@@ -306,7 +318,7 @@ public class TypeInfoCache implements TypeInfo {
 
     Integer type = Types.OTHER;
     if (rs.next()) {
-      type = getSQLTypeFromQueryResult(rs);
+      type = getSQLTypeFromQueryResult(rs, conn.getLogger());
     }
     rs.close();
 

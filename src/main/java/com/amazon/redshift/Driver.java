@@ -12,14 +12,22 @@ import com.amazon.redshift.util.DriverInfo;
 import com.amazon.redshift.util.ExpressionProperties;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
+import com.amazon.redshift.util.IniFile;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.SharedTimer;
 import com.amazon.redshift.util.URLCoder;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -30,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -67,6 +76,8 @@ public class Driver implements java.sql.Driver {
 			Pattern.compile("(.+)\\.(.+)\\.(.+).redshift(-dev)?\\.amazonaws\\.com(.)*");
   
 	private static RedshiftLogger logger;
+  private static final String DEFAULT_INI_FILE = "rsjdbc.ini";
+  private static final String DEFAULT_DRIVER_SECTION = "DRIVER";
 
   static {
     try {
@@ -237,10 +248,18 @@ public class Driver implements java.sql.Driver {
         props.setProperty(propName, propValue);
       }
     }
+    
     // parse URL and add more properties
     if ((props = parseURL(url, props)) == null) {
       return null;
     }
+    
+    // Read INI file
+    String iniFileName = getJdbcIniFile(props);
+    
+    if (iniFileName != null)
+    	props = readJdbcIniFile(iniFileName, props);
+    
     RedshiftLogger connLogger = null;
     try {
       // Setup java.util.logging.Logger using connection properties.
@@ -254,6 +273,10 @@ public class Driver implements java.sql.Driver {
       	connLogger.logFunction(true, temp, RedshiftLogger.maskSecureInfoInProps(info));
       	
       	connLogger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
+      	if(iniFileName != null) {
+      		connLogger.log(LogLevel.DEBUG, "JDBC INI FileName {0}", iniFileName);
+//      		connLogger.log(LogLevel.DEBUG, "After merging JDBC INI FileName props:" + props);
+      	}
       	
 /*	    	String useProxyStr = System.getProperty("http.useProxy");
 	    	String proxyHost = System.getProperty("https.proxyHost");
@@ -823,5 +846,174 @@ public class Driver implements java.sql.Driver {
    */
   public static boolean isRegistered() {
     return registeredDriver != null;
+  }
+
+  /**
+   * Get JDBC INI file, if any exist.
+   * 
+   * Default file name is rsjdbc.ini.
+   *  
+   * The file location is in the following search order in the driver:
+   * 
+	 * 1. IniFile as connection parameter either in URL or in connection property. IniFile must be full path including file name
+   * 2. The environment variable such as AMAZON_REDSHIFT_JDBC_INI_FILE with full path with any name of the file user wants
+   * 3. The directory from where the driver jar get loaded 
+   * 4. The user home directory
+   * 5. The temp directory of the system
+   * 
+   * @param props
+   * @return file name if exist otherwise null.
+   * @throws RedshiftException 
+   */
+  private String getJdbcIniFile(Properties props) throws RedshiftException  {
+  	// 1. Get file name from URL/property
+  	String fileName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.INI_FILE.getName(), props);;
+  	
+  	if (!isFileExist(fileName, true)) {
+  		// 2. Get file name from environment variable
+  		fileName = System.getenv("AMAZON_REDSHIFT_JDBC_INI_FILE");
+  		if (!isFileExist(fileName, true)) {
+  			// 3. Get Driver Jar file location
+  			String filePath = Driver.class.getProtectionDomain().getCodeSource().getLocation().getPath();					
+  			
+  			filePath = filePath.substring(0,filePath.lastIndexOf("/") );
+  			fileName = getIniFullFileName(filePath);
+  			
+  			if(!isFileExist(fileName, false)) {
+  				// 4. Get USER directory
+  				filePath = System.getProperty("user.home");
+    			fileName = getIniFullFileName(filePath);
+    			if(!isFileExist(fileName, false)) {
+    				// 5. Get temp directory
+    				filePath = System.getProperty("java.io.tmpdir");
+      			fileName = getIniFullFileName(filePath);
+    				if(!isFileExist(fileName, false))
+    					fileName = null;
+    			}
+  			}
+  		}
+  	}
+  	
+  	
+  	return fileName;
+  }
+  
+  private String getIniFullFileName(String filePath) {
+  	String fileName = null;
+  	
+		if(filePath != null && filePath.length() > 0) {
+			fileName = filePath 
+									+ File.separator 
+									+ DEFAULT_INI_FILE;
+		}
+  	
+		return fileName;
+  }
+  
+  /**
+   * 
+   * @param fileName full file name including path
+   * @param fileMustExist
+   * @return
+   * @throws RedshiftException
+   */
+  private boolean isFileExist(String fileName, boolean fileMustExist) throws RedshiftException {
+  	boolean fileExist = false;
+  	
+  	if (fileName != null && fileName.length() > 0) {
+  		File file = new File(fileName);
+  		if(!file.exists()) {
+  			if (fileMustExist) {
+	        throw new RedshiftException(
+	            GT.tr("JDBC INI file doesn't exist: ")
+	                + fileName,
+	            RedshiftState.UNEXPECTED_ERROR);
+  			}
+  		}
+  		else
+  			fileExist = true;
+  	}
+  	
+  	return fileExist;
+  }
+  
+  /**
+   * Read JDBC INI file and load properties.
+   * 
+   * The driver loads connection properties as follows:
+	 * 1. Load default properties values as in the code
+   * 2. Load [DRIVER] section properties from the INI file, if exist
+   * 3. Load custom section properties from the INI file, if *IniSection* provided in the connection
+   * 4. Load properties from connection property object given in the getConnection() call.
+   * 5. Load properties from URL
+   * 
+   * @param fileName
+   * @param props
+   * @return
+   * @throws RedshiftException 
+   */
+  private Properties readJdbcIniFile(String fileName, Properties props) throws RedshiftException {
+  	String connectionSectionName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.INI_SECTION.getName(), props);;
+  	String driverSectionName = DEFAULT_DRIVER_SECTION;
+  	try {
+			IniFile iniFile = new IniFile(fileName);
+			Map<String, String> kv;
+			Properties driverSectionProps = null;
+			Properties connectionSectionProps = null;
+			
+			// Load properties from DRIVER section
+			kv = iniFile.getAllKeyVals(driverSectionName);
+			if (kv != null) {
+				driverSectionProps = new Properties();
+				driverSectionProps.putAll(kv);
+			}
+			
+			// Load properties from IniSection provided by user
+			if (connectionSectionName != null) {
+				kv = iniFile.getAllKeyVals(connectionSectionName);
+				if(kv != null) {
+					connectionSectionProps = new Properties();
+					connectionSectionProps.putAll(kv);
+				}
+				else {
+	        throw new RedshiftException(
+	            GT.tr("User specified section " + connectionSectionName
+	            			 + " not found in the JDBC INI file "
+	            			 + fileName),
+	            RedshiftState.UNEXPECTED_ERROR);
+				}
+			}
+				
+			if (driverSectionProps != null
+					|| connectionSectionProps != null) {
+				
+				// Get default properties from original props
+				Properties iniProps = new Properties(props);
+				
+				// Add driver section props
+				if (driverSectionProps != null) {
+					iniProps.putAll(driverSectionProps);
+				}
+
+				// Add IniSection props
+				if (connectionSectionProps != null) {
+					iniProps.putAll(connectionSectionProps);
+				}
+				
+				// URL and user connection props override INI pros
+				iniProps.putAll(props);
+				
+				props = iniProps;
+			}
+		} 
+  	catch (IOException e) {
+	      throw new RedshiftException(
+	          	GT.tr("Error loading JDBC INI file: ")
+	              + fileName,
+	              RedshiftState.UNEXPECTED_ERROR,
+	              e);
+		}
+  	
+  	return props;
   }
 }

@@ -297,6 +297,21 @@ public enum RedshiftProperty {
     "Specifies period (seconds) after which the host status is checked again in case it has changed"),
 
   /**
+   * The JDBC INI file name.
+   */
+  INI_FILE("IniFile",
+  					null,
+  					"The JDBC INI file. Easy to configure connection properties."),
+
+  /**
+   * The JDBC INI file section name.
+   * Section name to use for connection configuration.
+   */
+  INI_SECTION("IniSection",
+  					null,
+  					"The JDBC INI file section name."),
+  
+  /**
    * Specifies the name of the JAAS system or application login configuration.
    */
   JAAS_APPLICATION_NAME(
