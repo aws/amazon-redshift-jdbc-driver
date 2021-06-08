@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v2.0.0.5 (2021-06-08)
+---------------------
+- Fix security vulnerability. [ilesh Garish]
+- Support of JDBC connection config using INI file. [ilesh Garish]
+- Fix [issue#19](https://github.com/aws/amazon-redshift-jdbc-driver/issues/19). [ilesh Garish]
+- Support column case sensitivity based on collate. [ilesh Garish]
+- Binary protocol support. [ilesh Garish]
+- Fix [issue#16](https://github.com/aws/amazon-redshift-jdbc-driver/issues/16). [ilesh Garish]
+
 v2.0.0.4 (2021-03-28)
 ---------------------
 - Added more logging for Browser plugins. [ilesh Garish]
