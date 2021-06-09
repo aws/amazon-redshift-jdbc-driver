@@ -9,6 +9,7 @@ v2.0.0.5 (2021-06-08)
 - Support column case sensitivity based on collate. [ilesh Garish]
 - Binary protocol support. [ilesh Garish]
 - Fix [issue#16](https://github.com/aws/amazon-redshift-jdbc-driver/issues/16). [ilesh Garish]
+- Error while trying to retrieve stored procedures in DBeaver
 
 v2.0.0.4 (2021-03-28)
 ---------------------
