@@ -11,6 +11,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSSessionCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.auth.ProcessCredentialsProvider;
 import com.amazonaws.auth.profile.ProfilesConfigFile;
 import com.amazonaws.auth.profile.internal.BasicProfile;
 import com.amazonaws.auth.profile.internal.ProfileStaticCredentialsProvider;
@@ -163,7 +164,16 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
                 throw new SdkClientException("Invalid plugin: '" + pluginName + "'");
             }
         }
-        else
+        else if (profile.isProcessBasedProfile())
+        {
+            ProcessCredentialsProvider provider = ProcessCredentialsProvider.builder()
+                .withCommand(profile.getCredentialProcess())
+                .build();
+            AWSCredentials c = provider.getCredentials();
+            Date expirationTime = provider.getCredentialExpirationTime().toDate();
+            credentials = CredentialsHolder.newInstance(c, expirationTime);
+        }
+        else 
         {
             AWSCredentials c = new ProfileStaticCredentialsProvider(profile).getCredentials();
             credentials = CredentialsHolder.newInstance(c);
@@ -200,7 +210,7 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
         cache.put(profileName, credentials);
         if(RedshiftLogger.isEnable()) {
             Date now = new Date();
-            m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
+            m_log.logInfo(now + ": Using entry for PluginProfilesConfigFile.getCredentials cache with expiration " + credentials.getExpiration());
         }
         return credentials;
     }

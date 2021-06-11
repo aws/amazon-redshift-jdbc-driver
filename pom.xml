@@ -49,7 +49,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-redshift</artifactId>
-            <version>1.11.118</version>
+            <version>1.11.489</version>
             <exclusions>
                 <exclusion>
                     <groupId>software.amazon.ion</groupId>
@@ -64,7 +64,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-sts</artifactId>
-            <version>1.11.118</version>
+            <version>1.11.489</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.amazonaws</groupId>
