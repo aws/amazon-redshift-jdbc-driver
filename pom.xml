@@ -33,7 +33,7 @@
 
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
-        <jackson.version>2.11.3</jackson.version>
+        <jackson.version>2.12.2</jackson.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
@@ -49,7 +49,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-redshift</artifactId>
-            <version>1.11.118</version>
+            <version>1.12.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>software.amazon.ion</groupId>
@@ -64,7 +64,7 @@
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-sts</artifactId>
-            <version>1.11.118</version>
+            <version>1.12.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.amazonaws</groupId>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.5.2</version>
+            <version>4.5.13</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
