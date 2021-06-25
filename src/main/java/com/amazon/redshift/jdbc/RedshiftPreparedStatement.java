@@ -292,12 +292,17 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
       case Types.BINARY:
       case Types.VARBINARY:
       case Types.LONGVARBINARY:
+      case Types.BLOB:
         oid = Oid.BYTEA;
         break;
-      case Types.BLOB:
-      case Types.CLOB:
-        oid = Oid.OID;
+      case Types.CLOB: {
+      	// In case of NULL, CLOB can be seen as VARCHAR
+      	// This is useful in application like Spark dataframe which generates
+      	// code to setNull as CLOB without seeing data source support it or not 
+      	// as dataframe read must have happen using a CLOB supported database like MySQL or SQL Server.
+        oid = Oid.VARCHAR; 
         break;
+      }
       case Types.ARRAY:
       case Types.DISTINCT:
       case Types.STRUCT:
