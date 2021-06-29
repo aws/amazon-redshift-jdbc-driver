@@ -3,7 +3,6 @@ Changelog
 
 v2.0.0.6 (2021-06-29)
 ------------
-- Fix [issue#26](https://github.com/aws/amazon-redshift-jdbc-driver/issues/26). [ilesh Garish]
 - Fix [issue#27](https://github.com/aws/amazon-redshift-jdbc-driver/issues/27). [ilesh Garish]
 - Add support for Profile process credentials. [Laurent Goujon]
 - Bump httpclient from 4.5.2 to 4.5.13. [dependabot[bot]]
