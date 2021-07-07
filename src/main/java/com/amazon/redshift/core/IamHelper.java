@@ -19,6 +19,11 @@ import com.amazonaws.services.redshift.model.DescribeClustersResult;
 import com.amazonaws.services.redshift.model.Endpoint;
 import com.amazonaws.services.redshift.model.GetClusterCredentialsRequest;
 import com.amazonaws.services.redshift.model.GetClusterCredentialsResult;
+import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternal;
+import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternalClient;
+import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternalClientBuilder;
+import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMRequest;
+import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMResult;
 import com.amazonaws.util.StringUtils;
 
 import com.amazon.redshift.AuthMech;
@@ -49,6 +54,21 @@ public final class IamHelper
 {
 	private static final int MAX_AMAZONCLIENT_RETRY = 5;
 	private static final int MAX_AMAZONCLIENT_RETRY_DELAY_MS = 1000;
+
+	private static final String KEY_PREFERRED_ROLE = "preferred_role";
+	private static final String KEY_ROLE_SESSION_NAME = "roleSessionName";
+	private static final String KEY_ROLE_ARN = "roleArn";
+
+	// Subtype of plugin
+	public static final int	SAML_PLUGIN = 1;
+	public static final int	JWT_PLUGIN = 2;
+	
+	// Type of GetClusterCredential API
+	public static final int	GET_CLUSTER_CREDENTIALS_V1_API	= 1;
+	public static final int	GET_CLUSTER_CREDENTIALS_IAM_V2_API 	= 2;
+	public static final int	GET_CLUSTER_CREDENTIALS_SAML_V2_API = 3;
+	public static final int	GET_CLUSTER_CREDENTIALS_JWT_V2_API 	= 4;
+	
 	
 	private enum CredentialProviderType {
 		NONE,
@@ -59,6 +79,7 @@ public final class IamHelper
 	};
 
 	private static Map<String, GetClusterCredentialsResult> credentialsCache = new HashMap<String, GetClusterCredentialsResult>();
+	private static Map<String, GetClusterCredentialsWithIAMResult> credentialsV2Cache = new HashMap<String, GetClusterCredentialsWithIAMResult>();
 
     private IamHelper()
     {
@@ -119,6 +140,7 @@ public final class IamHelper
 	        String iamDbUser = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.DB_USER.getName(), info);
 	        String iamDbGroups = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.DB_GROUPS.getName(), info);
 	        String iamForceLowercase = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.FORCE_LOWERCASE.getName(), info);        
+	        String iamGroupFederation = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.GROUP_FEDERATION.getName(), info);        
 	        String dbName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.DBNAME.getName(), info);
 	        
 	        String hosts = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.HOST.getName(),info);
@@ -282,7 +304,10 @@ public final class IamHelper
 	        
 	        settings.m_forceLowercase =
 	        		    iamForceLowercase == null ? null : Boolean.valueOf(iamForceLowercase);
-	        		
+
+	        settings.m_groupFederation =
+      		    iamGroupFederation == null ? false : Boolean.valueOf(iamGroupFederation);
+	        
 	        
 	        if (null != iamDbUser)
 	        {
@@ -321,6 +346,7 @@ public final class IamHelper
         AWSCredentialsProvider provider;
         CredentialProviderType providerType = CredentialProviderType.NONE;
         boolean idpCredentialsRefresh = false;
+    		String idpToken = null;
 
         if (!StringUtils.isNullOrEmpty(settings.m_credentialsProvider))
         {
@@ -363,9 +389,20 @@ public final class IamHelper
                     
                     providerType = CredentialProviderType.PLUGIN;
                     plugin.setLogger(log);
+                    plugin.setGroupFederation(settings.m_groupFederation);
                     for (Map.Entry<String, String> entry : settings.m_pluginArgs.entrySet())
                     {
-                        plugin.addParameter(entry.getKey(), entry.getValue());
+                    		String pluginArgKey = entry.getKey();
+                        plugin.addParameter(pluginArgKey, entry.getValue());
+                        
+                        if (KEY_PREFERRED_ROLE.equalsIgnoreCase(pluginArgKey))
+                        	settings.m_preferredRole = entry.getValue();
+                        else if (KEY_ROLE_ARN.equalsIgnoreCase(pluginArgKey))
+                        	settings.m_roleArn = entry.getValue();
+                        else if (KEY_ROLE_SESSION_NAME.equalsIgnoreCase(pluginArgKey))
+                        	settings.m_roleSessionName = entry.getValue();
+                        else if (RedshiftProperty.DB_GROUPS_FILTER.getName().equalsIgnoreCase(pluginArgKey))
+                        	settings.m_dbGroupsFilter = entry.getValue();
                     }
                 }
             }
@@ -444,98 +481,142 @@ public final class IamHelper
         if (RedshiftLogger.isEnable())
           log.log(LogLevel.DEBUG, "IDP Credential Provider {0}:{1}", provider, settings.m_credentialsProvider);
         
-        // Provider will cache the credentials, it's OK to call getCredentials() here.
-        AWSCredentials credentials = provider.getCredentials();
-        if (credentials instanceof CredentialsHolder)
-        {
-        		idpCredentialsRefresh = ((CredentialsHolder) credentials).isRefresh();
+            
+        int getClusterCredentialApiType = findTypeOfGetClusterCredentialsAPI(settings, providerType, provider);
+        
+        if(getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API
+        		|| getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API)
+      	{
+          if (RedshiftLogger.isEnable())
+            log.log(LogLevel.DEBUG, "Calling provider.getCredentials()");
         	
-            // autoCreate, user and password from URL take priority.
-            CredentialsHolder.IamMetadata im = ((CredentialsHolder) credentials).getMetadata();
-            if (null != im)
-            {
-                Boolean autoCreate = im.getAutoCreate();
-                String dbUser = im.getDbUser();
-                String samlDbUser = im.getSamlDbUser();
-                String profileDbUser = im.getProfileDbUser();
-                String dbGroups = im.getDbGroups();
-                boolean forceLowercase = im.getForceLowercase();                
-                boolean allowDbUserOverride = im.getAllowDbUserOverride();
-                if (null == settings.m_autocreate)
-                {
-                    settings.m_autocreate = autoCreate;
-                }
-                
-                if (null == settings.m_forceLowercase)
-	              {
-                		settings.m_forceLowercase = forceLowercase;
-	              }
-                
+	        // Provider will cache the credentials, it's OK to call getCredentials() here.
+	        AWSCredentials credentials = provider.getCredentials();
+	        if (credentials instanceof CredentialsHolder)
+	        {
+	        		idpCredentialsRefresh = ((CredentialsHolder) credentials).isRefresh();
+	        	
+	            // autoCreate, user and password from URL take priority.
+	            CredentialsHolder.IamMetadata im = ((CredentialsHolder) credentials).getMetadata();
+	            if (null != im)
+	            {
+	                Boolean autoCreate = im.getAutoCreate();
+	                String dbUser = im.getDbUser();
+	                String samlDbUser = im.getSamlDbUser();
+	                String profileDbUser = im.getProfileDbUser();
+	                String dbGroups = im.getDbGroups();
+	                boolean forceLowercase = im.getForceLowercase();                
+	                boolean allowDbUserOverride = im.getAllowDbUserOverride();
+	                if (null == settings.m_autocreate)
+	                {
+	                    settings.m_autocreate = autoCreate;
+	                }
+	                
+	                if (null == settings.m_forceLowercase)
+		              {
+	                		settings.m_forceLowercase = forceLowercase;
+		              }
+	                
+	
+	                /*
+	                 * Order of precedence when configuring settings.m_dbUser:
+	                 *
+	                 * If allowDbUserOverride = true:
+	                 *      1. Value from SAML assertion.
+	                 *      2. Value from connection string setting.
+	                 *      3. Value from credentials profile setting.
+	                 *
+	                 * If allowDbUserOverride = false (default):
+	                 *      1. Value from connection string setting.
+	                 *      2. Value from credentials profile setting.
+	                 *      3. Value from SAML assertion.
+	                 */
+	                if (allowDbUserOverride)
+	                {
+	                    if(null != samlDbUser)
+	                    {
+	                        settings.m_dbUser = samlDbUser;
+	                    }
+	                    else if(null != dbUser)
+	                    {
+	                        settings.m_dbUser = dbUser;
+	                    }
+	                    else if(null != profileDbUser)
+	                    {
+	                        settings.m_dbUser = profileDbUser;
+	                    }
+	                }
+	                else
+	                {
+	                    if (null != dbUser)
+	                    {
+	                        settings.m_dbUser = dbUser;
+	                    }
+	                    else if (null != profileDbUser)
+	                    {
+	                        settings.m_dbUser = profileDbUser;
+	                    }
+	                    else if (null != samlDbUser)
+	                    {
+	                        settings.m_dbUser = samlDbUser;
+	                    }
+	                }
+	
+	                if (settings.m_dbGroups.isEmpty() && null != dbGroups)
+	                {
+	                    settings.m_dbGroups = Arrays.asList((settings.m_forceLowercase ? dbGroups.toLowerCase(Locale.getDefault()) : dbGroups).split(","));
+	                }
+	            }
+	        }
 
-                /*
-                 * Order of precedence when configuring settings.m_dbUser:
-                 *
-                 * If allowDbUserOverride = true:
-                 *      1. Value from SAML assertion.
-                 *      2. Value from connection string setting.
-                 *      3. Value from credentials profile setting.
-                 *
-                 * If allowDbUserOverride = false (default):
-                 *      1. Value from connection string setting.
-                 *      2. Value from credentials profile setting.
-                 *      3. Value from SAML assertion.
-                 */
-                if (allowDbUserOverride)
-                {
-                    if(null != samlDbUser)
-                    {
-                        settings.m_dbUser = samlDbUser;
-                    }
-                    else if(null != dbUser)
-                    {
-                        settings.m_dbUser = dbUser;
-                    }
-                    else if(null != profileDbUser)
-                    {
-                        settings.m_dbUser = profileDbUser;
-                    }
-                }
-                else
-                {
-                    if (null != dbUser)
-                    {
-                        settings.m_dbUser = dbUser;
-                    }
-                    else if (null != profileDbUser)
-                    {
-                        settings.m_dbUser = profileDbUser;
-                    }
-                    else if (null != samlDbUser)
-                    {
-                        settings.m_dbUser = samlDbUser;
-                    }
-                }
-
-                if (settings.m_dbGroups.isEmpty() && null != dbGroups)
-                {
-                    settings.m_dbGroups = Arrays.asList((settings.m_forceLowercase ? dbGroups.toLowerCase(Locale.getDefault()) : dbGroups).split(","));
-                }
-            }
-        }
-
-        if ("*".equals(settings.m_username) && null == settings.m_dbUser)
-        {
-        	RedshiftException err =  new RedshiftException(GT.tr("Missing connection property {0}", 
-							RedshiftProperty.DB_USER.getName()),
-						RedshiftState.UNEXPECTED_ERROR);         	
-
-          if(RedshiftLogger.isEnable())
-						log.log(LogLevel.ERROR, err.toString());
+	        if ("*".equals(settings.m_username) && null == settings.m_dbUser)
+	        {
+	        	RedshiftException err =  new RedshiftException(GT.tr("Missing connection property {0}", 
+								RedshiftProperty.DB_USER.getName()),
+							RedshiftState.UNEXPECTED_ERROR);         	
+	
+	          if(RedshiftLogger.isEnable())
+							log.log(LogLevel.ERROR, err.toString());
+	        	
+	          throw err;
+	        }
+        } // V1 Or IAM_V2 API
+        else {
+          if (RedshiftLogger.isEnable())
+            log.log(LogLevel.DEBUG, "groupFederation=" + settings.m_groupFederation);
         	
-          throw err;
-        }
+        	// Check for GetClusterCredentialsV2 cache
+        	// Combine key of IDP and V2 API
+      		String key = null;
+      		GetClusterCredentialsWithIAMResult credentials = null;
+      		
+      		if(!settings.m_iamDisableCache) {
+      			key = getCredentialsV2CacheKey(settings, providerType, provider, getClusterCredentialApiType);
+      			credentials = credentialsV2Cache.get(key);
+      		}
+      		
+      		if (credentials == null
+      				|| credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+      		{
+      			// If not found or expired
+        		// Get IDP token
+        		if(providerType == CredentialProviderType.PLUGIN) {
+        			IPlugin plugin = (IPlugin)provider;
+        			
+              if (RedshiftLogger.isEnable())
+                log.log(LogLevel.DEBUG, "Calling plugin.getIdpToken()");
+              
+        			idpToken = plugin.getIdpToken();
+        		}
+        		
+            settings.m_idpToken = idpToken;
+      		}
+        } // Group federation API
+        
 
-        setClusterCredentials(provider, settings, log, providerType, idpCredentialsRefresh);
+        setClusterCredentials(provider, settings, log, 
+        											providerType, idpCredentialsRefresh,
+        											getClusterCredentialApiType);
     }
 
     /**
@@ -548,60 +629,127 @@ public final class IamHelper
     															RedshiftJDBCSettings settings, 
     															RedshiftLogger log,
     															CredentialProviderType providerType,
-    															boolean idpCredentialsRefresh) 
+    															boolean idpCredentialsRefresh,
+    															int getClusterCredentialApiType)
     					throws RedshiftException
     {
         try
         {
-            AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
-
-      	    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
-      	    
-      	    if (clientConfig != null) {
-      	    	builder.setClientConfiguration(clientConfig);
-      	    }
-            
-            if (settings.m_endpoint != null)
+            // Call V1 or V2 GetClusterCredentials API
+            if(getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API)
             {
-                EndpointConfiguration cfg = new EndpointConfiguration(
-                        settings.m_endpoint, settings.m_awsRegion);
-                builder.setEndpointConfiguration(cfg);
+            	// Call V1 API
+              AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
+
+        	    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
+        	    
+        	    if (clientConfig != null) {
+        	    	builder.setClientConfiguration(clientConfig);
+        	    }
+              
+              if (settings.m_endpoint != null)
+              {
+                  EndpointConfiguration cfg = new EndpointConfiguration(
+                          settings.m_endpoint, settings.m_awsRegion);
+                  builder.setEndpointConfiguration(cfg);
+              }
+              else if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty())
+              {
+                  builder.setRegion(settings.m_awsRegion);
+              }
+
+              AmazonRedshift client 
+              	= (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API
+                		|| getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API)
+              			? builder.withCredentials(credProvider).build()
+              			: builder.build();
+
+              if (null == settings.m_host || settings.m_port == 0)
+              {
+              		if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API
+                  		|| getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API) 
+              		{
+  	                DescribeClustersRequest req = new DescribeClustersRequest();
+  	                req.setClusterIdentifier(settings.m_clusterIdentifier);
+  	                DescribeClustersResult resp = client.describeClusters(req);
+  	                List<Cluster> clusters = resp.getClusters();
+  	                if (clusters.isEmpty())
+  	                {
+  	                    throw new AmazonClientException("Failed to describeClusters.");
+  	                }
+  	
+  	                Cluster cluster = clusters.get(0);
+  	                Endpoint endpoint = cluster.getEndpoint();
+  	                if (null == endpoint)
+  	                {
+  	                    throw new AmazonClientException("Cluster is not fully created yet.");
+  	                }
+  	
+  	                settings.m_host = endpoint.getAddress();
+  	                settings.m_port = endpoint.getPort();
+              		}
+              		else {
+                    throw new AmazonClientException("Host or Port parameter is missing.");
+              		}
+              }
+            	
+           	
+              if (RedshiftLogger.isEnable())
+                log.log(LogLevel.DEBUG, "Call V1 API of GetClusterCredentials");
+            	
+	            GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log, providerType, idpCredentialsRefresh);
+	            settings.m_username = result.getDbUser();
+	            settings.m_password = result.getDbPassword();
+	            if(RedshiftLogger.isEnable()) {
+	                Date now = new Date();
+	                log.logInfo(now + ": Using GetClusterCredentialsResult with expiration " + result.getExpiration());
+	            }
             }
-            else if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty())
-            {
-                builder.setRegion(settings.m_awsRegion);
-            }
+            else {
+            	// Call V2 API
+            	
+            	AmazonRedshiftInternalClientBuilder builder = AmazonRedshiftInternalClientBuilder.standard();
 
-            AmazonRedshift client = builder.withCredentials(credProvider).build();
-
-            if (null == settings.m_host || settings.m_port == 0)
-            {
-                DescribeClustersRequest req = new DescribeClustersRequest();
-                req.setClusterIdentifier(settings.m_clusterIdentifier);
-                DescribeClustersResult resp = client.describeClusters(req);
-                List<Cluster> clusters = resp.getClusters();
-                if (clusters.isEmpty())
-                {
-                    throw new AmazonClientException("Failed to describeClusters.");
-                }
-
-                Cluster cluster = clusters.get(0);
-                Endpoint endpoint = cluster.getEndpoint();
-                if (null == endpoint)
-                {
-                    throw new AmazonClientException("Cluster is not fully created yet.");
-                }
-
-                settings.m_host = endpoint.getAddress();
-                settings.m_port = endpoint.getPort();
-            }
-
-            GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log, providerType, idpCredentialsRefresh);
-            settings.m_username = result.getDbUser();
-            settings.m_password = result.getDbPassword();
-            if(RedshiftLogger.isEnable()) {
-                Date now = new Date();
-                log.logInfo(now + ": Using GetClusterCredentialsResult with expiration " + result.getExpiration());
+        	    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
+        	    
+        	    if (clientConfig != null) {
+        	    	builder.setClientConfiguration(clientConfig);
+        	    }
+              
+              if (settings.m_endpoint != null)
+              {
+                  EndpointConfiguration cfg = new EndpointConfiguration(
+                          settings.m_endpoint, settings.m_awsRegion);
+                  builder.setEndpointConfiguration(cfg);
+              }
+              else if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty())
+              {
+                  builder.setRegion(settings.m_awsRegion);
+              }
+            	
+            	AmazonRedshiftInternalClient client 
+            	= (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API
+              		|| getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API)
+            			? (AmazonRedshiftInternalClient) builder.withCredentials(credProvider).build()
+            			: (AmazonRedshiftInternalClient) builder.build();
+            	
+              if (RedshiftLogger.isEnable())
+                log.log(LogLevel.DEBUG, "Call V2 API of GetClusterCredentials");
+              
+              GetClusterCredentialsWithIAMResult result = getClusterCredentialsResultV2(settings, client, 
+	            																						log, providerType, idpCredentialsRefresh,
+	            																						credProvider,
+	            																						getClusterCredentialApiType);
+	            settings.m_username = result.getDbUser();
+	            settings.m_password = result.getDbPassword();
+	            
+	            // result will contain TimeToRefresh
+	            
+	            if(RedshiftLogger.isEnable()) {
+	                Date now = new Date();
+	                log.logInfo(now + ": Using GetClusterCredentialsResultV2 with expiration " + result.getExpiration());
+	                log.logInfo(now + ": Using GetClusterCredentialsResultV2 with TimeToRefresh " + result.getNextRefreshTime());
+	            }
             }
         }
         catch (AmazonClientException e)
@@ -693,9 +841,150 @@ public final class IamHelper
             log.logInfo("GetClusterCredentials from cache");
         }
         
-        return credentials;
-    }
+    return credentials;
+  }
 
+  private static synchronized GetClusterCredentialsWithIAMResult getClusterCredentialsResultV2(RedshiftJDBCSettings settings, 
+				AmazonRedshiftInternalClient  client, 
+				RedshiftLogger log,
+				CredentialProviderType providerType,
+				boolean idpCredentialsRefresh,
+				AWSCredentialsProvider provider,
+				int getClusterCredentialApiType) throws AmazonClientException
+  {
+		String key = null;
+		GetClusterCredentialsWithIAMResult credentials = null;
+		
+		if(!settings.m_iamDisableCache) {
+			key = getCredentialsV2CacheKey(settings, providerType, provider, getClusterCredentialApiType);
+			credentials = credentialsV2Cache.get(key);
+		}
+		
+		if (credentials == null
+  			|| (providerType == CredentialProviderType.PLUGIN
+							&& settings.m_idpToken != null)
+				|| credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+		{
+			if (RedshiftLogger.isEnable())
+				log.logInfo("GetClusterCredentialsV2 NOT from cache");
+			
+			GetClusterCredentialsWithIAMRequest iamRequest = null;
+			
+			if(!settings.m_iamDisableCache)	          
+				credentialsV2Cache.remove(key);
+			
+			if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API) {			
+				GetClusterCredentialsWithIAMRequest request = new GetClusterCredentialsWithIAMRequest();
+				
+				iamRequest = request;
+				
+				request.setClusterIdentifier(settings.m_clusterIdentifier);
+				if (settings.m_iamDuration > 0)
+				{
+					request.setDurationSeconds(settings.m_iamDuration);
+				}
+				
+				request.setDbName(settings.m_Schema);
+				
+				if (RedshiftLogger.isEnable())
+					log.logInfo(request.toString());
+			}
+			else 
+			if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_SAML_V2_API) {			
+/*				GetClusterCredentialsWithSAMLRequest request = new GetClusterCredentialsWithSAMLRequest();
+				
+				request.setClusterIdentifier(settings.m_clusterIdentifier);
+				if (settings.m_iamDuration > 0)
+				{
+					request.setDurationSeconds(settings.m_iamDuration);
+				}
+				
+				request.setDbName(settings.m_Schema);
+				
+				// SAML specific
+				request.setSamlAssertion(settings.m_idpToken);
+
+				if(settings.m_preferredRole != null) 
+					request.roleArn(settings.m_preferredRole);
+				
+				if(settings.m_dbGroupsFilter != null) 
+					request.excludeDbGroups(settings.m_dbGroupsFilter);
+*/					
+			}
+			else
+			if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_JWT_V2_API) {			
+/*				GetClusterCredentialsWithWebIdentityRequest request = new GetClusterCredentialsWithWebIdentityRequest();
+				request.setClusterIdentifier(settings.m_clusterIdentifier);
+				if (settings.m_iamDuration > 0)
+				{
+					request.setDurationSeconds(settings.m_iamDuration);
+				}
+				
+				request.setDbName(settings.m_Schema);
+				
+				// JWT specific
+				request.setWebIdentityToken(settings.m_idpToken);
+				request.roleArn(settings.m_roleArn);
+				
+				if(settings.m_roleSessionName != null) 
+					request.roleSessionName(settings.m_roleSessionName);
+*/					
+			}
+			
+			
+		
+			for (int i = 0; i < MAX_AMAZONCLIENT_RETRY; ++i)
+			{
+				try
+				{
+					// TODO: Remove below comments once CP is ready
+					if(getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API)
+						 credentials = client.getClusterCredentialsWithIAM(iamRequest);
+/*					else
+					if(getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_SAML_V2_API)
+						 credentials = client.getClusterCredentialsWithSAML(request);
+					else
+					if(getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_JWT_V2_API)
+						 credentials = client.getClusterCredentialsWithWebIdentity(request);
+*/						 
+					
+					break;
+				} 
+				catch (AmazonClientException ace)
+				{
+					if (ace.getMessage().contains("Rate exceeded") && i < MAX_AMAZONCLIENT_RETRY-1)
+					{
+						if(RedshiftLogger.isEnable())
+						  log.logInfo("getClusterCredentialsResultV2 caught 'Rate exceeded' error...");
+						try
+						{
+						  Thread.sleep(MAX_AMAZONCLIENT_RETRY_DELAY_MS);
+						}
+						catch (InterruptedException ex)
+						{
+						  Thread.currentThread().interrupt();
+						}
+						continue;
+					} 
+					else
+					{
+						throw ace;
+					}
+				}
+			}
+
+			if(!settings.m_iamDisableCache)
+				credentialsV2Cache.put(key, credentials);
+		}
+		else 
+		{
+			if (RedshiftLogger.isEnable())
+				log.logInfo("GetClusterCredentialsV2 from cache");
+		}
+	
+		return credentials;
+	}
+    
 	private static String getCredentialsCacheKey(RedshiftJDBCSettings settings, CredentialProviderType providerType)
 	{
 				String key;
@@ -742,5 +1031,106 @@ public final class IamHelper
         } // Switch
         
       return key;
+	}
+	
+	private static String getCredentialsV2CacheKey(RedshiftJDBCSettings settings,
+					CredentialProviderType providerType,
+					AWSCredentialsProvider provider,
+					int getClusterCredentialApiType)
+	{
+			String key = "";
+			
+			if (providerType == CredentialProviderType.PLUGIN)
+			{
+				// Get IDP key
+				IPlugin plugin = (IPlugin)provider;
+				key = plugin.getCacheKey();
+			}
+      
+      
+			// Combine IDP key with V2 API parameters
+      
+      key += (settings.m_clusterIdentifier + ";" +
+              (settings.m_Schema == null ? "" : settings.m_Schema) + ";" +
+              settings.m_iamDuration);
+      
+      if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_SAML_V2_API) {
+	      if (settings.m_preferredRole != null) {
+	      	key += (settings.m_preferredRole + ";");
+	      }
+	      
+	      if (settings.m_dbGroupsFilter != null) {
+	      	key += (settings.m_dbGroupsFilter + ";");
+	      }
+      }
+      else
+      if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_JWT_V2_API) {
+      	if (settings.m_idpToken != null) {
+      		key += (settings.m_idpToken + ";");
+      	}
+      	
+        if (settings.m_roleArn != null) {
+        	key += (settings.m_roleArn + ";");
+        }
+        
+        if (settings.m_roleSessionName != null) {
+        	key += (settings.m_roleSessionName + ";");
+        }
+      }
+      
+      switch (providerType) {
+        case PROFILE: {
+        	key += ";" + settings.m_profile; 
+        	break;
+        }
+        
+        case IAM_KEYS_WITH_SESSION: {
+        	key += ";" + settings.m_iamAccessKeyID
+        				 + ";" + settings.m_iamSecretKey
+        				 + ";" + settings.m_iamSessionToken
+        				 ; 
+        	break;
+        }
+
+        case IAM_KEYS: {
+        	key += ";" + settings.m_iamAccessKeyID
+        				 + ";" + settings.m_iamSecretKey
+        				 ; 
+        	break;
+        }
+        
+        default: {
+        	break;
+        }
+        
+      } // Switch
+      
+    return key;
+	}
+	
+	private static int findTypeOfGetClusterCredentialsAPI(RedshiftJDBCSettings settings,
+			CredentialProviderType providerType,
+			AWSCredentialsProvider provider) {
+    if(!settings.m_groupFederation) 
+    	return GET_CLUSTER_CREDENTIALS_V1_API;
+    else {
+    	if(providerType == CredentialProviderType.PROFILE) {
+    		// profile may have role based and it's not supported in V2 API
+				throw new AmazonClientException("Authentication with profile is not supported for group federation");					
+    	}
+    	else
+  		if(providerType != CredentialProviderType.PLUGIN)
+  				return GET_CLUSTER_CREDENTIALS_IAM_V2_API;
+  		else {
+				IPlugin plugin = (IPlugin)provider;
+				if(plugin.getSubType() == SAML_PLUGIN)
+					return GET_CLUSTER_CREDENTIALS_SAML_V2_API;
+				else
+				if(plugin.getSubType() == JWT_PLUGIN)
+					return GET_CLUSTER_CREDENTIALS_JWT_V2_API;
+				else
+					throw new AmazonClientException("Invalid plugin sub type:" + plugin.getSubType());					
+  		}
+    }
 	}
 }

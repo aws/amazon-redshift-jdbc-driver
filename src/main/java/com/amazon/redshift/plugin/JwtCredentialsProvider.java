@@ -18,6 +18,7 @@ import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.CredentialsHolder.IamMetadata;
+import com.amazon.redshift.core.IamHelper;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
@@ -61,6 +62,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
     protected String m_region;
     protected RedshiftLogger m_log;
     protected Boolean m_disableCache = false;
+    protected Boolean m_groupFederation = false;
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
     private CredentialsHolder m_lastRefreshCredentials; // Used when cache is disable.
@@ -188,6 +190,12 @@ public abstract class JwtCredentialsProvider implements IPlugin
     {
         m_log = log;
     }
+    
+    @Override
+    public int getSubType()
+    {
+        return IamHelper.JWT_PLUGIN;
+    }
 
     @Override
     public CredentialsHolder getCredentials()
@@ -234,6 +242,7 @@ public abstract class JwtCredentialsProvider implements IPlugin
         {
             throw new SdkClientException("Unable to load AWS credentials from ADFS");
         }
+        
         return credentials;
     }
 
@@ -249,11 +258,12 @@ public abstract class JwtCredentialsProvider implements IPlugin
         try
         {
             String jwt = processJwt(m_jwt);
-            String[] decodedjwt = decodeJwt(m_jwt);
 
             if (RedshiftLogger.isEnable())
           		m_log.logDebug(
                   String.format("JWT : %s", jwt));
+            
+            String[] decodedjwt = decodeJwt(m_jwt);
             
             m_dbUser = deriveDatabaseUser(decodedjwt);
 
@@ -304,7 +314,48 @@ public abstract class JwtCredentialsProvider implements IPlugin
     	return "";
     }
     
-    private String getCacheKey()
+    @Override
+    public String getIdpToken() {
+    	
+    	String jwt = null;
+    	
+      // Get the current thread and set the context loader with our custom load class method.
+      Thread currentThread = Thread.currentThread();
+      ClassLoader cl = currentThread.getContextClassLoader();
+
+      Thread.currentThread().setContextClassLoader(CONTEXT_CLASS_LOADER);
+
+      try
+      {
+        jwt = processJwt(m_jwt);
+
+        if (RedshiftLogger.isEnable())
+      		m_log.logDebug(
+              String.format("JWT : %s", jwt));
+      }
+      catch (Exception e)
+      {
+        if (RedshiftLogger.isEnable())
+      		m_log.logError(e);
+      	
+        throw new SdkClientException("JWT error: " + e.getMessage(), e);
+      }
+      finally
+      {
+        currentThread.setContextClassLoader(cl);
+      }
+      
+      return jwt;
+    	
+    }
+    
+    @Override
+    public void setGroupFederation(boolean groupFederation) {
+    	m_groupFederation = groupFederation;
+    }
+    
+    @Override
+    public String getCacheKey()
     {
   		String pluginSpecificKey = getPluginSpecificCacheKey();
     	

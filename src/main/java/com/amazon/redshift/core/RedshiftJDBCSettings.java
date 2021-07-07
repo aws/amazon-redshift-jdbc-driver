@@ -256,4 +256,40 @@ public class RedshiftJDBCSettings
      * Disable IAM credentials cache.
      */
     public boolean m_iamDisableCache;
+    
+    /**
+     * Use the same IDP Groups in the Redshift.
+     * false means use v1 version of GetClusterCrdentials
+     * true means use v2 version of GetClusterCrdentialsV2
+     */
+    public Boolean m_groupFederation;
+    
+    /**
+     * Generated SAML token or user provided JWT token.
+     * Used in V2 API.
+     */
+    public String m_idpToken;
+    
+    /**
+     * Preferred role provided by user.
+     * Used in V2 API.
+     */
+    public String m_preferredRole;
+    
+    /**
+     * Role session name provided by user.
+     * Used in V2 API.
+     */
+    public String m_roleSessionName;
+    
+    /**
+     * Group filter parameter for SAML provider
+     */
+    public String m_dbGroupsFilter;
+
+    /**
+     * Role provided by user.
+     * Used in V2 API.
+     */
+    public String m_roleArn;
 }

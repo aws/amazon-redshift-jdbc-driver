@@ -15,6 +15,9 @@ description = 'Redshift JDBC Driver - JDBC 4.2'
 sourceCompatibility = '1.8'
 
 repositories {
+    flatDir {
+        dirs 'lib'
+    }
     mavenLocal()
     maven {
         url = uri('https://repo.maven.apache.org/maven2')
@@ -31,7 +34,9 @@ dependencies {
     
     implementation 'com.amazonaws:aws-java-sdk-redshift:1.12.2', withoutjmespathSupport
     implementation 'com.amazonaws:aws-java-sdk-sts:1.12.2', withoutjmespathSupport
+    implementation 'com.amazonaws:aws-java-sdk-redshift-internal:1.12.x'
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+
     
     compileOnly 'com.ongres.scram:client:2.1'
     compileOnly 'com.github.waffle:waffle-jna:1.9.1', withoutslf4jSupport

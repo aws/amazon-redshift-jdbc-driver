@@ -17,6 +17,7 @@ import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.CredentialsHolder.IamMetadata;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.core.IamHelper;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
@@ -89,6 +90,7 @@ public abstract class SamlCredentialsProvider implements IPlugin
     protected String m_region;
     protected RedshiftLogger m_log;
     protected Boolean m_disableCache = false;
+    protected Boolean m_groupFederation = false;
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
     
@@ -229,6 +231,12 @@ public abstract class SamlCredentialsProvider implements IPlugin
     }
 
     @Override
+    public int getSubType()
+    {
+        return IamHelper.SAML_PLUGIN;
+    }
+    
+    @Override
     public CredentialsHolder getCredentials()
     {
     		CredentialsHolder credentials = null;
@@ -274,11 +282,12 @@ public abstract class SamlCredentialsProvider implements IPlugin
         {
             throw new SdkClientException("Unable to load AWS credentials from ADFS");
         }
-        
+      
         if(RedshiftLogger.isEnable()) {
             Date now = new Date();
             m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
         }
+        
         return credentials;
     }
 
@@ -293,14 +302,14 @@ public abstract class SamlCredentialsProvider implements IPlugin
 
         try
         {
-            final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:saml-provider/\\S+");
-            final Pattern ROLE_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:role/\\S+");
             String samlAssertion = getSamlAssertion();
 
             if (RedshiftLogger.isEnable())
             		m_log.logDebug(
                     String.format("SAML assertion: %s", samlAssertion));
                     
+            final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:saml-provider/\\S+");
+            final Pattern ROLE_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:role/\\S+");
             Document doc = parse(Base64.decodeBase64(samlAssertion));
             XPath xPath =  XPathFactory.newInstance().newXPath();
             String expression = "//*[local-name()='Attribute'][@Name='https://aws.amazon.com/SAML/Attributes/Role']/*[local-name()='AttributeValue']/text()";
@@ -442,7 +451,52 @@ public abstract class SamlCredentialsProvider implements IPlugin
     	return "";
     }
 
-    private String getCacheKey()
+    @Override
+    public String getIdpToken() {
+    	String samlAssertion = null;
+      // Get the current thread and set the context loader with our custom load class method.
+      Thread currentThread = Thread.currentThread();
+      ClassLoader cl = currentThread.getContextClassLoader();
+
+      Thread.currentThread().setContextClassLoader(CONTEXT_CLASS_LOADER);
+
+      try
+      {
+          samlAssertion = getSamlAssertion();
+
+          if (RedshiftLogger.isEnable())
+          		m_log.logDebug(
+                  String.format("SAML assertion: %s", samlAssertion));
+      }
+      catch (IOException e)
+      {
+        if (RedshiftLogger.isEnable())
+      		m_log.logError(e);
+      	
+        throw new SdkClientException("SAML error: " + e.getMessage(), e);
+      }
+      catch (Exception e)
+      {
+        if (RedshiftLogger.isEnable())
+      		m_log.logError(e);
+      	
+        throw new SdkClientException("SAML error: " + e.getMessage(), e);
+      }
+      finally
+      {
+        currentThread.setContextClassLoader(cl);
+      }
+      
+      return  samlAssertion;
+    }
+    
+    @Override
+    public void setGroupFederation(boolean groupFederation) {
+    	m_groupFederation = groupFederation;
+    }
+    
+    @Override
+    public String getCacheKey()
     {
     		String pluginSpecificKey = getPluginSpecificCacheKey();
         return m_userName + m_password + m_idpHost + m_idpPort + m_duration + m_preferredRole + pluginSpecificKey;

@@ -994,6 +994,18 @@ public enum RedshiftProperty {
   					null,
   					"Forces database group names to be lower case"),
   
+  /**
+   * Use the IDP Groups in the Redshift.
+   * This is supported by new GetClusterCredentialsV2 API.
+   * Default value is false for backward compatibility, which uses
+   * STS API and GetClusterCredentials for user federation and explictily
+   * specifying DbGroups in connection.
+   */
+  GROUP_FEDERATION("groupFederation",
+  					"false",
+  					"Use the IDP Groups in the Redshift"),
+  
+  
   ;
   
   private final String name;
