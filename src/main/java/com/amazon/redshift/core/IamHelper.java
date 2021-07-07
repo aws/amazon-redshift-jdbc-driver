@@ -121,6 +121,8 @@ public final class IamHelper
 	        	password = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.PASSWORD.getName(), info);
 	        
 	        String profile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_PROFILE.getName(), info);
+	        if(profile == null)
+	        	profile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_PROFILE.getName().toLowerCase(), info);
 	        String iamDuration = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_DURATION.getName(), info);
 	        String iamAccessKey = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_ACCESS_KEY_ID.getName(), info);
 	

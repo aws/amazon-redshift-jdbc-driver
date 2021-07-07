@@ -934,10 +934,10 @@ public enum RedshiftProperty {
   /**
    * The AWS profile name for credentials.
    */
-  AWS_PROFILE("profile",
+  AWS_PROFILE("Profile",
   						null,
   						"The AWS profile name for credentials"),
-  
+
   /**
    * The IAM secret key for the IAM user or role.
    */
