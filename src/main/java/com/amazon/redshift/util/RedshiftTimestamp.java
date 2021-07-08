@@ -7,6 +7,7 @@ package com.amazon.redshift.util;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 
 /**
@@ -299,13 +300,24 @@ public class RedshiftTimestamp extends Timestamp {
           if (0 < this.getNanos())
           {
               baseResult.append(".");
+              
+              if (6 < nanoSeconds.length()
+              		&& nanoSeconds.length() < 9) {
+          			// Prefix with zeroes and make it 9 digits
+          			int zeroesToPrefix = 9 -nanoSeconds.length();
+          			char[] charArray = new char[zeroesToPrefix];
+          			Arrays.fill(charArray, '0');
+          			String str = new String(charArray);
+          			nanoSeconds = str + nanoSeconds; 
+              }
+              
               baseResult.append(nanoSeconds);
 
               // TIMESTAMP columns store values with up to a maximum of 6 digits of precision for fractional seconds.
               // If TIMESTAMP has more than 6 digits, trim the last 3 digit at the end of TIMESTAMP.
               if (6 < nanoSeconds.length())
               {
-                  baseResult.delete((baseResult.length() - (nanoSeconds.length() - 6)), baseResult.length());
+                 baseResult.delete((baseResult.length() - (nanoSeconds.length() - 6)), baseResult.length());
               }
           }
 
