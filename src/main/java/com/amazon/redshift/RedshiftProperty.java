@@ -50,6 +50,14 @@ public enum RedshiftProperty {
     "Assume the server is at least that version"),
 
   /**
+   * The authentication profile referring to connection props as JSON in the coral service.
+   */
+  AUTH_PROFILE(
+    "AuthProfile",
+    null,
+    "Authentication profile having connection props as JSON"),
+  
+  /**
    * Specifies what the driver should do if a query fails. In {@code autosave=always} mode, JDBC driver sets a savepoint before each query,
    * and rolls back to that savepoint in case of failure. In {@code autosave=never} mode (default), no savepoint dance is made ever.
    * In {@code autosave=conservative} mode, savepoint is set for each query, however the rollback is done only for rare cases

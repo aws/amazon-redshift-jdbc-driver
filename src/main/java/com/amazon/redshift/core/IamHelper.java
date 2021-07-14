@@ -14,6 +14,8 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.redshift.AmazonRedshift;
 import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
 import com.amazonaws.services.redshift.model.Cluster;
+import com.amazonaws.services.redshift.model.DescribeAuthenticationProfilesRequest;
+import com.amazonaws.services.redshift.model.DescribeAuthenticationProfilesResult;
 import com.amazonaws.services.redshift.model.DescribeClustersRequest;
 import com.amazonaws.services.redshift.model.DescribeClustersResult;
 import com.amazonaws.services.redshift.model.Endpoint;
@@ -25,7 +27,8 @@ import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternalClientBuild
 import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMRequest;
 import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMResult;
 import com.amazonaws.util.StringUtils;
-
+import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.AuthMech;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
@@ -47,8 +50,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.Set;
 
 public final class IamHelper
 {
@@ -94,10 +97,13 @@ public final class IamHelper
      *                            should be granted.
      * @param settings						Redshift IAM settings
      * @param log									Redshift logger
+     * 
+     * @return										New property object with properties from auth profile and given input info properties, if auth profile found.
+     * 														Otherwise same property object as info return.
      *
      * @throws RedshiftException  If an error occurs.
      */
-    public static void setIAMProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log) 
+    public static Properties setIAMProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log) 
     										throws RedshiftException
     {
     		try {
@@ -109,6 +115,45 @@ public final class IamHelper
 	            settings.m_authMech = AuthMech.VERIFY_CA;
 	        }
 	
+	        // Check for IAM keys and AuthProfile first
+	        String iamAccessKey = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_ACCESS_KEY_ID.getName(), info);
+	      	
+	        String iamSecretKey = RedshiftConnectionImpl.getOptionalConnSetting(
+	        				RedshiftProperty.IAM_SECRET_ACCESS_KEY.getName(),
+	                info);
+	
+	        String iamSessionToken = RedshiftConnectionImpl.getOptionalConnSetting(
+	        				RedshiftProperty.IAM_SESSION_TOKEN.getName(),
+	                info);
+	        String authProfile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AUTH_PROFILE.getName(),info); 
+
+	        if (!StringUtils.isNullOrEmpty(authProfile)) {
+	        	  if(!StringUtils.isNullOrEmpty(iamAccessKey)) {
+	        	  	Properties authProfileProps = readAuthProfile(authProfile, iamAccessKey, iamSecretKey, iamSessionToken, log, info);
+	        	  	if (authProfileProps != null) {
+	        	  		// Merge auth profile props with user props.
+	        	  		// User props overrides auth profile props
+	        	  		authProfileProps.putAll(info);
+	        	  		info = authProfileProps;
+	        	  	}
+	        	  }
+	        	  else {
+	        	  	// Auth profile specified but IAM keys are not
+	            	RedshiftException err = new RedshiftException(GT.tr("Dependent connection property setting for {0} is missing {1}",
+											RedshiftProperty.AUTH_PROFILE.getName(),
+											RedshiftProperty.IAM_ACCESS_KEY_ID.getName()),
+	            			RedshiftState.UNEXPECTED_ERROR);
+	            	
+	              if(RedshiftLogger.isEnable())
+	            		log.log(LogLevel.ERROR, err.toString());
+	            	
+	              throw err;
+	        	  	
+	        	  }
+	        	
+	        } // AuthProfile
+	        
+	        
 	        String clusterId = RedshiftConnectionImpl.getRequiredConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);
 	        String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
 	        String endpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.ENDPOINT_URL.getName(), info);
@@ -124,15 +169,6 @@ public final class IamHelper
 	        if(profile == null)
 	        	profile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_PROFILE.getName().toLowerCase(), info);
 	        String iamDuration = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_DURATION.getName(), info);
-	        String iamAccessKey = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IAM_ACCESS_KEY_ID.getName(), info);
-	
-	        String iamSecretKey = RedshiftConnectionImpl.getOptionalConnSetting(
-	        				RedshiftProperty.IAM_SECRET_ACCESS_KEY.getName(),
-	                info);
-	
-	        String iamSessionToken = RedshiftConnectionImpl.getOptionalConnSetting(
-	        				RedshiftProperty.IAM_SESSION_TOKEN.getName(),
-	                info);
 	
 	        String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
 	        				RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
@@ -329,6 +365,8 @@ public final class IamHelper
 	        }
 	
 	        setIAMCredentials(settings, log);
+	        
+	        return info;
     		}
     		catch (RedshiftException re) {
           if(RedshiftLogger.isEnable())
@@ -1035,6 +1073,107 @@ public final class IamHelper
       return key;
 	}
 	
+	/*    Response format like:
+	"{ "
+		  + " \"AuthenticationProfiles\": [ "
+		  + " {"
+		   + " \"AuthenticationProfileName\":\"ExampleProfileName\", "
+		   + " \"AuthenticationProfileContent\":\"{"
+		   + "  \\\"AllowDBUserOverride\\\": \\\"1\\\", "
+		   + " \\\"databaseMetadataCurrentDbOnly\\\": \\\"true\\\" "
+		   + " }\" "
+ 		  + " }"
+		  + "] "
+	+ "	} ";
+*/    	
+	private static Properties readAuthProfile(String authProfile, 
+			String iamAccessKeyID, 
+			String iamSecretKey, 
+			String iamSessionToken,
+			RedshiftLogger log,
+			Properties info) throws RedshiftException {
+		Properties authProfileProps = null;
+
+    AWSCredentials credentials;
+    String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
+    String endpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.ENDPOINT_URL.getName(), info);
+    
+    if (!StringUtils.isNullOrEmpty(iamSessionToken))
+    {
+        credentials = new BasicSessionCredentials(
+                iamAccessKeyID,
+                iamSecretKey,
+                iamSessionToken);
+    }
+    else
+    {
+        credentials = new BasicAWSCredentials(
+                iamAccessKeyID,
+                iamSecretKey);
+    }
+
+    AWSCredentialsProvider provider = new AWSStaticCredentialsProvider(credentials);
+
+    AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
+
+    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
+    
+    if (clientConfig != null) {
+    	builder.setClientConfiguration(clientConfig);
+    }
+    
+    if (endpointUrl != null)
+    {
+        EndpointConfiguration cfg = new EndpointConfiguration(
+        		endpointUrl, awsRegion);
+        builder.setEndpointConfiguration(cfg);
+    }
+    else if (awsRegion != null && !awsRegion.isEmpty())
+    {
+        builder.setRegion(awsRegion);
+    }
+    
+    AmazonRedshift client = builder.withCredentials(provider).build();
+
+    DescribeAuthenticationProfilesRequest request 
+    			= new DescribeAuthenticationProfilesRequest();
+    
+    request.setAuthenticationProfileName(authProfile);
+    
+    DescribeAuthenticationProfilesResult result = client.describeAuthenticationProfiles(request);
+    
+    String profileContent = result.getAuthenticationProfiles().get(0).getAuthenticationProfileContent();
+    
+//    if(RedshiftLogger.isEnable())
+//  		log.log(LogLevel.DEBUG, profileContent);
+    
+    authProfileProps = new Properties(info);
+  	JsonNode profileJson = Jackson.jsonNodeOf(profileContent);
+    	
+  	if (profileJson != null) {
+  		Iterator<Entry<String,JsonNode>> elements = profileJson.fields();
+  		
+  		while(elements.hasNext()) {
+  			Entry<String,JsonNode> element = elements.next();
+  			String key = element.getKey();
+  			String val = element.getValue().asText();
+  			authProfileProps.put(key, val); 
+  		}
+  	}
+  	else {
+  		// Error
+    	RedshiftException err = new RedshiftException(GT.tr("Auth profile JSON error"),
+    			RedshiftState.UNEXPECTED_ERROR);
+    	
+      if(RedshiftLogger.isEnable())
+    		log.log(LogLevel.ERROR, err.toString());
+    	
+      throw err;
+  	}
+    
+		return authProfileProps;
+	}
+
 	private static String getCredentialsV2CacheKey(RedshiftJDBCSettings settings,
 					CredentialProviderType providerType,
 					AWSCredentialsProvider provider,
@@ -1136,3 +1275,4 @@ public final class IamHelper
     }
 	}
 }
+

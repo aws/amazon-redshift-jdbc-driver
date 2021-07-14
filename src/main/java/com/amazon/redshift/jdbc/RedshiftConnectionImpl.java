@@ -242,7 +242,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
       if (RedshiftLogger.isEnable())
         logger.log(LogLevel.DEBUG, "Start IAM authentication");
     	
-    	IamHelper.setIAMProperties(info, m_settings, logger);
+    	info = IamHelper.setIAMProperties(info, m_settings, logger);
+
+//      if (RedshiftLogger.isEnable())
+//        logger.log(LogLevel.DEBUG, "info after setIAMProperties" + info);
     	
     	// Set the user name and temporary password in the property
     	Properties updatedInfo = new Properties();
