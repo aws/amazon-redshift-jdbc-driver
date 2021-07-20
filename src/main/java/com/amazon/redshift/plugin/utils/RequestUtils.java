@@ -69,17 +69,21 @@ public class RequestUtils
 	      clientConfig = new ClientConfiguration();
 	    	String proxyHost = System.getProperty("https.proxyHost");
 	    	String proxyPort = System.getProperty("https.proxyPort");
+	    	String nonProxyHosts = System.getProperty("http.nonProxyHosts");
 	    	
 	    	if (proxyHost != null)
 	    		clientConfig.setProxyHost(proxyHost);
+
+	    	if (nonProxyHosts != null)
+	    		clientConfig.setNonProxyHosts(nonProxyHosts);
 	    	
 	    	if (proxyPort != null)
 	    		clientConfig.setProxyPort(Integer.parseInt(proxyPort));
 	      
         if (RedshiftLogger.isEnable())
     			log.logDebug(
-            String.format("useProxy: %s proxyHost: %s proxyPort:%s" , 
-            								useProxy, proxyHost, proxyPort));
+            String.format("useProxy: %s proxyHost: %s proxyPort:%s nonProxyHosts:%s" , 
+            								useProxy, proxyHost, proxyPort, nonProxyHosts));
 	    }
 	    else {
         if (RedshiftLogger.isEnable())

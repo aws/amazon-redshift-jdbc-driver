@@ -1144,9 +1144,6 @@ public final class IamHelper
     
     String profileContent = result.getAuthenticationProfiles().get(0).getAuthenticationProfileContent();
     
-//    if(RedshiftLogger.isEnable())
-//  		log.log(LogLevel.DEBUG, profileContent);
-    
     authProfileProps = new Properties(info);
   	JsonNode profileJson = Jackson.jsonNodeOf(profileContent);
     	
