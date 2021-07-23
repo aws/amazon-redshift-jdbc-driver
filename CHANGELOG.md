@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v2.0.0.7 (2021-07-23)
+------------
+- Support nonProxyHosts system property for STS and Redshift coral service. [ilesh Garish]
+- Support of reading connection properties using an authentication profile.  [ilesh Garish]
+- Fix nano second issue with Timestamp to string conversion. [ilesh Garish]
+- Fix [issue#26](https://github.com/aws/amazon-redshift-jdbc-driver/issues/26). [ilesh Garish]
+- Return current database instead of NULL for getSchemas() API. [ilesh Garish]
+
 v2.0.0.6 (2021-06-29)
 ------------
 - Fix [issue#27](https://github.com/aws/amazon-redshift-jdbc-driver/issues/27). [ilesh Garish]
