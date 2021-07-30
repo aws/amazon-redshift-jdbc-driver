@@ -364,7 +364,7 @@ public final class IamHelper
 	        	settings.m_port = Integer.parseInt(ports);
 	        }
 	
-	        setIAMCredentials(settings, log);
+	        setIAMCredentials(settings, log, authProfile);
 	        
 	        return info;
     		}
@@ -381,7 +381,7 @@ public final class IamHelper
      *
      * @throws RedshiftException    If an unspecified error occurs.
      */
-    private static void setIAMCredentials(RedshiftJDBCSettings settings, RedshiftLogger log) throws RedshiftException
+    private static void setIAMCredentials(RedshiftJDBCSettings settings, RedshiftLogger log, String authProfile) throws RedshiftException
     {
         AWSCredentialsProvider provider;
         CredentialProviderType providerType = CredentialProviderType.NONE;
@@ -403,7 +403,8 @@ public final class IamHelper
               throw err;
             }
 
-            if (!StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID))
+            if (StringUtils.isNullOrEmpty(authProfile)
+            		 && !StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID))
             {
             	RedshiftException err = new RedshiftException(GT.tr("Conflict in connection property setting {0} and {1}",
 										RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
@@ -474,7 +475,8 @@ public final class IamHelper
         }
         else if (!StringUtils.isNullOrEmpty(settings.m_profile))
         {
-            if (!StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID))
+            if (StringUtils.isNullOrEmpty(authProfile)
+            		&& !StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID))
             {
             	RedshiftException err = new RedshiftException(GT.tr("Conflict in connection property setting {0} and {1}",
 										RedshiftProperty.AWS_PROFILE.getName(),
