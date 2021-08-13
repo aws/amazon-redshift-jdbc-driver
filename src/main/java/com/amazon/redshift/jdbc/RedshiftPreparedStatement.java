@@ -291,9 +291,11 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
         break;
       case Types.BINARY:
       case Types.VARBINARY:
-      case Types.LONGVARBINARY:
       case Types.BLOB:
         oid = Oid.BYTEA;
+        break;
+      case Types.LONGVARBINARY:
+        oid = Oid.VARBYTE;
         break;
       case Types.CLOB: {
       	// In case of NULL, CLOB can be seen as VARCHAR

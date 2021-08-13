@@ -28,6 +28,7 @@ import com.amazon.redshift.util.HStoreConverter;
 import com.amazon.redshift.util.RedshiftBytea;
 import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftTokenizer;
+import com.amazon.redshift.util.RedshiftVarbyte;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftGeometry;
 import com.amazon.redshift.util.RedshiftState;
@@ -2275,6 +2276,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if ("hstore".equals(getRSType(columnIndex))) {
         return HStoreConverter.toString((Map<?, ?>) obj);
       }
+      else
+      if(isVarbyte(columnIndex)) {
+      	// Convert raw binary to HEX
+  	   return trimString(columnIndex, RedshiftVarbyte.convertToString((byte[])obj));
+      } // VARBYTE
+      
       return trimString(columnIndex, obj.toString());
     }
     
@@ -2846,7 +2853,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
     if (fields[columnIndex - 1].getOID() == Oid.BYTEA) {
       return trimBytes(columnIndex, RedshiftBytea.toBytes(thisRow.get(columnIndex - 1)));
-    } else {
+    }
+    else
+    if (fields[columnIndex - 1].getOID() == Oid.VARBYTE) {
+      return trimBytes(columnIndex, RedshiftVarbyte.toBytes(thisRow.get(columnIndex - 1)));
+    } 
+    else {
       return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
     }
   }
@@ -3269,6 +3281,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   protected boolean isSuper(int column) {
     return (fields[column - 1].getOID() == Oid.SUPER);
+  }
+
+  protected boolean isVarbyte(int column) {
+    return (fields[column - 1].getOID() == Oid.VARBYTE);
   }
   
   // ----------------- Formatting Methods -------------------

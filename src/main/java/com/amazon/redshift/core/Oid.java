@@ -82,6 +82,8 @@ public class Oid {
   public static final int GEOMETRYHEX_ARRAY = 0; // UNSPECIFIED
   public static final int SUPER = 4000;
   public static final int SUPER_ARRAY = 0; // UNSPECIFIED
+  public static final int VARBYTE = 6551;
+  public static final int VARBYTE_ARRAY = 0; // UNSPECIFIED
   public static final int TIDOID = 27; // VARCHAR
   public static final int TIDARRAYOID = 1010;
 

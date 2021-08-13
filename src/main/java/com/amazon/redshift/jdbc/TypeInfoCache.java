@@ -68,6 +68,9 @@ public class TypeInfoCache implements TypeInfo {
   // super (previous name Omni)
   public static final String SUPER_NAME = "super";
   public static final int SUPEROID = Oid.SUPER;
+
+  public static final String VARBYTE_NAME = "varbyte";
+  public static final int VARBYTEOID = Oid.VARBYTE;
   
   public static final String TID_NAME = "tid";
   public static final String TID_ARRAY_NAME = "_tid";
@@ -121,7 +124,8 @@ public class TypeInfoCache implements TypeInfo {
       {"json", Oid.JSON, Types.OTHER, "com.amazon.redshift.util.RedshiftObject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "com.amazon.redshift.geometric.RedshiftPoint", Oid.POINT_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRY, Types.LONGVARBINARY, "[B", Oid.GEOMETRY_ARRAY},
-      {SUPER_NAME, Oid.SUPER, Types.LONGVARCHAR, "java.lang.String", Oid.SUPER_ARRAY}
+      {SUPER_NAME, Oid.SUPER, Types.LONGVARCHAR, "java.lang.String", Oid.SUPER_ARRAY},
+      {VARBYTE_NAME, Oid.VARBYTE, Types.LONGVARBINARY, "[B", Oid.VARBYTE_ARRAY}
   };
 
   /**
@@ -696,6 +700,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.BPCHAR:
       case Oid.VARCHAR:
       case Oid.SUPER:
+      case Oid.VARBYTE:
       case Oid.TIDOID:
       	
         if (typmod == -1) {
@@ -870,6 +875,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.VARCHAR:
       case Oid.BPCHAR:
       case Oid.SUPER:
+      case Oid.VARBYTE:
       case Oid.TIDOID:
         if (typmod == -1) {
           return unknownLength;
@@ -921,6 +927,8 @@ public class TypeInfoCache implements TypeInfo {
         return 10485760;
       case Oid.SUPER:
         return 4194304;
+      case Oid.VARBYTE:
+        return 1000000;
       case Oid.BIT:
       case Oid.VARBIT:
         return 83886080;
