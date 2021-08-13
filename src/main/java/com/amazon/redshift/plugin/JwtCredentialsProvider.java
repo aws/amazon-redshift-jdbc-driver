@@ -270,6 +270,14 @@ public abstract class JwtCredentialsProvider implements IPlugin
             AssumeRoleWithWebIdentityRequest jwtRequest = new AssumeRoleWithWebIdentityRequest();
             jwtRequest.setWebIdentityToken(jwt);
             jwtRequest.setRoleArn(m_roleArn);
+            
+            if(m_roleSessionName == null
+            		|| m_roleSessionName.isEmpty()
+            		|| m_roleSessionName.equalsIgnoreCase(DEFAULT_ROLE_SESSION_NAME)) {
+            	// Use user name as role session name for security purpose.
+            	m_roleSessionName = m_dbUser;
+            }
+            
             jwtRequest.setRoleSessionName(m_roleSessionName);
             if (m_duration > 0)
             {
