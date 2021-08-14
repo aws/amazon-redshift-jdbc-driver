@@ -13,6 +13,7 @@ import com.amazon.redshift.core.Tuple;
 import com.amazon.redshift.core.v3.MessageLoopState;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 class CallableBatchResultHandler extends BatchResultHandler {
@@ -20,8 +21,9 @@ class CallableBatchResultHandler extends BatchResultHandler {
     super(statement, queries, parameterLists, false);
   }
 
-  public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, 
-  							RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount, Thread ringBufferThread) {
+  public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor,
+                               RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftRowsBlockingQueue<ByteBuffer> queuePages,
+                               int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
     /* ignore */
   }
 }

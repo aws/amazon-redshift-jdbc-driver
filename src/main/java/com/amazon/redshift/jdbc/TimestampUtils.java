@@ -6,6 +6,7 @@
 package com.amazon.redshift.jdbc;
 
 import com.amazon.redshift.RedshiftStatement;
+import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.core.JavaVersion;
 import com.amazon.redshift.core.Oid;
 import com.amazon.redshift.core.Provider;
@@ -560,6 +561,27 @@ public class TimestampUtils {
     return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
   }
 
+  /**
+   * Returns the offset date time object matching the given bytes with Oid#TIMESTAMPTZ.
+   *
+   * @param bbs The Byte Buffer Subsequence pointing to the binary encoded local date time value.
+   * @return The parsed local date time object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public OffsetDateTime toOffsetDateTimeBin(ByteBufferSubsequence bbs) throws RedshiftException {
+    ParsedBinaryTimestamp parsedTimestamp = this.toProlepticParsedTimestampBin(bbs);
+    if (parsedTimestamp.infinity == Infinity.POSITIVE) {
+      return OffsetDateTime.MAX;
+    } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {
+      return OffsetDateTime.MIN;
+    }
+
+    // hardcode utc because the backend does not provide us the timezone
+    // Postgres is always UTC
+    Instant instant = Instant.ofEpochSecond(parsedTimestamp.millis / 1000L, parsedTimestamp.nanos);
+    return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
+  }
+
   //JCP! endif
 
   public synchronized Time toTime(Calendar cal, String s) throws SQLException {
@@ -1030,6 +1052,39 @@ public class TimestampUtils {
     return new Date(millis);
   }
 
+  /**
+   * Returns the SQL Date object matching the given bytes with {@link Oid#DATE}.
+   *
+   * @param tz The timezone used.
+   * @param bbs The byte buffer subsequence pointing to the binary encoded date value.
+   * @return The parsed date object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public Date toDateBin(TimeZone tz, ByteBufferSubsequence bbs) throws RedshiftException {
+    if (bbs.length != 4) {
+      throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "date"),
+          RedshiftState.BAD_DATETIME_FORMAT);
+    }
+    int days = ByteConverter.int4(bbs, 0);
+    if (tz == null) {
+      tz = getDefaultTz();
+    }
+    long secs = toJavaSecs(days * 86400L);
+    long millis = secs * 1000L;
+
+    if (millis <= RedshiftStatement.DATE_NEGATIVE_SMALLER_INFINITY) {
+      millis = RedshiftStatement.DATE_NEGATIVE_INFINITY;
+    } else if (millis >= RedshiftStatement.DATE_POSITIVE_SMALLER_INFINITY) {
+      millis = RedshiftStatement.DATE_POSITIVE_INFINITY;
+    } else {
+      // Here be dragons: backend did not provide us the timezone, so we guess the actual point in
+      // time
+
+      millis = guessTimestamp(millis, tz);
+    }
+    return new Date(millis);
+  }
+
   private TimeZone getDefaultTz() {
     // Fast path to getting the default timezone.
     if (DEFAULT_TIME_ZONE_FIELD != null) {
@@ -1082,13 +1137,69 @@ public class TimestampUtils {
 
       millis = time / 1000;
       if ((time % 1000) > 0) {
-      	// There is a microsec fraction. Server sends precision upto Micro only.
-      	nanos = (int)(time % 1000000)*1000;
+        // There is a microsec fraction. Server sends precision upto Micro only.
+        nanos = (int)(time % 1000000)*1000;
       }
     }
 
     if (bytes.length == 12) {
       timeOffset = ByteConverter.int4(bytes, 8);
+      timeOffset *= -1000;
+      millis -= timeOffset;
+      timeObj = new Time(millis);
+      return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
+    }
+
+    if (tz == null) {
+      tz = getDefaultTz();
+    }
+
+    // Here be dragons: backend did not provide us the timezone, so we guess the actual point in
+    // time
+    millis = guessTimestamp(millis, tz);
+
+    timeObj = convertToTime(millis, tz); // Ensure date part is 1970-01-01
+
+    return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
+  }
+
+  /**
+   * Returns the SQL Time object matching the given bytes with {@link Oid#TIME} or
+   * {@link Oid#TIMETZ}.
+   *
+   * @param tz The timezone used when received data is {@link Oid#TIME}, ignored if data already
+   *        contains {@link Oid#TIMETZ}.
+   * @param bbs The Byte Buffer Subsequence pointing to the binary encoded time value.
+   * @return The parsed time object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public Time toTimeBin(TimeZone tz, ByteBufferSubsequence bbs) throws RedshiftException {
+    if ((bbs.length != 8 && bbs.length != 12)) {
+      throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "time"),
+          RedshiftState.BAD_DATETIME_FORMAT);
+    }
+
+    long millis;
+    int timeOffset;
+    int nanos = 0;
+    Time timeObj;
+
+    if (usesDouble) {
+      double time = ByteConverter.float8(bbs, 0);
+
+      millis = (long) (time * 1000);
+    } else {
+      long time = ByteConverter.int8(bbs, 0);
+
+      millis = time / 1000;
+      if ((time % 1000) > 0) {
+      	// There is a microsec fraction. Server sends precision upto Micro only.
+      	nanos = (int)(time % 1000000)*1000;
+      }
+    }
+
+    if (bbs.length == 12) {
+      timeOffset = ByteConverter.int4(bbs, 8);
       timeOffset *= -1000;
       millis -= timeOffset;
       timeObj = new Time(millis);
@@ -1134,6 +1245,32 @@ public class TimestampUtils {
 
     return LocalTime.ofNanoOfDay(micros * 1000);
   }
+
+  /**
+   * Returns the SQL Time object matching the given bytes with {@link Oid#TIME}.
+   *
+   * @param bbs The Byte Buffer Subsequence pointing to the binary encoded time value.
+   * @return The parsed time object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public LocalTime toLocalTimeBin(ByteBufferSubsequence bbs) throws RedshiftException {
+    if (bbs.length != 8) {
+      throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "time"),
+          RedshiftState.BAD_DATETIME_FORMAT);
+    }
+
+    long micros;
+
+    if (usesDouble) {
+      double seconds = ByteConverter.float8(bbs, 0);
+
+      micros = (long) (seconds * 1000000d);
+    } else {
+      micros = ByteConverter.int8(bbs, 0);
+    }
+
+    return LocalTime.ofNanoOfDay(micros * 1000);
+  }
   //JCP! endif
 
   /**
@@ -1148,10 +1285,43 @@ public class TimestampUtils {
    * @return The parsed timestamp object.
    * @throws RedshiftException If binary format could not be parsed.
    */
-  public Timestamp toTimestampBin(TimeZone tz, byte[] bytes, boolean timestamptz,java.util.Calendar cal)
+  public Timestamp toTimestampBin(TimeZone tz, byte[] bytes, boolean timestamptz, java.util.Calendar cal)
       throws RedshiftException {
 
     ParsedBinaryTimestamp parsedTimestamp = this.toParsedTimestampBin(tz, bytes, timestamptz);
+    if (parsedTimestamp.infinity == Infinity.POSITIVE) {
+      return new Timestamp(RedshiftStatement.DATE_POSITIVE_INFINITY);
+    } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {
+      return new Timestamp(RedshiftStatement.DATE_NEGATIVE_INFINITY);
+    }
+
+    Timestamp ts;
+    if(timestamptz) {
+      ts = new RedshiftTimestamp(parsedTimestamp.millis, cal);
+    } else {
+      ts = new Timestamp(parsedTimestamp.millis);
+    }
+
+    ts.setNanos(parsedTimestamp.nanos);
+    return ts;
+  }
+
+  /**
+   * Returns the SQL Timestamp object matching the given bytes with {@link Oid#TIMESTAMP} or
+   * {@link Oid#TIMESTAMPTZ}.
+   *
+   * @param tz The timezone used when received data is {@link Oid#TIMESTAMP}, ignored if data
+   *        already contains {@link Oid#TIMESTAMPTZ}.
+   * @param bbs The Byte Buffer Subsequence pointing to the binary encoded timestamp value.
+   * @param timestamptz True if the binary is in GMT.
+   * @param cal Calendar to use
+   * @return The parsed timestamp object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public Timestamp toTimestampBin(TimeZone tz, ByteBufferSubsequence bbs, boolean timestamptz, java.util.Calendar cal)
+      throws RedshiftException {
+
+    ParsedBinaryTimestamp parsedTimestamp = this.toParsedTimestampBin(tz, bbs, timestamptz);
     if (parsedTimestamp.infinity == Infinity.POSITIVE) {
       return new Timestamp(RedshiftStatement.DATE_POSITIVE_INFINITY);
     } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {
@@ -1174,7 +1344,7 @@ public class TimestampUtils {
 
     if (bytes.length != 8) {
       throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "timestamp"),
-              RedshiftState.BAD_DATETIME_FORMAT);
+          RedshiftState.BAD_DATETIME_FORMAT);
     }
 
     long secs;
@@ -1196,6 +1366,64 @@ public class TimestampUtils {
       nanos = (int) ((time - secs) * 1000000);
     } else {
       long time = ByteConverter.int8(bytes, 0);
+
+      // compatibility with text based receiving, not strictly necessary
+      // and can actually be confusing because there are timestamps
+      // that are larger than infinite
+      if (time == Long.MAX_VALUE) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.POSITIVE;
+        return ts;
+      } else if (time == Long.MIN_VALUE) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.NEGATIVE;
+        return ts;
+      }
+
+      secs = time / 1000000;
+      nanos = (int) (time - secs * 1000000);
+    }
+    if (nanos < 0) {
+      secs--;
+      nanos += 1000000;
+    }
+    nanos *= 1000;
+
+    long millis = secs * 1000L;
+
+    ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+    ts.millis = millis;
+    ts.nanos = nanos;
+    return ts;
+  }
+
+  private ParsedBinaryTimestamp toParsedTimestampBinPlain(ByteBufferSubsequence bbs)
+      throws RedshiftException {
+
+    if (bbs.length != 8) {
+      throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "timestamp"),
+              RedshiftState.BAD_DATETIME_FORMAT);
+    }
+
+    long secs;
+    int nanos;
+
+    if (usesDouble) {
+      double time = ByteConverter.float8(bbs, 0);
+      if (time == Double.POSITIVE_INFINITY) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.POSITIVE;
+        return ts;
+      } else if (time == Double.NEGATIVE_INFINITY) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.NEGATIVE;
+        return ts;
+      }
+
+      secs = (long) time;
+      nanos = (int) ((time - secs) * 1000000);
+    } else {
+      long time = ByteConverter.int8(bbs, 0);
 
       // compatibility with text based receiving, not strictly necessary
       // and can actually be confusing because there are timestamps
@@ -1249,10 +1477,50 @@ public class TimestampUtils {
     return ts;
   }
 
+  private ParsedBinaryTimestamp toParsedTimestampBin(TimeZone tz, ByteBufferSubsequence bbs, boolean timestamptz)
+      throws RedshiftException {
+
+    ParsedBinaryTimestamp ts = toParsedTimestampBinPlain(bbs);
+    if (ts.infinity != null) {
+      return ts;
+    }
+
+    long secs = ts.millis / 1000L;
+
+    secs = toJavaSecs(secs);
+    long millis = secs * 1000L;
+    if (!timestamptz) {
+      // Here be dragons: backend did not provide us the timezone, so we guess the actual point in
+      // time
+      millis = guessTimestamp(millis, tz);
+    }
+
+    ts.millis = millis;
+    return ts;
+  }
+
   private ParsedBinaryTimestamp toProlepticParsedTimestampBin(byte[] bytes)
       throws RedshiftException {
 
     ParsedBinaryTimestamp ts = toParsedTimestampBinPlain(bytes);
+    if (ts.infinity != null) {
+      return ts;
+    }
+
+    long secs = ts.millis / 1000L;
+
+    // postgres epoc to java epoc
+    secs += 946684800L;
+    long millis = secs * 1000L;
+
+    ts.millis = millis;
+    return ts;
+  }
+
+  private ParsedBinaryTimestamp toProlepticParsedTimestampBin(ByteBufferSubsequence bbs)
+      throws RedshiftException {
+
+    ParsedBinaryTimestamp ts = toParsedTimestampBinPlain(bbs);
     if (ts.infinity != null) {
       return ts;
     }
@@ -1279,6 +1547,28 @@ public class TimestampUtils {
   public LocalDateTime toLocalDateTimeBin(byte[] bytes) throws RedshiftException {
 
     ParsedBinaryTimestamp parsedTimestamp = this.toProlepticParsedTimestampBin(bytes);
+    if (parsedTimestamp.infinity == Infinity.POSITIVE) {
+      return LocalDateTime.MAX;
+    } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {
+      return LocalDateTime.MIN;
+    }
+
+    // hardcode utc because the backend does not provide us the timezone
+    // Postgres is always UTC
+    return LocalDateTime.ofEpochSecond(parsedTimestamp.millis / 1000L, parsedTimestamp.nanos, ZoneOffset.UTC);
+  }
+
+  /**
+   * Returns the local date time object matching the given bytes with {@link Oid#TIMESTAMP} or
+   * {@link Oid#TIMESTAMPTZ}.
+   * @param bbs The Byte Buffer Subsequence pointing to the binary encoded local date time value.
+   *
+   * @return The parsed local date time object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public LocalDateTime toLocalDateTimeBin(ByteBufferSubsequence bbs) throws RedshiftException {
+
+    ParsedBinaryTimestamp parsedTimestamp = this.toProlepticParsedTimestampBin(bbs);
     if (parsedTimestamp.infinity == Infinity.POSITIVE) {
       return LocalDateTime.MAX;
     } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {

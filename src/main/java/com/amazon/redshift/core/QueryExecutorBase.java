@@ -7,6 +7,7 @@ package com.amazon.redshift.core;
 
 import com.amazon.redshift.RedshiftNotification;
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.EscapeSyntaxCallMode;
@@ -20,6 +21,7 @@ import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.ServerErrorMessage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ import java.util.TreeMap;
 
 public abstract class QueryExecutorBase implements QueryExecutor {
 
+  private Properties info;
   protected RedshiftLogger logger;
   protected final RedshiftStream pgStream;
   private final String user;
@@ -72,6 +75,7 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   protected QueryExecutorBase(RedshiftStream pgStream, String user,
       String database, int cancelSignalTimeout, Properties info,
       RedshiftLogger logger) throws SQLException {
+    this.info = info;
   	this.logger = logger;
     this.pgStream = pgStream;
     this.user = user;
@@ -518,20 +522,20 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   }
   
   /**
-   * Close the last active ring buffer thread.
+   * Close the last active buffer threads.
    */
   @Override
-  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread) {
+  public void closeResultBufferThreads(RedshiftRowsBlockingQueue<Tuple> queueRows, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages, Thread ringBufferThread, Thread processBufferThread) {
   	// Does nothing
   }
   
   /**
-   * Check for a running ring buffer thread. 
+   * Check for a running buffer thread.
    * 
-   * @return returns true if Ring buffer thread is running, otherwise false.
+   * @return returns true if a buffer thread is running, otherwise false.
    */
   @Override
-  public boolean isRingBufferThreadRunning() {
+  public boolean areResultBufferThreadsRunning() {
   	return false;
   }
   

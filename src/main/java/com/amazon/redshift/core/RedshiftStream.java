@@ -61,6 +61,8 @@ public class RedshiftStream implements Closeable, Flushable {
   private long resultBufferByteCount = 0;
   private RedshiftLogger logger;
 
+  private int bufferSize = 8192;
+
   /**
    * Constructor: Connect to the Redshift back end and return a stream connection.
    *
@@ -192,8 +194,8 @@ public class RedshiftStream implements Closeable, Flushable {
     connection.setTcpNoDelay(true);
 
     // Buffer sizes submitted by Sverre H Huseby <sverrehu@online.no>
-    pgInput = new VisibleBufferedInputStream(connection.getInputStream(), 8192);
-    pgOutput = new BufferedOutputStream(connection.getOutputStream(), 8192);
+    pgInput = new VisibleBufferedInputStream(connection.getInputStream(), bufferSize);
+    pgOutput = new BufferedOutputStream(connection.getOutputStream(), bufferSize);
 
     if (encoding != null) {
       setEncoding(encoding);
@@ -687,5 +689,9 @@ public class RedshiftStream implements Closeable, Flushable {
 
   public boolean isClosed() {
     return connection.isClosed();
+  }
+
+  public int getBufferSize() {
+    return bufferSize;
   }
 }

@@ -13,11 +13,13 @@ import com.amazon.redshift.core.ResultHandlerBase;
 import com.amazon.redshift.core.Tuple;
 import com.amazon.redshift.core.v3.BatchedQuery;
 import com.amazon.redshift.core.v3.MessageLoopState;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 
+import java.nio.ByteBuffer;
 import java.sql.BatchUpdateException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -67,8 +69,8 @@ public class BatchResultHandler extends ResultHandlerBase {
   
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      	 int[] rowCount, Thread ringBufferThread) {
+      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+      	 int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
     // If SELECT, then handleCommandStatus call would just be missing
     resultIndex++;
     if (!expectGeneratedKeys) {
@@ -80,7 +82,7 @@ public class BatchResultHandler extends ResultHandlerBase {
         // If SELECT, the resulting ResultSet is not valid
         // Thus it is up to handleCommandStatus to decide if resultSet is good enough
         latestGeneratedKeysRs = (RedshiftResultSet) rsStatement.createResultSet(fromQuery, fields,
-            new ArrayList<Tuple>(), cursor, queueTuples, rowCount, ringBufferThread);
+            new ArrayList<Tuple>(), cursor, queueTuples, queuePages, rowCount, ringBufferThread, processBufferThread);
       } catch (SQLException e) {
         handleError(e);
       }

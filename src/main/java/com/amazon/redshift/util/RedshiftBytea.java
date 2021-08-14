@@ -5,6 +5,8 @@
 
 package com.amazon.redshift.util;
 
+import com.amazon.redshift.core.ByteBufferSubsequence;
+
 import java.sql.SQLException;
 
 /**
@@ -32,11 +34,42 @@ public class RedshiftBytea {
     return toBytesHexEscaped(s);
   }
 
+  /*
+   * Converts a RS bytea raw value (i.e. the raw binary representation of the bytea data type) into
+   * a java byte[]
+   */
+  public static byte[] toBytes(ByteBufferSubsequence bbs) throws SQLException {
+    if (bbs == null || bbs.length < 0) {
+      return null;
+    }
+
+    // Starting with PG 9.0, a new hex format is supported
+    // that starts with "\x". Figure out which format we're
+    // dealing with here.
+    //
+    if (bbs.length < 2 || bbs.page[bbs.index] != '\\' || bbs.page[bbs.index+1] != 'x') {
+      return toBytesOctalEscaped(bbs);
+    }
+    return toBytesHexEscaped(bbs);
+  }
+
   private static byte[] toBytesHexEscaped(byte[] s) {
     byte[] output = new byte[(s.length - 2) / 2];
     for (int i = 0; i < output.length; i++) {
       byte b1 = gethex(s[2 + i * 2]);
       byte b2 = gethex(s[2 + i * 2 + 1]);
+      // squid:S3034
+      // Raw byte values should not be used in bitwise operations in combination with shifts
+      output[i] = (byte) ((b1 << 4) | (b2 & 0xff));
+    }
+    return output;
+  }
+
+  private static byte[] toBytesHexEscaped(ByteBufferSubsequence bbs) {
+    byte[] output = new byte[(bbs.length - 2) / 2];
+    for (int i = 0; i < output.length; i++) {
+      byte b1 = gethex(bbs.page[bbs.index+(2 + i * 2)]);
+      byte b2 = gethex(bbs.page[bbs.index+(2 + i * 2 + 1)]);
       // squid:S3034
       // Raw byte values should not be used in bitwise operations in combination with shifts
       output[i] = (byte) ((b1 << 4) | (b2 & 0xff));
@@ -95,6 +128,59 @@ public class RedshiftBytea {
           buf[bufpos++] = (byte) '\\';
         } else {
           thebyte = (secondbyte - 48) * 64 + (s[++i] - 48) * 8 + (s[++i] - 48);
+          if (thebyte > 127) {
+            thebyte -= 256;
+          }
+          buf[bufpos++] = (byte) thebyte;
+        }
+      } else {
+        buf[bufpos++] = nextbyte;
+      }
+    }
+    if (bufpos == correctSize) {
+      return buf;
+    }
+    byte[] result = new byte[bufpos];
+    System.arraycopy(buf, 0, result, 0, bufpos);
+    return result;
+  }
+
+  private static byte[] toBytesOctalEscaped(ByteBufferSubsequence bbs) {
+    final int slength = bbs.length;
+    byte[] buf = null;
+    int correctSize = slength;
+    if (slength > MAX_3_BUFF_SIZE) {
+      // count backslash escapes, they will be either
+      // backslashes or an octal escape \\ or \003
+      //
+      for (int i = 0; i < slength; ++i) {
+        byte current = bbs.page[bbs.index+i];
+        if (current == '\\') {
+          byte next = bbs.page[bbs.index+(++i)];
+          if (next == '\\') {
+            --correctSize;
+          } else {
+            correctSize -= 3;
+          }
+        }
+      }
+      buf = new byte[correctSize];
+    } else {
+      buf = new byte[slength];
+    }
+    int bufpos = 0;
+    int thebyte;
+    byte nextbyte;
+    byte secondbyte;
+    for (int i = 0; i < slength; i++) {
+      nextbyte = bbs.page[bbs.index+i];
+      if (nextbyte == (byte) '\\') {
+        secondbyte = bbs.page[bbs.index+(++i)];
+        if (secondbyte == (byte) '\\') {
+          // escaped \
+          buf[bufpos++] = (byte) '\\';
+        } else {
+          thebyte = (secondbyte - 48) * 64 + (bbs.page[bbs.index+(++i)] - 48) * 8 + (bbs.page[bbs.index+(++i)] - 48);
           if (thebyte > 127) {
             thebyte -= 256;
           }

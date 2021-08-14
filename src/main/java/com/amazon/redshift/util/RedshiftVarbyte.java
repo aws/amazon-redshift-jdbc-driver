@@ -1,5 +1,7 @@
 package com.amazon.redshift.util;
 
+import com.amazon.redshift.core.ByteBufferSubsequence;
+
 import java.sql.SQLException;
 
 public class RedshiftVarbyte {
@@ -14,6 +16,14 @@ public class RedshiftVarbyte {
     }
     
     return toBytesFromHex(s);
+  }
+
+  public static byte[] toBytes(ByteBufferSubsequence bbs) throws SQLException {
+    if (bbs == null || bbs.length < 0) {
+      return null;
+    }
+
+    return toBytesFromHex(bbs);
   }
   
   public static String convertToString(byte[] data) {
@@ -34,6 +44,18 @@ public class RedshiftVarbyte {
     for (int i = 0; i < output.length; i++) {
       byte b1 = gethex(s[i * 2]);
       byte b2 = gethex(s[i * 2 + 1]);
+      // squid:S3034
+      // Raw byte values should not be used in bitwise operations in combination with shifts
+      output[i] = (byte) ((b1 << 4) | (b2 & 0xff));
+    }
+    return output;
+  }
+
+  private static byte[] toBytesFromHex(ByteBufferSubsequence bbs) {
+    byte[] output = new byte[(bbs.length) / 2];
+    for (int i = 0; i < output.length; i++) {
+      byte b1 = gethex(bbs.page[bbs.index + (i * 2)]);
+      byte b2 = gethex(bbs.page[bbs.index + (i * 2 + 1)]);
       // squid:S3034
       // Raw byte values should not be used in bitwise operations in combination with shifts
       output[i] = (byte) ((b1 << 4) | (b2 & 0xff));

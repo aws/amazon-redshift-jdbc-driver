@@ -213,6 +213,14 @@ public enum RedshiftProperty {
     "DisableIsValidQuery",
     "false",
     "Disable isValid query"),
+
+  /**
+   * The Redshift fetch rows using both a ring buffer and a processing buffer on separate threads.
+   *
+   */
+  ENABLE_FETCH_READ_AND_PROCESS_BUFFERS("enableFetchReadAndProcessBuffers",
+      "true",
+      "The Redshift fetch rows using both a ring buffer and a processing buffer on separate threads"),
   
   /**
    * The Redshift fetch rows using a ring buffer on a separate thread.

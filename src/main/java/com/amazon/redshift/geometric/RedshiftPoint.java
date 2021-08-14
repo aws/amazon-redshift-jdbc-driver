@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.geometric;
 
+import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.util.ByteConverter;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftBinaryObject;
@@ -84,6 +85,14 @@ public class RedshiftPoint extends RedshiftObject implements RedshiftBinaryObjec
   public void setByteValue(byte[] b, int offset) {
     x = ByteConverter.float8(b, offset);
     y = ByteConverter.float8(b, offset + 8);
+  }
+
+  /**
+   * @param bbs the Byte Buffer Subsequence pointing to the Definition of this point in Redshift's binary syntax
+   */
+  public void setByteValue(ByteBufferSubsequence bbs, int offset) {
+    x = ByteConverter.float8(bbs, offset);
+    y = ByteConverter.float8(bbs, offset + 8);
   }
 
   /**

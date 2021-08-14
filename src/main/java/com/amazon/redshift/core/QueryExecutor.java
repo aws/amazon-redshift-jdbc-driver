@@ -8,6 +8,7 @@ package com.amazon.redshift.core;
 
 import com.amazon.redshift.RedshiftNotification;
 import com.amazon.redshift.copy.CopyOperation;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.core.v3.TypeTransferModeRegistry;
 import com.amazon.redshift.jdbc.AutoSave;
@@ -17,6 +18,7 @@ import com.amazon.redshift.jdbc.PreferQueryMode;
 import com.amazon.redshift.util.HostSpec;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
@@ -493,19 +495,20 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
   String getParameterStatus(String parameterName);
   
   /**
-   * Close the last active ring buffer thread.
-   * 
-   * @param queueRows the blocking queue rows
-   * @param ringBufferThread the thread fetching rows in the blocking queue.
+   * Close the last active buffer threads.
+   *  @param queueRows the blocking queue rows
+   * @param queuePages the blocking queue pages
+   * @param ringBufferThread the thread fetching rows in the buffer.
+   * @param processBufferThread the thread processing rows in the blocking queue.
    */
-  void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread);
+  void closeResultBufferThreads(RedshiftRowsBlockingQueue<Tuple> queueRows, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages, Thread ringBufferThread, Thread processBufferThread);
   
   /**
-   * Check for a running ring buffer thread. 
+   * Check for a running buffer threads.
    * 
-   * @return returns true if Ring buffer thread is running, otherwise false.
+   * @return returns true if any buffer threads are running, otherwise false.
    */
-  boolean isRingBufferThreadRunning();
+  boolean areResultBufferThreadsRunning();
   
   /**
    * Close the statement and portal when statement get closed.

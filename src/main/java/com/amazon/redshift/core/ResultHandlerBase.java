@@ -6,11 +6,13 @@
 
 package com.amazon.redshift.core;
 
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
 
 import com.amazon.redshift.core.v3.MessageLoopState;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
 /**
@@ -29,8 +31,8 @@ public class ResultHandlerBase implements ResultHandler {
 
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount, Thread ringBufferThread) {
+      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+      int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
   }
 
   @Override

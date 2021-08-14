@@ -12,6 +12,7 @@ import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
@@ -30,8 +31,8 @@ public class SetupQueryRunner {
     }
 
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount, Thread ringBufferThread) {
+        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftRowsBlockingQueue<ByteBuffer> queuePages,
+        int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
       this.tuples = tuples;
     }
 

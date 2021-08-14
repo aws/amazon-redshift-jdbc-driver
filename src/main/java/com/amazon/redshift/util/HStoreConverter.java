@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.util;
 
+import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.core.Encoding;
 
 import java.io.ByteArrayOutputStream;
@@ -33,6 +34,37 @@ public class HStoreConverter {
           val = null;
         } else {
           val = encoding.decode(b, pos, valLen);
+          pos += valLen;
+        }
+        m.put(key, val);
+      }
+    } catch (IOException ioe) {
+      throw new RedshiftException(
+          GT.tr(
+              "Invalid character data was found.  This is most likely caused by stored data containing characters that are invalid for the character set the database was created in.  The most common example of this is storing 8bit data in a SQL_ASCII database."),
+          RedshiftState.DATA_ERROR, ioe);
+    }
+    return m;
+  }
+
+  public static Map<String, String> fromBytes(ByteBufferSubsequence bbs, Encoding encoding) throws SQLException {
+    Map<String, String> m = new HashMap<String, String>();
+    int pos = 0;
+    int numElements = ByteConverter.int4(bbs, pos);
+    pos += 4;
+    try {
+      for (int i = 0; i < numElements; ++i) {
+        int keyLen = ByteConverter.int4(bbs, pos);
+        pos += 4;
+        String key = encoding.decode(bbs, pos, keyLen);
+        pos += keyLen;
+        int valLen = ByteConverter.int4(bbs, pos);
+        pos += 4;
+        String val;
+        if (valLen == -1) {
+          val = null;
+        } else {
+          val = encoding.decode(bbs, pos, valLen);
           pos += valLen;
         }
         m.put(key, val);

@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.jdbc;
 
+import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.jdbc2.ArrayAssistant;
 import com.amazon.redshift.util.ByteConverter;
 
@@ -19,6 +20,11 @@ public class UUIDArrayAssistant implements ArrayAssistant {
   @Override
   public Object buildElement(byte[] bytes, int pos, int len) {
     return new UUID(ByteConverter.int8(bytes, pos + 0), ByteConverter.int8(bytes, pos + 8));
+  }
+
+  @Override
+  public Object buildElement(ByteBufferSubsequence bbs, int pos, int len) {
+    return new UUID(ByteConverter.int8(bbs, pos + 0), ByteConverter.int8(bbs, pos + 8));
   }
 
   @Override

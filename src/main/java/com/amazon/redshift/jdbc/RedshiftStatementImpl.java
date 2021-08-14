@@ -18,12 +18,13 @@ import com.amazon.redshift.core.ResultHandlerBase;
 import com.amazon.redshift.core.SqlCommand;
 import com.amazon.redshift.core.Tuple;
 import com.amazon.redshift.core.v3.MessageLoopState;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
-
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -154,11 +155,11 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   }
 
   public ResultSet createResultSet(Query originalQuery, Field[] fields, List<Tuple> tuples,
-      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount, Thread ringBufferThread) throws SQLException {
+      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+      int[] rowCount, Thread ringBufferThread, Thread processBufferThread) throws SQLException {
     RedshiftResultSet newResult = new RedshiftResultSet(originalQuery, this, fields, tuples, cursor,
         getMaxRows(), getMaxFieldSize(), getResultSetType(), getResultSetConcurrency(),
-        getResultSetHoldability(), queueTuples, rowCount, ringBufferThread);
+        getResultSetHoldability(), queueTuples, queuePages, rowCount, ringBufferThread, processBufferThread);
     newResult.setFetchSize(getFetchSize());
     newResult.setFetchDirection(getFetchDirection());
     return newResult;
@@ -236,11 +237,11 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
 
     @Override
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount, Thread ringBufferThread) {
+        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+        int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
       try {
-        ResultSet rs = RedshiftStatementImpl.this.createResultSet(fromQuery, fields, tuples, cursor, 
-        												queueTuples, rowCount, ringBufferThread);
+        ResultSet rs = RedshiftStatementImpl.this.createResultSet(fromQuery, fields, tuples, cursor,
+        												queueTuples, queuePages, rowCount, ringBufferThread, processBufferThread);
         append(new ResultWrapper(rs));
       } catch (SQLException e) {
         handleError(e);
@@ -514,7 +515,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
       connection.getQueryExecutor().execute(queryToExecute, queryParameters, handler, maxrows,
           fetchSize, flags);
     } finally {
-      killTimerTask(connection.getQueryExecutor().isRingBufferThreadRunning());
+      killTimerTask(connection.getQueryExecutor().areResultBufferThreadsRunning());
     }
     synchronized (this) {
       checkClosed();
@@ -978,7 +979,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
       connection.getQueryExecutor().execute(queries, parameterLists, handler, maxrows, fetchSize,
           flags);
     } finally {
-      killTimerTask(connection.getQueryExecutor().isRingBufferThreadRunning());
+      killTimerTask(connection.getQueryExecutor().areResultBufferThreadsRunning());
       // There might be some rows generated even in case of failures
       synchronized (this) {
         checkClosed();
@@ -1160,13 +1161,13 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     return true;
   }
 
-  private void killTimerTask(boolean isRingBufferThreadRunning) {
+  private void killTimerTask(boolean areResultBufferThreadsRunning) {
     boolean timerTaskIsClear = cleanupTimer();
     // The order is important here: in case we need to wait for the cancel task, the state must be
     // kept StatementCancelState.IN_QUERY, so cancelTask would be able to cancel the query.
     // It is believed that this case is very rare, so "additional cancel and wait below" would not
     // harm it.
-    if (timerTaskIsClear && isRingBufferThreadRunning)
+    if (timerTaskIsClear && areResultBufferThreadsRunning)
     		return;
     if (timerTaskIsClear && STATE_UPDATER.compareAndSet(this, StatementCancelState.IN_QUERY, StatementCancelState.IDLE)) {
       return;
@@ -1564,7 +1565,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
 
   public ResultSet createDriverResultSet(Field[] fields, List<Tuple> tuples)
       throws SQLException {
-    return createResultSet(null, fields, tuples, null, null, null, null);
+    return createResultSet(null, fields, tuples, null, null, null, null, null, null);
   }
 
   protected void transformQueriesAndParameters() throws SQLException {

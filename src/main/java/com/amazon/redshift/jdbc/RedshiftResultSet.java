@@ -9,6 +9,7 @@ import com.amazon.redshift.RedshiftResultSetMetaData;
 import com.amazon.redshift.RedshiftStatement;
 import com.amazon.redshift.core.BaseConnection;
 import com.amazon.redshift.core.BaseStatement;
+import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.Field;
 import com.amazon.redshift.core.Oid;
@@ -18,7 +19,7 @@ import com.amazon.redshift.core.ResultHandlerBase;
 import com.amazon.redshift.core.Tuple;
 import com.amazon.redshift.core.TypeInfo;
 import com.amazon.redshift.core.Utils;
-import com.amazon.redshift.core.v3.MessageLoopState;
+import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
@@ -45,6 +46,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -69,7 +71,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 //JCP! endif
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -79,6 +80,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class RedshiftResultSet implements ResultSet, com.amazon.redshift.RedshiftRefCursorResultSet {
@@ -110,8 +112,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   protected List<Tuple> rows; // Current page of results.
   protected RedshiftRowsBlockingQueue<Tuple> queueRows; // Results in a blocking queue.
+  protected RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages; // Pages in a blocking queue.
   protected int[] rowCount;
   protected Thread ringBufferThread;
+  protected Thread processBufferThread;
+  protected boolean useReadAndProcessBuffers;
   protected int currentRow = -1; // Index into 'rows' of our currrent row (0-based)
   protected int rowOffset; // Offset of row 0 in the actual resultset
   protected Tuple thisRow; // copy of the current result row
@@ -147,8 +152,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   RedshiftResultSet(Query originalQuery, BaseStatement statement, Field[] fields, List<Tuple> tuples,
       ResultCursor cursor, int maxRows, int maxFieldSize, int rsType, int rsConcurrency,
-      int rsHoldability, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-      int[] rowCount, Thread ringBufferThread) throws SQLException {
+      int rsHoldability, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+      int[] rowCount, Thread ringBufferThread, Thread processBufferThread) throws SQLException {
     // Fail-fast on invalid null inputs
     if (tuples == null && queueTuples == null) {
       throw new NullPointerException("tuples or queueTuples must be non-null");
@@ -168,8 +173,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     this.resultsettype = rsType;
     this.resultsetconcurrency = rsConcurrency;
     this.queueRows = queueTuples;
+    this.queuePages = queuePages;
     this.rowCount = rowCount;
-    this.ringBufferThread = ringBufferThread; 
+    this.ringBufferThread = ringBufferThread;
+    this.processBufferThread = processBufferThread;
+    this.useReadAndProcessBuffers = (queuePages != null);
   }
 
   /**
@@ -257,7 +265,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
         if (type.equals("uuid")) {
           if (isBinary(columnIndex)) {
-            return getUUID(thisRow.get(columnIndex - 1));
+            if (useReadAndProcessBuffers) {
+              return getUUID(thisRow.getByteBufferSubsequence(columnIndex - 1));
+            } else {
+              return getUUID(thisRow.get(columnIndex - 1));
+            }
           }
           return getUUID(getString(columnIndex));
         }
@@ -297,7 +309,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         }
         if ("hstore".equals(type)) {
           if (isBinary(columnIndex)) {
-            return HStoreConverter.fromBytes(thisRow.get(columnIndex - 1), connection.getEncoding());
+            if (useReadAndProcessBuffers) {
+              return HStoreConverter.fromBytes(thisRow.getByteBufferSubsequence(columnIndex - 1), connection.getEncoding());
+            } else {
+              return HStoreConverter.fromBytes(thisRow.get(columnIndex - 1), connection.getEncoding());
+            }
           }
           return HStoreConverter.fromString(getString(columnIndex));
         }
@@ -409,6 +425,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return new RedshiftArray(connection, oid, value);
   }
 
+  protected Array makeArray(int oid, ByteBufferSubsequence bbs) throws SQLException {
+    return new RedshiftArray(connection, oid, bbs);
+  }
+
   protected Array makeArray(int oid, String value) throws SQLException {
     return new RedshiftArray(connection, oid, value);
   }
@@ -422,7 +442,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     int oid = fields[i - 1].getOID();
     if (isBinary(i)) {
-      return makeArray(oid, thisRow.get(i - 1));
+      if (useReadAndProcessBuffers) {
+        return makeArray(oid, thisRow.getByteBufferSubsequence(i - 1));
+      } else {
+        return makeArray(oid, thisRow.get(i - 1));
+      }
     }
     return makeArray(oid, getFixedString(i));
   }
@@ -508,7 +532,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int oid = fields[col].getOID();
       TimeZone tz = cal.getTimeZone();
       if (oid == Oid.DATE) {
-        return connection.getTimestampUtils().toDateBin(tz, thisRow.get(col));
+        if (useReadAndProcessBuffers) {
+          return connection.getTimestampUtils().toDateBin(tz, thisRow.getByteBufferSubsequence(col));
+        } else {
+          return connection.getTimestampUtils().toDateBin(tz, thisRow.get(col));
+        }
       } else if (oid == Oid.TIMESTAMP || oid == Oid.TIMESTAMPTZ) {
         // If backend provides just TIMESTAMP, we use "cal" timezone
         // If backend provides TIMESTAMPTZ, we ignore "cal" as we know true instant value
@@ -538,7 +566,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int oid = fields[col].getOID();
       TimeZone tz = cal.getTimeZone();
       if (oid == Oid.TIME || oid == Oid.TIMETZ) {
-        return connection.getTimestampUtils().toTimeBin(tz, thisRow.get(col));
+        if (useReadAndProcessBuffers) {
+          return connection.getTimestampUtils().toTimeBin(tz, thisRow.getByteBufferSubsequence(col));
+        } else {
+          return connection.getTimestampUtils().toTimeBin(tz, thisRow.get(col));
+        }
       } else if (oid == Oid.TIMESTAMP || oid == Oid.TIMESTAMPTZ) {
         // If backend provides just TIMESTAMP, we use "cal" timezone
         // If backend provides TIMESTAMPTZ, we ignore "cal" as we know true instant value
@@ -574,7 +606,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = i - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.TIME) {
-        return connection.getTimestampUtils().toLocalTimeBin(thisRow.get(col));
+        if (useReadAndProcessBuffers) {
+          return connection.getTimestampUtils().toLocalTimeBin(thisRow.getByteBufferSubsequence(col));
+        } else {
+          return connection.getTimestampUtils().toLocalTimeBin(thisRow.get(col));
+        }
       } else {
         throw new RedshiftException(
             GT.tr("Cannot convert the column of type {0} to requested type {1}.",
@@ -604,7 +640,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (oid == Oid.TIMESTAMPTZ || oid == Oid.TIMESTAMP) {
         boolean hasTimeZone = oid == Oid.TIMESTAMPTZ;
         TimeZone tz = cal.getTimeZone();
-        return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone, cal);
+        if (useReadAndProcessBuffers) {
+          return connection.getTimestampUtils().toTimestampBin(tz, thisRow.getByteBufferSubsequence(col), hasTimeZone, cal);
+        } else {
+          return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone, cal);
+        }
       } else {
         // JDBC spec says getTimestamp of Time and Date must be supported
         long millis;
@@ -641,7 +681,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     if (isBinary(i)) {
       if (oid == Oid.TIMESTAMPTZ || oid == Oid.TIMESTAMP) {
-        return connection.getTimestampUtils().toOffsetDateTimeBin(thisRow.get(col));
+        if (useReadAndProcessBuffers) {
+          return connection.getTimestampUtils().toOffsetDateTimeBin(thisRow.getByteBufferSubsequence(col));
+        } else {
+          return connection.getTimestampUtils().toOffsetDateTimeBin(thisRow.get(col));
+        }
       } else if (oid == Oid.TIMETZ) {
         // JDBC spec says timetz must be supported
         Time time = getTime(i);
@@ -683,7 +727,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
               RedshiftState.DATA_TYPE_MISMATCH);
     }
     if (isBinary(i)) {
-      return connection.getTimestampUtils().toLocalDateTimeBin(thisRow.get(col));
+      if (useReadAndProcessBuffers) {
+        return connection.getTimestampUtils().toLocalDateTimeBin(thisRow.getByteBufferSubsequence(col));
+      } else {
+        return connection.getTimestampUtils().toLocalDateTimeBin(thisRow.get(col));
+      }
     }
 
     String string = getString(i);
@@ -1014,7 +1062,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
     
     if(queueRows != null) {
-      throw new RedshiftException(GT.tr("Cannot call deleteRow() when enableFetchRingBuffer is true."),
+      throw new RedshiftException(GT.tr("Cannot call deleteRow() when enableFetchReadAndProcessBuffers or enableFetchRingBuffer is true."),
           RedshiftState.INVALID_CURSOR_STATE);
     }
     else {
@@ -1062,7 +1110,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       throw new RedshiftException(GT.tr("You must specify at least one column value to insert a row."),
           RedshiftState.INVALID_PARAMETER_VALUE);
     } else if(queueRows != null) {
-	      throw new RedshiftException(GT.tr("Cannot call insertRow() when enableFetchRingBuffer is true."),
+	      throw new RedshiftException(GT.tr("Cannot call insertRow() when enableFetchReadAndProcessBuffers or enableFetchRingBuffer is true."),
 	          RedshiftState.INVALID_CURSOR_STATE);
     } else {
 
@@ -1337,7 +1385,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       throw new RedshiftException(GT.tr("Can''t refresh the insert row."),
           RedshiftState.INVALID_CURSOR_STATE);
     } else if(queueRows != null) {
-	    	throw new RedshiftException(GT.tr("Can''t refresh when enableFetchRingBuffer is true."),
+	    	throw new RedshiftException(GT.tr("Can''t refresh when enableFetchReadAndProcessBuffers or enableFetchRingBuffer is true."),
 	        RedshiftState.INVALID_CURSOR_STATE);
   	}
     
@@ -1406,7 +1454,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       throw new RedshiftException(GT.tr("Cannot call updateRow() when on the insert row."),
           RedshiftState.INVALID_CURSOR_STATE);
     } else if(queueRows != null) {
-		  	throw new RedshiftException(GT.tr("Cannot call updateRow() when enableFetchRingBuffer is true."),
+		  	throw new RedshiftException(GT.tr("Cannot call updateRow() when enableFetchReadAndProcessBuffers or enableFetchRingBuffer is true."),
 		      RedshiftState.INVALID_CURSOR_STATE);
     }
 
@@ -1968,13 +2016,16 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   	
     @Override
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
-        int[] rowCount, Thread ringBufferThread) {
+        ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
+        int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
       RedshiftResultSet.this.rows = tuples;
       RedshiftResultSet.this.cursor = cursor;
       RedshiftResultSet.this.queueRows = queueTuples;
+      RedshiftResultSet.this.queuePages = queuePages;
       RedshiftResultSet.this.rowCount = rowCount;
       RedshiftResultSet.this.ringBufferThread = ringBufferThread;
+      RedshiftResultSet.this.processBufferThread = processBufferThread;
+      RedshiftResultSet.this.useReadAndProcessBuffers = (queuePages != null);
     }
 
     @Override
@@ -2075,6 +2126,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	        	return false; // End of the resultset.
 				}
 				else {
+				  if (useReadAndProcessBuffers) {
+            // check to see if cursor is forward facing and the next row is the last on the page
+            if (resultsettype == ResultSet.TYPE_FORWARD_ONLY && thisRow.isLastRowOnPage()) {
+              // the current page has finished being read from so we remove it from the queue for garbage collection
+              queuePages.remove(thisRow.getPage());
+            }
+          }
 				//	System.out.print("R");
 				}
 
@@ -2210,10 +2268,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     rows = null;
     
     // Close ring buffer thread associated with this result, if any.
-    connection.getQueryExecutor().closeRingBufferThread(queueRows, ringBufferThread);
+    connection.getQueryExecutor().closeResultBufferThreads(queueRows, queuePages, ringBufferThread, processBufferThread);
     
     // release resources held (memory for queue)
     queueRows = null;
+    queuePages = null;
     rowCount = null;
     
     if (cursor != null) {
@@ -2313,7 +2372,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     else {
 	    Encoding encoding = connection.getEncoding();
 	    try {
-	      String rc = trimString(columnIndex, encoding.decode(thisRow.get(columnIndex - 1)));
+	      String rc;
+	      if (useReadAndProcessBuffers) {
+	        rc = trimString(columnIndex, encoding.decode(thisRow.getByteBufferSubsequence(columnIndex - 1)));
+        } else {
+          rc = trimString(columnIndex, encoding.decode(thisRow.get(columnIndex - 1)));
+        }
 	      if (fields[columnIndex - 1].getOID() == Oid.FLOAT8) {
 	      	// Convert values like 20.19999999 to 20.2
 	      	Double val = toDouble(rc);
@@ -2366,21 +2430,36 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     int col = columnIndex - 1;
     if (Oid.BOOL == fields[col].getOID()
     		|| Oid.BIT == fields[col].getOID()) {
-      final byte[] v = thisRow.get(col);
-      if (isBinary(columnIndex)) {
-      	return (1 == v.length) && (1 == v[0]);      	
-      }
-      else {
-      	return (1 == v.length) 
-      					&& (116 == v[0] // 116 = 't'
-      							|| 1 == v[0]
-      							|| '1' == v[0]); 
+      if (useReadAndProcessBuffers) {
+        final ByteBufferSubsequence bbs = thisRow.getByteBufferSubsequence(col);
+        if (isBinary(columnIndex)) {
+          return (1 == bbs.length) && (1 == bbs.page[bbs.index]);
+        } else {
+          return (1 == bbs.length)
+              && (116 == bbs.page[bbs.index] // 116 = 't'
+              || 1 == bbs.page[bbs.index]
+              || '1' == bbs.page[bbs.index]);
+        }
+      } else {
+        final byte[] v = thisRow.get(col);
+        if (isBinary(columnIndex)) {
+          return (1 == v.length) && (1 == v[0]);
+        } else {
+          return (1 == v.length)
+              && (116 == v[0] // 116 = 't'
+              || 1 == v[0]
+              || '1' == v[0]);
+        }
       }
     }
 
     if (isBinary(columnIndex)) {
     	try {
-	      return BooleanTypeUtil.castToBoolean(readDoubleValue(thisRow.get(col), fields[col].getOID(), "boolean", columnIndex));
+    	  if (useReadAndProcessBuffers) {
+          return BooleanTypeUtil.castToBoolean(readDoubleValue(thisRow.getByteBufferSubsequence(col), fields[col].getOID(), "boolean", columnIndex));
+        } else {
+          return BooleanTypeUtil.castToBoolean(readDoubleValue(thisRow.get(col), fields[col].getOID(), "boolean", columnIndex));
+        }
     	}
     	catch (RedshiftException ex) {
     		// Try using getObject. The readDoubleValue() call fails, when a column type is VARCHAR. 
@@ -2408,8 +2487,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       // there is no Oid for byte so must always do conversion from
       // some other numeric type
-      return (byte) readLongValue(thisRow.get(col), fields[col].getOID(), Byte.MIN_VALUE,
-          Byte.MAX_VALUE, "byte", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return (byte) readLongValue(thisRow.getByteBufferSubsequence(col), fields[col].getOID(), Byte.MIN_VALUE,
+            Byte.MAX_VALUE, "byte", columnIndex);
+      } else {
+        return (byte) readLongValue(thisRow.get(col), fields[col].getOID(), Byte.MIN_VALUE,
+            Byte.MAX_VALUE, "byte", columnIndex);
+      }
     }
 
     String s = getString(columnIndex);
@@ -2459,9 +2543,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.INT2) {
-        return ByteConverter.int2(thisRow.get(col), 0);
+        if (useReadAndProcessBuffers) {
+          return ByteConverter.int2(thisRow.getByteBufferSubsequence(col), 0);
+        } else {
+          return ByteConverter.int2(thisRow.get(col), 0);
+        }
       }
-      return (short) readLongValue(thisRow.get(col), oid, Short.MIN_VALUE, Short.MAX_VALUE, "short", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return (short) readLongValue(thisRow.getByteBufferSubsequence(col), oid, Short.MIN_VALUE, Short.MAX_VALUE, "short", columnIndex);
+      } else {
+        return (short) readLongValue(thisRow.get(col), oid, Short.MIN_VALUE, Short.MAX_VALUE, "short", columnIndex);
+      }
     }
 
     return toShort(getFixedString(columnIndex));
@@ -2481,9 +2573,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.INT4) {
-        return ByteConverter.int4(thisRow.get(col), 0);
+        if (useReadAndProcessBuffers) {
+          return ByteConverter.int4(thisRow.getByteBufferSubsequence(col), 0);
+        } else {
+          return ByteConverter.int4(thisRow.get(col), 0);
+        }
       }
-      return (int) readLongValue(thisRow.get(col), oid, Integer.MIN_VALUE, Integer.MAX_VALUE, "int", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return (int) readLongValue(thisRow.getByteBufferSubsequence(col), oid, Integer.MIN_VALUE, Integer.MAX_VALUE, "int", columnIndex);
+      } else {
+        return (int) readLongValue(thisRow.get(col), oid, Integer.MIN_VALUE, Integer.MAX_VALUE, "int", columnIndex);
+      }
     }
 
     Encoding encoding = connection.getEncoding();
@@ -2510,9 +2610,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.INT8) {
-        return ByteConverter.int8(thisRow.get(col), 0);
+        if (useReadAndProcessBuffers) {
+          return ByteConverter.int8(thisRow.getByteBufferSubsequence(col), 0);
+        } else {
+          return ByteConverter.int8(thisRow.get(col), 0);
+        }
       }
-      return readLongValue(thisRow.get(col), oid, Long.MIN_VALUE, Long.MAX_VALUE, "long", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return readLongValue(thisRow.getByteBufferSubsequence(col), oid, Long.MIN_VALUE, Long.MAX_VALUE, "long", columnIndex);
+      } else {
+        return readLongValue(thisRow.get(col), oid, Long.MIN_VALUE, Long.MAX_VALUE, "long", columnIndex);
+      }
     }
 
     Encoding encoding = connection.getEncoding();
@@ -2554,45 +2662,85 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    *         The value must then be parsed by {@link #toLong(String)}.
    */
   private long getFastLong(int columnIndex) throws SQLException, NumberFormatException {
+    if (useReadAndProcessBuffers) {
+      ByteBufferSubsequence bbs = thisRow.getByteBufferSubsequence(columnIndex - 1);
 
-    byte[] bytes = thisRow.get(columnIndex - 1);
-
-    if (bytes.length == 0) {
-      throw FAST_NUMBER_FAILED;
-    }
-
-    long val = 0;
-    int start;
-    boolean neg;
-    if (bytes[0] == '-') {
-      neg = true;
-      start = 1;
-      if (bytes.length == 1 || bytes.length > 19) {
+      if (bbs.length == 0) {
         throw FAST_NUMBER_FAILED;
       }
+
+      long val = 0;
+      int start;
+      boolean neg;
+      if (bbs.page[bbs.index] == '-') {
+        neg = true;
+        start = bbs.index + 1;
+        if (bbs.length == 1 || bbs.length > 19) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = bbs.index;
+        neg = false;
+        if (bbs.length > 18) {
+          throw FAST_NUMBER_FAILED;
+        }
+      }
+
+      while (start < bbs.index + bbs.length) {
+        byte b = bbs.page[start++];
+        if (b < '0' || b > '9') {
+          throw FAST_NUMBER_FAILED;
+        }
+
+        val *= 10;
+        val += b - '0';
+      }
+
+      if (neg) {
+        val = -val;
+      }
+
+      return val;
     } else {
-      start = 0;
-      neg = false;
-      if (bytes.length > 18) {
-        throw FAST_NUMBER_FAILED;
-      }
-    }
+      byte[] bytes = thisRow.get(columnIndex - 1);
 
-    while (start < bytes.length) {
-      byte b = bytes[start++];
-      if (b < '0' || b > '9') {
+      if (bytes.length == 0) {
         throw FAST_NUMBER_FAILED;
       }
 
-      val *= 10;
-      val += b - '0';
-    }
+      long val = 0;
+      int start;
+      boolean neg;
+      if (bytes[0] == '-') {
+        neg = true;
+        start = 1;
+        if (bytes.length == 1 || bytes.length > 19) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = 0;
+        neg = false;
+        if (bytes.length > 18) {
+          throw FAST_NUMBER_FAILED;
+        }
+      }
 
-    if (neg) {
-      val = -val;
-    }
+      while (start < bytes.length) {
+        byte b = bytes[start++];
+        if (b < '0' || b > '9') {
+          throw FAST_NUMBER_FAILED;
+        }
 
-    return val;
+        val *= 10;
+        val += b - '0';
+      }
+
+      if (neg) {
+        val = -val;
+      }
+
+      return val;
+    }
   }
 
   /**
@@ -2606,45 +2754,85 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    *         The value must then be parsed by {@link #toInt(String)}.
    */
   private int getFastInt(int columnIndex) throws SQLException, NumberFormatException {
+    if (useReadAndProcessBuffers) {
+      ByteBufferSubsequence bbs = thisRow.getByteBufferSubsequence(columnIndex - 1);
 
-    byte[] bytes = thisRow.get(columnIndex - 1);
-
-    if (bytes.length == 0) {
-      throw FAST_NUMBER_FAILED;
-    }
-
-    int val = 0;
-    int start;
-    boolean neg;
-    if (bytes[0] == '-') {
-      neg = true;
-      start = 1;
-      if (bytes.length == 1 || bytes.length > 10) {
+      if (bbs.length == 0) {
         throw FAST_NUMBER_FAILED;
       }
+
+      int val = 0;
+      int start;
+      boolean neg;
+      if (bbs.page[bbs.index] == '-') {
+        neg = true;
+        start = bbs.index + 1;
+        if (bbs.length == 1 || bbs.length > 10) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = bbs.index;
+        neg = false;
+        if (bbs.length > 9) {
+          throw FAST_NUMBER_FAILED;
+        }
+      }
+
+      while (start < bbs.index + bbs.length) {
+        byte b = bbs.page[start++];
+        if (b < '0' || b > '9') {
+          throw FAST_NUMBER_FAILED;
+        }
+
+        val *= 10;
+        val += b - '0';
+      }
+
+      if (neg) {
+        val = -val;
+      }
+
+      return val;
     } else {
-      start = 0;
-      neg = false;
-      if (bytes.length > 9) {
-        throw FAST_NUMBER_FAILED;
-      }
-    }
+      byte[] bytes = thisRow.get(columnIndex - 1);
 
-    while (start < bytes.length) {
-      byte b = bytes[start++];
-      if (b < '0' || b > '9') {
+      if (bytes.length == 0) {
         throw FAST_NUMBER_FAILED;
       }
 
-      val *= 10;
-      val += b - '0';
-    }
+      int val = 0;
+      int start;
+      boolean neg;
+      if (bytes[0] == '-') {
+        neg = true;
+        start = 1;
+        if (bytes.length == 1 || bytes.length > 10) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = 0;
+        neg = false;
+        if (bytes.length > 9) {
+          throw FAST_NUMBER_FAILED;
+        }
+      }
 
-    if (neg) {
-      val = -val;
-    }
+      while (start < bytes.length) {
+        byte b = bytes[start++];
+        if (b < '0' || b > '9') {
+          throw FAST_NUMBER_FAILED;
+        }
 
-    return val;
+        val *= 10;
+        val += b - '0';
+      }
+
+      if (neg) {
+        val = -val;
+      }
+
+      return val;
+    }
   }
 
   /**
@@ -2658,57 +2846,109 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    *         The value must then be parsed by {@link #toBigDecimal(String, int)}.
    */
   private BigDecimal getFastBigDecimal(int columnIndex) throws SQLException, NumberFormatException {
+    if (useReadAndProcessBuffers) {
+      ByteBufferSubsequence bbs = thisRow.getByteBufferSubsequence(columnIndex - 1);
 
-    byte[] bytes = thisRow.get(columnIndex - 1);
-
-    if (bytes.length == 0) {
-      throw FAST_NUMBER_FAILED;
-    }
-
-    int scale = 0;
-    long val = 0;
-    int start;
-    boolean neg;
-    if (bytes[0] == '-') {
-      neg = true;
-      start = 1;
-      if (bytes.length == 1 || bytes.length > 19) {
+      if (bbs.length == 0) {
         throw FAST_NUMBER_FAILED;
       }
-    } else {
-      start = 0;
-      neg = false;
-      if (bytes.length > 18) {
-        throw FAST_NUMBER_FAILED;
-      }
-    }
 
-    int periodsSeen = 0;
-    while (start < bytes.length) {
-      byte b = bytes[start++];
-      if (b < '0' || b > '9') {
-        if (b == '.') {
-          scale = bytes.length - start;
-          periodsSeen++;
-          continue;
-        } else {
+      int scale = 0;
+      long val = 0;
+      int start;
+      boolean neg;
+      if (bbs.page[bbs.index] == '-') {
+        neg = true;
+        start = bbs.index + 1;
+        if (bbs.length == 1 || bbs.length > 19) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = bbs.index;
+        neg = false;
+        if (bbs.length > 18) {
           throw FAST_NUMBER_FAILED;
         }
       }
-      val *= 10;
-      val += b - '0';
-    }
 
-    int numNonSignChars = neg ? bytes.length - 1 : bytes.length;
-    if (periodsSeen > 1 || periodsSeen == numNonSignChars) {
-      throw FAST_NUMBER_FAILED;
-    }
+      int periodsSeen = 0;
+      while (start < bbs.index + bbs.length) {
+        byte b = bbs.page[start++];
+        if (b < '0' || b > '9') {
+          if (b == '.') {
+            scale = bbs.index + bbs.length - start;
+            periodsSeen++;
+            continue;
+          } else {
+            throw FAST_NUMBER_FAILED;
+          }
+        }
+        val *= 10;
+        val += b - '0';
+      }
 
-    if (neg) {
-      val = -val;
-    }
+      int numNonSignChars = neg ? bbs.length - 1 : bbs.length;
+      if (periodsSeen > 1 || periodsSeen == numNonSignChars) {
+        throw FAST_NUMBER_FAILED;
+      }
 
-    return BigDecimal.valueOf(val, scale);
+      if (neg) {
+        val = -val;
+      }
+
+      return BigDecimal.valueOf(val, scale);
+    } else {
+      byte[] bytes = thisRow.get(columnIndex - 1);
+
+      if (bytes.length == 0) {
+        throw FAST_NUMBER_FAILED;
+      }
+
+      int scale = 0;
+      long val = 0;
+      int start;
+      boolean neg;
+      if (bytes[0] == '-') {
+        neg = true;
+        start = 1;
+        if (bytes.length == 1 || bytes.length > 19) {
+          throw FAST_NUMBER_FAILED;
+        }
+      } else {
+        start = 0;
+        neg = false;
+        if (bytes.length > 18) {
+          throw FAST_NUMBER_FAILED;
+        }
+      }
+
+      int periodsSeen = 0;
+      while (start < bytes.length) {
+        byte b = bytes[start++];
+        if (b < '0' || b > '9') {
+          if (b == '.') {
+            scale = bytes.length - start;
+            periodsSeen++;
+            continue;
+          } else {
+            throw FAST_NUMBER_FAILED;
+          }
+        }
+        val *= 10;
+        val += b - '0';
+      }
+
+      int numNonSignChars = neg ? bytes.length - 1 : bytes.length;
+      if (periodsSeen > 1 || periodsSeen == numNonSignChars) {
+        throw FAST_NUMBER_FAILED;
+      }
+
+      if (neg) {
+        val = -val;
+      }
+
+      return BigDecimal.valueOf(val, scale);
+    }
   }
 
   @Override
@@ -2725,9 +2965,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.FLOAT4) {
-        return ByteConverter.float4(thisRow.get(col), 0);
+        if (useReadAndProcessBuffers) {
+          return ByteConverter.float4(thisRow.getByteBufferSubsequence(col), 0);
+        } else {
+          return ByteConverter.float4(thisRow.get(col), 0);
+        }
       }
-      return (float) readDoubleValue(thisRow.get(col), oid, "float", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return (float) readDoubleValue(thisRow.getByteBufferSubsequence(col), oid, "float", columnIndex);
+      } else {
+        return (float) readDoubleValue(thisRow.get(col), oid, "float", columnIndex);
+      }
     }
 
     return toFloat(getFixedString(columnIndex));
@@ -2747,9 +2995,17 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       int col = columnIndex - 1;
       int oid = fields[col].getOID();
       if (oid == Oid.FLOAT8) {
-        return ByteConverter.float8(thisRow.get(col), 0);
+        if (useReadAndProcessBuffers) {
+          return ByteConverter.float8(thisRow.getByteBufferSubsequence(col), 0);
+        } else {
+          return ByteConverter.float8(thisRow.get(col), 0);
+        }
       }
-      return readDoubleValue(thisRow.get(col), oid, "double", columnIndex);
+      if (useReadAndProcessBuffers) {
+        return readDoubleValue(thisRow.getByteBufferSubsequence(col), oid, "double", columnIndex);
+      } else {
+        return readDoubleValue(thisRow.get(col), oid, "double", columnIndex);
+      }
     }
 
     return toDouble(getFixedString(columnIndex));
@@ -2763,6 +3019,24 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   private Number getRedshiftNumeric(int columnIndex) {
+    Field field = fields[columnIndex - 1];
+    int mod = field.getMod();
+    int serverPrecision;
+    int serverScale;
+
+    serverPrecision =  (mod == -1)
+        ? 0
+        : ((mod - 4) & 0xFFFF0000) >> 16;
+
+    serverScale =  (mod == -1)
+        ? 0
+        : (mod - 4) & 0xFFFF;
+
+
+    return ByteConverter.redshiftNumeric(thisRow.get(columnIndex - 1), serverPrecision, serverScale);
+  }
+
+  private Number getRedshiftNumeric(ByteBufferSubsequence bbs, int columnIndex) {
 	  Field field = fields[columnIndex - 1];
 	  int mod = field.getMod();
 	  int serverPrecision;
@@ -2777,7 +3051,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	  									: (mod - 4) & 0xFFFF;
 	    
 	  
-	  return ByteConverter.redshiftNumeric(thisRow.get(columnIndex - 1), serverPrecision, serverScale);
+	  return ByteConverter.redshiftNumeric(bbs, serverPrecision, serverScale);
   }
   
   private Number getNumeric(int columnIndex, int scale, boolean allowNaN) throws SQLException {
@@ -2800,8 +3074,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         }
         return toBigDecimal(trimMoney(String.valueOf(obj)), scale);
       } else {
-//        Number num = ByteConverter.numeric(thisRow.get(columnIndex - 1));
-      	Number num = getRedshiftNumeric(columnIndex);
+        Number num;
+        if (useReadAndProcessBuffers) {
+//        num = ByteConverter.numeric(thisRow.getByteBufferSubsequence(columnIndex - 1));
+          num = getRedshiftNumeric(thisRow.getByteBufferSubsequence(columnIndex - 1), columnIndex);
+        } else {
+//        num = ByteConverter.numeric(thisRow.get(columnIndex - 1));
+          num = getRedshiftNumeric(columnIndex);
+        }
 
         if (allowNaN && Double.isNaN(num.doubleValue())) {
           return Double.NaN;
@@ -2852,14 +3132,23 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
     }
     if (fields[columnIndex - 1].getOID() == Oid.BYTEA) {
-      return trimBytes(columnIndex, RedshiftBytea.toBytes(thisRow.get(columnIndex - 1)));
-    }
-    else
-    if (fields[columnIndex - 1].getOID() == Oid.VARBYTE) {
-      return trimBytes(columnIndex, RedshiftVarbyte.toBytes(thisRow.get(columnIndex - 1)));
-    } 
-    else {
-      return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
+      if (useReadAndProcessBuffers) {
+        return trimBytes(columnIndex, RedshiftBytea.toBytes(thisRow.getByteBufferSubsequence(columnIndex - 1)));
+      } else {
+        return trimBytes(columnIndex, RedshiftBytea.toBytes(thisRow.get(columnIndex - 1)));
+      }
+    } else if (fields[columnIndex - 1].getOID() == Oid.VARBYTE) {
+      if (useReadAndProcessBuffers) {
+        return trimBytes(columnIndex, RedshiftVarbyte.toBytes(thisRow.getByteBufferSubsequence(columnIndex - 1)));
+      } else {
+        return trimBytes(columnIndex, RedshiftVarbyte.toBytes(thisRow.get(columnIndex - 1)));
+      }
+    } else {
+      if (useReadAndProcessBuffers) {
+        return trimBytes(columnIndex, thisRow.getByteBufferSubsequence(columnIndex - 1));
+      } else {
+        return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
+      }
     }
   }
 
@@ -3060,9 +3349,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
 
     if (isBinary(columnIndex)) {
-      return connection.getObject(getRSType(columnIndex), null, thisRow.get(columnIndex - 1));
+      if (useReadAndProcessBuffers) {
+        return connection.getObject(getRSType(columnIndex), null, thisRow.getByteBufferSubsequence(columnIndex - 1));
+      } else {
+        return connection.getObject(getRSType(columnIndex), null, thisRow.get(columnIndex - 1));
+      }
     }
-    return connection.getObject(getRSType(columnIndex), getString(columnIndex), null);
+    return connection.getObject(getRSType(columnIndex), getString(columnIndex), (byte[]) null);
   }
 
   public Object getObject(String columnName) throws SQLException {
@@ -3258,7 +3551,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
           RedshiftState.INVALID_CURSOR_STATE);
     }
     checkColumnIndex(column);
-    wasNullFlag = (thisRow.get(column - 1) == null);
+    if (useReadAndProcessBuffers) {
+      wasNullFlag = thisRow.isNull(column - 1);
+    } else {
+      wasNullFlag = (thisRow.get(column - 1) == null);
+    }
   }
 
   /**
@@ -3479,6 +3776,20 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
   }
 
+  private byte[] trimBytes(int columnIndex, ByteBufferSubsequence bbs) throws SQLException {
+    // we need to trim if maxsize is set and the length is greater than maxsize and the
+    // type of this column is a candidate for trimming
+    if (maxFieldSize > 0 && bbs.length > maxFieldSize && isColumnTrimmable(columnIndex)) {
+      byte[] newBytes = new byte[maxFieldSize];
+      System.arraycopy(bbs.page, bbs.index, newBytes, 0, maxFieldSize);
+      return newBytes;
+    } else {
+      byte[] newBytes = new byte[bbs.length];
+      System.arraycopy(bbs.page, bbs.index, newBytes, 0, bbs.length);
+      return newBytes;
+    }
+  }
+
   private String trimString(int columnIndex, String string) throws SQLException {
     // we need to trim if maxsize is set and the length is greater than maxsize and the
     // type of this column is a candidate for trimming
@@ -3514,7 +3825,38 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         return ByteConverter.float8(bytes, 0);
       case Oid.NUMERIC:
 //        return ByteConverter.numeric(bytes).doubleValue();
-      	return getRedshiftNumeric(columnIndex).doubleValue();
+        return getRedshiftNumeric(columnIndex).doubleValue();
+    }
+    throw new RedshiftException(GT.tr("Cannot convert the column of type {0} to requested type {1}.",
+        Oid.toString(oid), targetType), RedshiftState.DATA_TYPE_MISMATCH);
+  }
+
+  /**
+   * Converts any numeric binary field to double value. This method does no overflow checking.
+   *
+   * @param bbs The Byte Buffer Subsequence pointing to the bytes of the numeric field.
+   * @param oid The oid of the field.
+   * @param targetType The target type. Used for error reporting.
+   * @return The value as double.
+   * @throws RedshiftException If the field type is not supported numeric type.
+   */
+  private double readDoubleValue(ByteBufferSubsequence bbs, int oid, String targetType, int columnIndex) throws RedshiftException {
+    // currently implemented binary encoded fields
+    switch (oid) {
+      case Oid.INT2:
+        return ByteConverter.int2(bbs, 0);
+      case Oid.INT4:
+        return ByteConverter.int4(bbs, 0);
+      case Oid.INT8:
+        // might not fit but there still should be no overflow checking
+        return ByteConverter.int8(bbs, 0);
+      case Oid.FLOAT4:
+        return ByteConverter.float4(bbs, 0);
+      case Oid.FLOAT8:
+        return ByteConverter.float8(bbs, 0);
+      case Oid.NUMERIC:
+//        return ByteConverter.numeric(bbs).doubleValue();
+      	return getRedshiftNumeric(bbs, columnIndex).doubleValue();
     }
     throw new RedshiftException(GT.tr("Cannot convert the column of type {0} to requested type {1}.",
         Oid.toString(oid), targetType), RedshiftState.DATA_TYPE_MISMATCH);
@@ -3563,8 +3905,72 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         break;
       case Oid.NUMERIC:
 //        Number num = ByteConverter.numeric(bytes);
-      	Number num = getRedshiftNumeric(columnIndex);
-        
+        Number num = getRedshiftNumeric(columnIndex);
+
+        if (num instanceof  BigDecimal) {
+          val = ((BigDecimal) num).setScale(0 , RoundingMode.DOWN).longValueExact();
+        } else {
+          val = num.longValue();
+        }
+        break;
+      default:
+        throw new RedshiftException(
+            GT.tr("Cannot convert the column of type {0} to requested type {1}.",
+                Oid.toString(oid), targetType),
+            RedshiftState.DATA_TYPE_MISMATCH);
+    }
+    if (val < minVal || val > maxVal) {
+      throw new RedshiftException(GT.tr("Bad value for type {0} : {1}", targetType, val),
+          RedshiftState.NUMERIC_VALUE_OUT_OF_RANGE);
+    }
+    return val;
+  }
+
+  /**
+   * <p>Converts any numeric binary field to long value.</p>
+   *
+   * <p>This method is used by getByte,getShort,getInt and getLong. It must support a subset of the
+   * following java types that use Binary encoding. (fields that use text encoding use a different
+   * code path).
+   *
+   * <code>byte,short,int,long,float,double,BigDecimal,boolean,string</code>.
+   * </p>
+   *
+   * @param bbs The Byte Buffer Subsequence pointing to the bytes of the numeric field.
+   * @param oid The oid of the field.
+   * @param minVal the minimum value allowed.
+   * @param maxVal the maximum value allowed.
+   * @param targetType The target type. Used for error reporting.
+   * @return The value as long.
+   * @throws RedshiftException If the field type is not supported numeric type or if the value is out of
+   *         range.
+   */
+  private long readLongValue(ByteBufferSubsequence bbs, int oid, long minVal, long maxVal, String targetType, int columnIndex)
+      throws RedshiftException {
+    long val;
+    // currently implemented binary encoded fields
+    switch (oid) {
+      case Oid.INT2:
+        val = ByteConverter.int2(bbs, 0);
+        break;
+      case Oid.INT4:
+      case Oid.OID:
+        val = ByteConverter.int4(bbs, 0);
+        break;
+      case Oid.INT8:
+      case Oid.XIDOID:
+        val = ByteConverter.int8(bbs, 0);
+        break;
+      case Oid.FLOAT4:
+        val = (long) ByteConverter.float4(bbs, 0);
+        break;
+      case Oid.FLOAT8:
+        val = (long) ByteConverter.float8(bbs, 0);
+        break;
+      case Oid.NUMERIC:
+//        Number num = ByteConverter.numeric(bbs);
+      	Number num = getRedshiftNumeric(bbs, columnIndex);
+
         if (num instanceof  BigDecimal) {
           val = ((BigDecimal) num).setScale(0 , RoundingMode.DOWN).longValueExact();
         } else {
@@ -3591,7 +3997,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   	checkUpdateable();
 
   	if(queueRows != null) {
-	  	throw new RedshiftException(GT.tr("Cannot call updateValue() when enableFetchRingBuffer is true."),
+	  	throw new RedshiftException(GT.tr("Cannot call updateValue() when enableFetchReadAndProcessBuffers or enableFetchRingBuffer is true."),
 	      RedshiftState.INVALID_CURSOR_STATE);
   	} else if (!onInsertRow && (isBeforeFirst() || isAfterLast() || rows.isEmpty())) {
 	      throw new RedshiftException(
@@ -3624,6 +4030,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   protected Object getUUID(byte[] data) throws SQLException {
     return new UUID(ByteConverter.int8(data, 0), ByteConverter.int8(data, 8));
+  }
+
+  protected Object getUUID(ByteBufferSubsequence bbs) throws SQLException {
+    return new UUID(ByteConverter.int8(bbs, 0), ByteConverter.int8(bbs, 8));
   }
 
   private class PrimaryKey {
@@ -3956,9 +4366,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     } else if (RedshiftObject.class.isAssignableFrom(type)) {
       Object object;
       if (isBinary(columnIndex)) {
-        object = connection.getObject(getRSType(columnIndex), null, thisRow.get(columnIndex - 1));
+        if (useReadAndProcessBuffers) {
+          object = connection.getObject(getRSType(columnIndex), null, thisRow.getByteBufferSubsequence(columnIndex - 1));
+        } else {
+          object = connection.getObject(getRSType(columnIndex), null, thisRow.get(columnIndex - 1));
+        }
       } else {
-        object = connection.getObject(getRSType(columnIndex), getString(columnIndex), null);
+        object = connection.getObject(getRSType(columnIndex), getString(columnIndex), (byte[]) null);
       }
       return type.cast(object);
     }
