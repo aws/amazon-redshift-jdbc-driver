@@ -952,6 +952,17 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return sb.toString();
   }
 
+  protected String escapeOnlyQuotes(String s) throws SQLException {
+    StringBuilder sb = new StringBuilder();
+/*    if (!connection.getStandardConformingStrings()) {
+      sb.append("E");
+    } */
+    sb.append("'");
+    sb.append(connection.escapeOnlyQuotesString(s));
+    sb.append("'");
+    return sb.toString();
+  }
+  
   public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern)
       throws SQLException {
     String sql;
@@ -5265,13 +5276,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 		  if (isSingleDatabaseMetaData()
 		  		 || apiSupportedOnlyForConnectedDatabase) {
 		    	// Catalog parameter is not a pattern.
-		    	catalogFilter = " AND current_database() = " + escapeQuotes(catalog);
+		    	catalogFilter = " AND current_database() = " + escapeOnlyQuotes(catalog);
 		    }
 		  else {
 		  	if (databaseColName == null)
 		  		databaseColName = "database_name";
 		  	
-	    	catalogFilter = " AND " + databaseColName + " = " + escapeQuotes(catalog);
+	    	catalogFilter = " AND " + databaseColName + " = " + escapeOnlyQuotes(catalog);
 		  }
     }
     
