@@ -2297,7 +2297,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   						|| colType == Types.LONGVARCHAR
   						|| colType == Types.NVARCHAR
   						|| colType == Types.NCHAR
-  						|| colType == Types.LONGNVARCHAR);
+  						|| colType == Types.LONGNVARCHAR
+  						|| colType == Types.REF_CURSOR
+                        || colType == Types.OTHER);
   }
   
   @Override
