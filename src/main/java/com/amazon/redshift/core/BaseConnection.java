@@ -81,22 +81,6 @@ public interface BaseConnection extends RedshiftConnection, Connection {
    */
   Object getObject(String type, String value, byte[] byteValue) throws SQLException;
 
-  /**
-   * <p>Construct and return an appropriate object for the given type and value. This only considers
-   * the types registered via {@link com.amazon.redshift.RedshiftConnection#addDataType(String, Class)} and
-   * {@link com.amazon.redshift.RedshiftConnection#addDataType(String, String)}.</p>
-   *
-   * <p>If no class is registered as handling the given type, then a generic
-   * {@link com.amazon.redshift.util.RedshiftObject} instance is returned.</p>
-   *
-   * @param type the backend typename
-   * @param value the type-specific string representation of the value
-   * @param bbs the Byte Buffer Subsequence pointing to the type-specific binary representation of the value
-   * @return an appropriate object; never null.
-   * @throws SQLException if something goes wrong
-   */
-  Object getObject(String type, String value, ByteBufferSubsequence bbs) throws SQLException;
-
   Encoding getEncoding() throws SQLException;
 
   TypeInfo getTypeInfo();

@@ -7,7 +7,9 @@
 package com.amazon.redshift.core.v3;
 
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.copy.CopyIn;
 import com.amazon.redshift.copy.CopyOperation;
+import com.amazon.redshift.copy.CopyOut;
 import com.amazon.redshift.core.CommandCompleteParser;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.EncodingPredictor;
@@ -53,7 +55,6 @@ import java.lang.ref.ReferenceQueue;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.nio.ByteBuffer;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -68,7 +69,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -142,28 +143,18 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   private SQLException transactionFailCause;
 
   private final ReplicationProtocol replicationProtocol;
-
-  private boolean enableFetchReadAndProcessBuffers;
   
   private boolean enableFetchRingBuffer;
   
   private long fetchRingBufferSize;
-
+  
   // Last running ring buffer thread.
   private RingBufferThread m_ringBufferThread = null;
-  // Last running process thread.
-  private ProcessBufferThread m_processBufferThread = null;
   private boolean m_ringBufferStopThread = false;
-  private boolean m_processBufferStopThread = false;
-  private Object m_resultBuffersThreadLock = new Object();
+  private Object m_ringBufferThreadLock = new Object();
   
   // Query or some execution on a socket in process
-  private final Lock m_executingLock = new ReentrantLock();
-  /** Lock held until processing thread is done  */
-  private final ReentrantLock m_processingLock = new ReentrantLock();
-
-  /** Wait queue for processing to be done */
-  private final Condition processingDone = m_processingLock.newCondition();
+  private final Lock m_executingLock = new ReentrantLock();  
 
   /**
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
@@ -178,7 +169,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     this.allowEncodingChanges = RedshiftProperty.ALLOW_ENCODING_CHANGES.getBoolean(info);
     this.cleanupSavePoints = RedshiftProperty.CLEANUP_SAVEPOINTS.getBoolean(info);
     this.replicationProtocol = new V3ReplicationProtocol(this, pgStream);
-    this.enableFetchReadAndProcessBuffers = RedshiftProperty.ENABLE_FETCH_READ_AND_PROCESS_BUFFERS.getBoolean(info);
     this.enableFetchRingBuffer = RedshiftProperty.ENABLE_FETCH_RING_BUFFER.getBoolean(info);
     String fetchRingBufferSizeStr = RedshiftProperty.FETCH_RING_BUFFER_SIZE.get(info);
     this.fetchRingBufferSize = (fetchRingBufferSizeStr != null ) 
@@ -331,7 +321,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       int maxRows, int fetchSize, int flags) throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
     
     synchronized(this) {
 	  	waitOnLock();
@@ -543,7 +533,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     
   	// Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -660,10 +650,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       private boolean sawBegin = false;
 
       public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-          ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-          int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
+          ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
+          int[] rowCount, Thread ringBufferThread) {
         if (sawBegin) {
-          super.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, queuePages, rowCount, ringBufferThread, processBufferThread);
+          super.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount, ringBufferThread);
         }
       }
 
@@ -692,7 +682,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 /* Not in use. TODO: Comment all references used in LargeObject.
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-  	waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
     
     synchronized(this) {
 	    waitOnLock();
@@ -1590,11 +1580,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       rows = 1; // We're discarding any results anyway, so limit data transfer to a minimum
     } else if (!usePortal) {
       rows = maxRows; // Not using a portal -- fetchSize is irrelevant
-    } else if (maxRows != 0 && (enableFetchReadAndProcessBuffers || enableFetchRingBuffer || fetchSize > maxRows)) {
+    } else if (maxRows != 0 && (enableFetchRingBuffer || fetchSize > maxRows)) {
       // fetchSize > maxRows, use maxRows (nb: fetchSize cannot be 0 if usePortal == true)
       rows = maxRows;
     } else {
-      rows = (enableFetchReadAndProcessBuffers || enableFetchRingBuffer)
+      rows = (enableFetchRingBuffer) 
       					? maxRows // Disable server cursor, when client cursor is enabled.
       					: fetchSize; // maxRows > fetchSize
     }
@@ -1729,7 +1719,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
   	// TODO: Pass statement close flag
-    waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
 
     synchronized(this) {
 	    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
@@ -1803,21 +1793,22 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
   
   /**
-   * Check for a running buffer thread.
+   * Check for a running ring buffer thread.
    * 
-   * @return returns true if a buffer thread is running, otherwise false.
+   * @return returns true if Ring buffer thread is running, otherwise false.
    */
   @Override
-  public boolean areResultBufferThreadsRunning() {
-  	return (m_ringBufferThread != null || m_processBufferThread != null);
+  public boolean isRingBufferThreadRunning() {
+  	return (m_ringBufferThread != null);
   }
   
   /**
-   * Close the last active buffer threads.
+   * Close the last active ring buffer thread.
    */
-  public void closeResultBufferThreads(RedshiftRowsBlockingQueue<Tuple> queueRows, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages, Thread ringBufferThread, Thread processBufferThread) {
-    // Abort current buffer threads, if any.
-    waitForResultBufferThreadsToFinish(false, true, queueRows, queuePages, ringBufferThread, processBufferThread);
+  @Override
+  public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread) {
+    // Abort current ring buffer thread, if any.
+    waitForRingBufferThreadToFinish(false, true, queueRows, ringBufferThread);
   }
   
   @Override
@@ -1890,33 +1881,25 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
   
   private void processResultsOnThread(ResultHandler handler, 
-  				int flags, int fetchSize,
+  				int flags, int fetchSize, 
   				MessageLoopState msgLoopState,
   				boolean subQueries,
   				int[] rowCount,
   				int maxRows) throws IOException {
     boolean noResults = (flags & QueryExecutor.QUERY_NO_RESULTS) != 0;
     boolean bothRowsAndStatus = (flags & QueryExecutor.QUERY_BOTH_ROWS_AND_STATUS) != 0;
+    boolean useRingBuffer = enableFetchRingBuffer 
+    												&& (!handler.wantsScrollableResultSet()) // Scrollable cursor
+    												&& (!subQueries) // Multiple results
+    												&& (!bothRowsAndStatus); // RETURNING clause 
+
     List<Tuple> tuples = null;
-    boolean useReadAndProcessBuffers = enableFetchReadAndProcessBuffers
-        && (!handler.wantsScrollableResultSet()) // Scrollable cursor
-        && (!subQueries) // Multiple results
-        && (!bothRowsAndStatus); // RETURNING clause
-    boolean useRingBuffer = enableFetchRingBuffer
-        && (!handler.wantsScrollableResultSet()) // Scrollable cursor
-        && (!subQueries) // Multiple results
-        && (!bothRowsAndStatus); // RETURNING clause
 
     int c;
     boolean endQuery = false;
 
     while (!endQuery) {
-      if (msgLoopState.firstRow) {
-        c = 'D';
-        msgLoopState.firstRow = false;
-      } else {
-        c = pgStream.receiveChar();
-      }
+      c = pgStream.receiveChar();
       switch (c) {
         case 'A': // Asynchronous Notify
           receiveAsyncNotify();
@@ -2003,11 +1986,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
             if (fields != null) { // There was a resultset.
             	tuples = new ArrayList<Tuple>();
-              handler.handleResultRows(currentQuery, fields, tuples, null, null, null, rowCount, null, null);
+              handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
               tuples = null;
-              msgLoopState.bufferQueue = null;
               msgLoopState.queueTuples = null;
-              msgLoopState.queuePages = null;
             }
           }
           break;
@@ -2046,12 +2027,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 						}
           }
           else
-        		handler.handleResultRows(currentQuery, fields, tuples, currentPortal, null, null, rowCount, null, null);
+        		handler.handleResultRows(currentQuery, fields, tuples, currentPortal, null, rowCount, null);
           
           tuples = null;
-          msgLoopState.bufferQueue = null;
           msgLoopState.queueTuples = null;
-          msgLoopState.queuePages = null;
           
           break;
         }
@@ -2147,7 +2126,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           						|| msgLoopState.queueTuples != null)) {
             // There was a resultset.
           	if (msgLoopState.queueTuples == null)
-          		handler.handleResultRows(currentQuery, fields, tuples, null, null, null, rowCount, null, null);
+          		handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
           	else {
           		// Mark end of result
           		try {
@@ -2161,9 +2140,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           	}
           	
             tuples = null;
-            msgLoopState.bufferQueue = null;
             msgLoopState.queueTuples = null;
-            msgLoopState.queuePages = null;
             rowCount = new int[1]; // Allocate for the next resultset
 
             if (bothRowsAndStatus) {
@@ -2187,153 +2164,60 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         }
 
         case 'D': // Data Transfer (ongoing Execute response)
-          if (useReadAndProcessBuffers) {
-            if (msgLoopState.queuePages == null) {
-              msgLoopState.firstRow = true;
-              msgLoopState.queueTuples = new RedshiftRowsBlockingQueue<Tuple>(fetchSize, fetchRingBufferSize, logger);
-              // set the limit of pages we can hold in memory
-              int numPages = ((int) (fetchRingBufferSize / pgStream.getBufferSize())) + (fetchRingBufferSize % pgStream.getBufferSize() == 0 ? 0 : 1);
-              msgLoopState.queuePages = new RedshiftByteBufferBlockingQueue<ByteBuffer>(numPages, fetchRingBufferSize, logger);
-              msgLoopState.bufferQueue = new RedshiftByteBufferBlockingQueue<ByteBuffer>(numPages, fetchRingBufferSize, logger);
-
-              // There was a resultset.
-              ExecuteRequest executeData = pendingExecuteQueue.removeFirst();
-              SimpleQuery currentQuery = executeData.query;
-              Field[] fields = currentQuery.getFields();
-
-              // Create a new ring buffer thread to read rows
-              m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
-              // Create a new processor thread to process buffer data
-              m_processBufferThread = new ProcessBufferThread(handler, msgLoopState, numPages, rowCount, noResults, maxRows);
-
-              handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, msgLoopState.queuePages, rowCount, m_ringBufferThread, m_processBufferThread);
-
-              // Start the ring buffer thread
-              m_ringBufferThread.start();
-              // Start the process buffer thread
-              m_processBufferThread.start();
-
-              // Return to break the message loop on the application thread
-              return;
-            } else if (m_ringBufferStopThread) {
-              return; // Break the ring buffer thread loop
-            } else {
-              ByteBuffer currentBuffer = ByteBuffer.allocate(pgStream.getBufferSize());
-              int currentOffset = 0;
-              while (true) {
-                int messageSize = pgStream.receiveInteger4(); // MESSAGE SIZE
-                // current buffer is full
-                if (currentBuffer.capacity() - currentOffset < messageSize - 4 && currentOffset > 0) {
-                  // will block until buffer queue has available space
-                  try {
-                    // set the end of this buffer
-                    currentBuffer.limit(currentOffset);
-                    msgLoopState.bufferQueue.put(currentBuffer);
-                  } catch (InterruptedException ie) {
-                    // Handle interrupted exception
-                    handler.handleError(
-                        new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
-                            RedshiftState.UNEXPECTED_ERROR, ie));
-                  }
-                  currentBuffer = ByteBuffer.allocate(pgStream.getBufferSize());
-                  currentOffset = 0;
-                }
-                if (messageSize - 4 > pgStream.getBufferSize()) {
-                  currentBuffer = ByteBuffer.allocate(messageSize - 4);
-                  currentOffset = 0;
-                }
-                // read messageSize - 4 bytes (for message size) from socket and put into the current buffer
-                pgStream.receive(currentBuffer.array(), currentOffset, messageSize - 4);
-                currentOffset += messageSize - 4;
-                if (pgStream.peekChar() != 'D') {
-                  // will block until buffer queue has available space
-                  try {
-                    // set the end of this buffer
-                    currentBuffer.limit(currentOffset);
-                    msgLoopState.bufferQueue.put(currentBuffer);
-                  } catch (InterruptedException ie) {
-                    // Handle interrupted exception
-                    handler.handleError(
-                        new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
-                            RedshiftState.UNEXPECTED_ERROR, ie));
-                  }
-                  msgLoopState.bufferQueue.setDoneReadingRows();
-                  // we need to wait for all rows to process first before completing query and calling end of query
-                  final ReentrantLock processingLock = this.m_processingLock;
-                  processingLock.lock();
-                  try {
-                    while (!msgLoopState.doneProcessingRows) {
-                      processingDone.await(1, TimeUnit.SECONDS);
-                    }
-                  } catch (InterruptedException ie) {
-                    // Handle interrupted exception
-                    handler.handleError(
-                        new RedshiftException(GT.tr("Interrupted exception waiting for process thread to be done."),
-                            RedshiftState.UNEXPECTED_ERROR, ie));
-                  } finally {
-                    processingLock.unlock();
-                  }
-                  break;
-                } else {
-                  pgStream.receiveChar(); // message type, discarded
-                }
-              }
-            }
-          } else if (useRingBuffer) {
-            boolean skipRow = false;
-            Tuple tuple = null;
-            try {
-              tuple = pgStream.receiveTupleV3();
-            } catch (OutOfMemoryError oome) {
-              if (!noResults) {
-                handler.handleError(
-                    new RedshiftException(GT.tr("Ran out of memory retrieving query results."),
-                        RedshiftState.OUT_OF_MEMORY, oome));
-              }
-            } catch (SQLException e) {
-              handler.handleError(e);
-            }
+        	boolean skipRow = false;
+          Tuple tuple = null;
+          try {
+            tuple = pgStream.receiveTupleV3();
+          } catch (OutOfMemoryError oome) {
             if (!noResults) {
-              if(rowCount != null) {
-                if(maxRows > 0 && rowCount[0] >= maxRows) {
-                  // Ignore any more rows until server fix not to send more rows than max rows.
-                  skipRow = true;
-                }
-                else {
-                  rowCount[0] += 1;
-                }
-              }
-
-              boolean firstRow = false;
-              if (msgLoopState.queueTuples == null) {
-                // i.e. First row
-                firstRow = true;
-                msgLoopState.queueTuples = new RedshiftRowsBlockingQueue<Tuple>(fetchSize, fetchRingBufferSize, logger);
-              }
-
-              // Add row in the queue
-              if(!skipRow) {
-                try {
-                  msgLoopState.queueTuples.put(tuple);
-                } catch (InterruptedException ie) {
-                  // Handle interrupted exception
-                  handler.handleError(
-                      new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
-                          RedshiftState.UNEXPECTED_ERROR, ie));
-                }
-              }
-
-              if(firstRow) {
+              handler.handleError(
+                  new RedshiftException(GT.tr("Ran out of memory retrieving query results."),
+                      RedshiftState.OUT_OF_MEMORY, oome));
+            }
+          } catch (SQLException e) {
+            handler.handleError(e);
+          }
+          if (!noResults) {
+          	if(rowCount != null) {
+        			if(maxRows > 0 && rowCount[0] >= maxRows) {
+        				// Ignore any more rows until server fix not to send more rows than max rows.
+        				skipRow = true;
+        			}
+        			else
+        				rowCount[0] += 1;
+          	}
+          	
+          	if (useRingBuffer) {
+          		boolean firstRow = false;
+          		if (msgLoopState.queueTuples == null) {
+          			// i.e. First row
+          			firstRow = true;
+          			msgLoopState.queueTuples = new RedshiftRowsBlockingQueue<Tuple>(fetchSize, fetchRingBufferSize, logger);
+          		}
+          		
+          		// Add row in the queue
+          		if(!skipRow) {
+	        			try {
+	        					msgLoopState.queueTuples.put(tuple);
+								} catch (InterruptedException ie) {
+										// Handle interrupted exception
+			              handler.handleError(
+			                  new RedshiftException(GT.tr("Interrupted exception retrieving query results."),
+			                      RedshiftState.UNEXPECTED_ERROR, ie));
+								}
+          		}
+        			
+        			if(firstRow) {
                 // There was a resultset.
                 ExecuteRequest executeData = pendingExecuteQueue.peekFirst();
                 SimpleQuery currentQuery = executeData.query;
                 Field[] fields = currentQuery.getFields();
-
-                // Create a new ring buffer thread to process rows
-                m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
-
-                handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, msgLoopState.queuePages, rowCount, m_ringBufferThread, m_processBufferThread);
-
+                
+        	  		// Create a new ring buffer thread to process rows
+        	  		m_ringBufferThread = new RingBufferThread(handler, flags, fetchSize, msgLoopState, subQueries, rowCount, maxRows);
+                
+                handler.handleResultRows(currentQuery, fields, null, null, msgLoopState.queueTuples, rowCount, m_ringBufferThread);
+                
                 if (RedshiftLogger.isEnable()) {
                   int length;
                   if (tuple == null) {
@@ -2343,74 +2227,39 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                   }
                   logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
                 }
+        	  		
+        	  		// Start the ring buffer thread
+        	  		m_ringBufferThread.start();
+        	  		
+              	// Return to break the message loop on the application thread
+              	return;
+        			}
+        			else
+      				if(m_ringBufferStopThread)
+      					return; // Break the ring buffer thread loop
+          	}
+          	else {
+	            if (tuples == null) {
+	              tuples = new ArrayList<Tuple>();
+	            }
+	            
+	            if(!skipRow)	            
+	            	tuples.add(tuple);
+          	}
+          }
 
-                // Start the ring buffer thread
-                m_ringBufferThread.start();
-
-                // Return to break the message loop on the application thread
-                return;
-              } else if (m_ringBufferStopThread) {
-                return; // Break the ring buffer thread loop
-              }
+          if (RedshiftLogger.isEnable()) {
+            int length;
+            if (tuple == null) {
+              length = -1;
+            } else {
+              length = tuple.length();
             }
-
-            if (RedshiftLogger.isEnable()) {
-              int length;
-              if (tuple == null) {
-                length = -1;
-              } else {
-                length = tuple.length();
-              }
-              logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
-              if (skipRow) {
-                logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}"
-                    , skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
-              }
-            }
-          } else {
-            boolean skipRow = false;
-            Tuple tuple = null;
-            try {
-              tuple = pgStream.receiveTupleV3();
-            } catch (OutOfMemoryError oome) {
-              if (!noResults) {
-                handler.handleError(
-                    new RedshiftException(GT.tr("Ran out of memory retrieving query results."),
-                        RedshiftState.OUT_OF_MEMORY, oome));
-              }
-            } catch (SQLException e) {
-              handler.handleError(e);
-            }
-            if (!noResults) {
-              if (rowCount != null) {
-                if (maxRows > 0 && rowCount[0] >= maxRows) {
-                  // Ignore any more rows until server fix not to send more rows than max rows.
-                  skipRow = true;
-                } else
-                  rowCount[0] += 1;
-              }
-
-              if (tuples == null) {
-                tuples = new ArrayList<Tuple>();
-              }
-
-              if(!skipRow)
-                tuples.add(tuple);
-
-              if (RedshiftLogger.isEnable()) {
-                int length;
-                if (tuple == null) {
-                  length = -1;
-                } else {
-                  length = tuple.length();
-                }
-                logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
-                if (skipRow) {
-                  logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}"
-                      , skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
-                }
-              }
-            }
+          	logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
+          	if (skipRow) {
+          		logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}" 
+          					, skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
+          	}
           }
 
           break;
@@ -2480,11 +2329,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
             	// TODO: is this possible?
             }
             
-            handler.handleResultRows(currentQuery, fields, tuples, null, null, null, rowCount, null, null);
+            handler.handleResultRows(currentQuery, fields, tuples, null, null, rowCount, null);
             tuples = null;
-            msgLoopState.bufferQueue = null;
             msgLoopState.queueTuples = null;
-            msgLoopState.queuePages = null;
           }
           break;
 
@@ -2502,9 +2349,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 							}
           	}
             tuples = null;
-            msgLoopState.bufferQueue = null;
             msgLoopState.queueTuples = null;
-            msgLoopState.queuePages = null;
             pgStream.clearResultBufferCount();
 
             ExecuteRequest executeRequest = pendingExecuteQueue.removeFirst();
@@ -2617,7 +2462,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -2631,7 +2476,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 		    handler = new ResultHandlerDelegate(delegateHandler) {
 		      @Override
 		      public void handleCommandStatus(String status, long updateCount, long insertOID) {
-		        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null, null, null, null);
+		        handleResultRows(portal.getQuery(), null, new ArrayList<Tuple>(), null, null, null, null);
 		      }
 		    };
 		
@@ -2837,7 +2682,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   @Override
   protected void sendCloseMessage() throws IOException {
     // Wait for current ring buffer thread to finish, if any.
-    waitForResultBufferThreadsToFinish(true, false, null, null, null, null);
+    waitForRingBufferThreadToFinish(true, false, null, null);
   	
     pgStream.sendChar('X');
     pgStream.sendInteger4(4);
@@ -3042,81 +2887,71 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
   
   /**
-   * Wait for buffer threads to finish.
+   * Wait for ring buffer thread to finish.
+   * 
    * @param calledFromConnectionClose true, if it called from connection.close(), false otherwise.
    * @param calledFromResultsetClose true, if it called from resultset.close(), false otherwise.
    * @param queueRows the blocking queue rows
-   * @param queuePages the blocking queue pages
-   * @param ringBufferThread the thread reading from buffer
-   * @param processBufferThread the thread manage the blocking queue
+   * @param ringBufferThread the thread manage the blocking queue
    */
-  public void waitForResultBufferThreadsToFinish(boolean calledFromConnectionClose,
-                                                 boolean calledFromResultsetClose,
-                                                 RedshiftRowsBlockingQueue<Tuple> queueRows,
-                                                 RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-                                                 Thread ringBufferThread, Thread processBufferThread)
+  public void waitForRingBufferThreadToFinish(boolean calledFromConnectionClose, 
+  																						boolean calledFromResultsetClose,
+  																						RedshiftRowsBlockingQueue<Tuple> queueRows,
+  																						Thread ringBufferThread)
   {
-    synchronized(m_resultBuffersThreadLock) {
-      try {
-        m_executingLock.lock();
-        // Wait for full read of any executing command
-        if(m_ringBufferThread != null) {
-          long joinWaitTime = 120*1000; // 2 min
-
-          try {
-            if(calledFromConnectionClose) {
-              // Interrupt the current threads
-              m_processBufferStopThread = true;
-              if (m_processBufferThread != null) {
-                m_processBufferThread.interrupt();
-              }
-              m_ringBufferStopThread = true;
-              if (m_ringBufferThread != null) {
-                m_ringBufferThread.interrupt();
-              }
-            } else if (calledFromResultsetClose) {
-              // Drain results from the socket
-              if (queueRows != null)
-                queueRows.setSkipRows();
-
-              // Wait for thread associated with result to terminate.
-              if (processBufferThread != null) {
-                processBufferThread.join(joinWaitTime);
-              }
-
-              // Wait for thread associated with reading from socket terminate.
-              if (ringBufferThread != null) {
-                ringBufferThread.join(joinWaitTime);
-              }
-
-              if (queueRows != null)
-                queueRows.close();
-              if (queuePages != null)
-                queuePages.close();
-            } else {
-              // Application is trying to execute another SQL on same connection.
-              // Wait for current threads to terminate.
-              if (m_processBufferThread != null) {
-                m_processBufferThread.join(); // joinWaitTime
-              }
-              if (m_ringBufferThread != null) {
-                m_ringBufferThread.join(); // joinWaitTime
-              }
-            }
-          } catch(Throwable th) {
-            // Ignore it
-          }
-        } else {
-          // Buffer thread is terminated.
-          if (queueRows != null && calledFromResultsetClose)
-            queueRows.close();
-          if (queuePages != null && calledFromResultsetClose)
-            queuePages.close();
-        }
-      } finally {
-        m_executingLock.unlock();
-      }
-    }
+  	synchronized(m_ringBufferThreadLock) {
+  		try {
+	  		m_executingLock.lock();
+				// Wait for full read of any executing command
+				if(m_ringBufferThread != null)
+				{
+					long joinWaitTime = 120*1000; // 2 min
+					
+					try
+					{
+						if(calledFromConnectionClose)
+						{
+							// Interrupt the current thread
+							m_ringBufferStopThread = true;
+							m_ringBufferThread.interrupt();
+							return;
+						}
+						else
+						if (calledFromResultsetClose)
+						{
+							// Drain results from the socket 
+							if (queueRows != null)
+								queueRows.setSkipRows();
+							
+							// Wait for thread associated with result to terminate.
+							if (ringBufferThread != null) {
+								ringBufferThread.join(joinWaitTime);
+							}
+							
+							if (queueRows != null)
+								queueRows.close();
+						}
+						else {
+							// Application is trying to execute another SQL on same connection.
+							// Wait for current thread to terminate.
+							m_ringBufferThread.join(); // joinWaitTime
+						}
+					}
+					catch(Throwable th)
+					{
+						// Ignore it
+					}
+				}
+				else {
+					// Buffer thread is terminated.
+					if (queueRows != null && calledFromResultsetClose)
+						queueRows.close();
+				}
+  		}
+  		finally {
+	  		m_executingLock.unlock();
+  		}
+  	}
   }
   
   private final Deque<SimpleQuery> pendingParseQueue = new ArrayDeque<SimpleQuery>();
@@ -3195,7 +3030,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	/**
   	 * Constructor
   	 * 
-  	 * @param msgLoopState
+  	 * @param messageLoopState
   	 */
   	public RingBufferThread(ResultHandler handler, 
   					int flags, int fetchSize, 
@@ -3228,243 +3063,51 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   		}
   		catch(Exception ex) 
   		{
-        if(m_ringBufferStopThread) {
-          // Clear the interrupted flag
-          Thread.currentThread().interrupted();
-
-          // Close the tuple queue
-          if ((m_processBufferThread == null || !m_processBufferThread.isAlive()) && this.msgLoopState.queueTuples != null)
-            this.msgLoopState.queueTuples.close();
-        }
-        else {
-          // Add end-of-result marker
-          if ((m_processBufferThread == null || !m_processBufferThread.isAlive()) && this.msgLoopState.queueTuples != null) {
-            try {
-              this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
-            } catch (Exception e) {
-              // Ignore
-            }
-          }
-
-          if (m_processBufferThread == null || !m_processBufferThread.isAlive()) {
-            // Handle  exception
-            handler.handleError(
-                new RedshiftException(GT.tr("Exception retrieving query results."),
-                    RedshiftState.UNEXPECTED_ERROR, ex));
-          }
-        }
-      } finally {
-  		  if (enableFetchReadAndProcessBuffers) {
-          // Reset vars
-          this.msgLoopState.bufferQueue = null;
-          this.msgLoopState.queueTuples = null;
-          this.msgLoopState.queuePages = null;
-          this.msgLoopState = null;
-          this.handler = null;
-          m_processBufferStopThread = false;
-          m_processBufferThread = null;
-          m_ringBufferStopThread = false;
-          m_ringBufferThread = null;
-        } else {
-          if (this.msgLoopState.queueTuples != null) {
-            try {
-                this.msgLoopState.queueTuples.setHandlerException(handler.getException());
-                this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
-              } catch (Exception e) {
-                // Ignore
-              }
-          }
-
-          handler.setStatementStateIdleFromInQuery();
-
-          // Reset vars
-          this.msgLoopState.queueTuples = null;
-          this.msgLoopState = null;
-          this.handler = null;
-          m_ringBufferStopThread = false;
-          m_ringBufferThread = null;
-        }
-      }
+  			if(m_ringBufferStopThread) {
+					// Clear the interrupted flag
+					Thread.currentThread().interrupted();
+					
+	  			// Close the queue
+	  			if (this.msgLoopState.queueTuples != null)
+	  				this.msgLoopState.queueTuples.close();
+  			}
+  			else {
+  				// Add end-of-result marker
+  				if (this.msgLoopState.queueTuples != null) {
+  					try {
+							this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
+						} catch (Exception e) {
+							// Ignore
+						}
+  				}
+  				
+					// Handle  exception
+	        handler.handleError(
+	            new RedshiftException(GT.tr("Exception retrieving query results."),
+	                RedshiftState.UNEXPECTED_ERROR, ex));
+  			}
+  		}
+  		finally
+  		{
+				// Add end-of-result marker
+				if (this.msgLoopState.queueTuples != null) {
+					try {
+						this.msgLoopState.queueTuples.setHandlerException(handler.getException());
+						this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
+					} catch (Exception e) {
+						// Ignore
+					}
+				}
+  			
+				handler.setStatementStateIdleFromInQuery();
+				
+				// Reset vars
+  			this.msgLoopState.queueTuples = null;
+  			this.msgLoopState = null;
+  			this.handler = null;
+  			m_ringBufferStopThread = false;
+  			m_ringBufferThread = null;  			
+  		}
   	}
   } // RingBufferThread
-
-  /**
-   * Processing thread to parse steam buffer data into row tuples to hand off to main thread.
-   *
-   * @author sjn
-   */
-  private class ProcessBufferThread extends Thread {
-    ResultHandler handler;
-    MessageLoopState msgLoopState;
-    int numPages;
-    int[] rowCount;
-    boolean noResults;
-    int maxRows;
-
-    /**
-     * Constructor
-     *
-     * @param msgLoopState message loop state
-     * @param rowCount the count of rows the result set should have
-     * @param noResults flag for whether or not we should shouw results in the result set
-     */
-    public ProcessBufferThread(ResultHandler handler,
-                               MessageLoopState msgLoopState,
-                               int numPages,
-                               int[] rowCount,
-                               boolean noResults,
-                               int maxRows) {
-      super("ProcessBufferThread");
-      this.handler = handler;
-      this.msgLoopState = msgLoopState;
-      this.numPages = numPages;
-      this.rowCount = rowCount;
-      this.noResults = noResults;
-      this.maxRows = maxRows;
-    }
-
-    /**
-     * Run the thread
-     */
-    @Override
-    public void run() {
-      try {
-        int currentPage = 0;
-        while (true) {
-          // polls until a buffer can be read or we are done reading rows
-          ByteBuffer currentProcessingBuffer = msgLoopState.bufferQueue.take();
-          if (currentProcessingBuffer == null) {
-            break;
-          }
-          if (currentPage >= numPages) {
-            // check if forward only cursor
-            if (!handler.wantsScrollableResultSet()) {
-              // blocks until space is available in queuePages
-              msgLoopState.queuePages.put(currentProcessingBuffer);
-            } else {
-              // cursor is a scrollable result set but pages are filled
-              throw new RedshiftException(GT.tr("Cannot read any more data for scrollable result set. Maximum amount of data read."),
-                  RedshiftState.TOO_MANY_RESULTS);
-            }
-          } else {
-            msgLoopState.queuePages.put(currentProcessingBuffer);
-          }
-          int currentPosition = 0;
-          while (currentPosition < currentProcessingBuffer.limit()) {
-            boolean skipRow = false;
-            if (!noResults) {
-              if(rowCount != null) {
-                if(maxRows > 0 && rowCount[0] >= maxRows) {
-                  // Ignore any more rows until server fix not to send more rows than max rows.
-                  skipRow = true;
-                }
-                else
-                  rowCount[0] += 1;
-              }
-            }
-            int rowOffset = currentPosition;
-            // number of columns
-            int numFields = currentProcessingBuffer.getShort(currentPosition);
-            currentPosition += 2;
-            int[] columnOffsets = new int[numFields];
-            int rowSize = 0;
-            // calculating the size of of row a.k.a. the number of bytes of column data which excludes the two bytes for
-            // the number of columns and the 4 bytes for each column for the size of each column data
-            for (int i = 0; i < numFields; i++) {
-              columnOffsets[i] = currentPosition;
-              // size of column data
-              int columnLength = currentProcessingBuffer.getInt(currentPosition);
-              currentPosition += 4;
-              if (columnLength > 0) {
-                rowSize += columnLength;
-                // skip of this column's data as it is not needed now
-                currentPosition += columnLength;
-              }
-            }
-            boolean isLastRowOnPage = (currentPosition >= currentProcessingBuffer.limit());
-            Tuple tuple = new Tuple(currentProcessingBuffer, rowOffset, numFields, columnOffsets, rowSize, isLastRowOnPage);
-            if (!skipRow) {
-              msgLoopState.queueTuples.put(tuple);
-            }
-            if (RedshiftLogger.isEnable()) {
-              int length;
-              if (tuple == null) {
-                length = -1;
-              } else {
-                length = tuple.length();
-              }
-              logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
-              if (skipRow) {
-                logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}"
-                    , skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
-              }
-            }
-          }
-          currentPage++;
-        }
-      } catch(Exception ex) {
-        if(m_processBufferStopThread) {
-          // Clear the interrupted flag
-          Thread.currentThread().interrupted();
-
-          // Close the tuple queue
-          if (this.msgLoopState.queueTuples != null)
-            this.msgLoopState.queueTuples.close();
-        }
-        else {
-          // Add end-of-result marker
-          if (this.msgLoopState.queueTuples != null) {
-            try {
-              this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
-            } catch (Exception e) {
-              // Ignore
-            }
-          }
-
-          // Handle  exception
-          handler.handleError(
-              new RedshiftException(GT.tr("Exception retrieving query results."),
-                  RedshiftState.UNEXPECTED_ERROR, ex));
-        }
-      } finally {
-        // Add end-of-result marker
-        if (this.msgLoopState.queueTuples != null) {
-          try {
-            this.msgLoopState.queueTuples.setHandlerException(handler.getException());
-            this.msgLoopState.queueTuples.checkAndAddEndOfRowsIndicator();
-          } catch (Exception e) {
-            // Ignore
-          }
-        }
-        this.msgLoopState.doneProcessingRows = true;
-
-        handler.setStatementStateIdleFromInQuery();
-
-        // Reset vars
-        this.msgLoopState.bufferQueue = null;
-        this.msgLoopState.queueTuples = null;
-        this.msgLoopState.queuePages = null;
-        this.msgLoopState = null;
-        this.handler = null;
-        m_processBufferStopThread = false;
-        m_processBufferThread = null;
-
-        // signal that the processing thread is done
-        signalProcessingDone();
-      }
-    }
-  } // ProcessBufferThread
-
-  /**
-   * Signals that process buffer thread is done. Called only from process buffer thread.
-   */
-  private void signalProcessingDone() {
-    final ReentrantLock processingLock = this.m_processingLock;
-    processingLock.lock();
-    try {
-      processingDone.signal();
-    } finally {
-      processingLock.unlock();
-    }
-  }
 }

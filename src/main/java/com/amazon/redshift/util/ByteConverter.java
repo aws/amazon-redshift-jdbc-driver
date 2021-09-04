@@ -5,8 +5,6 @@
 
 package com.amazon.redshift.util;
 
-import com.amazon.redshift.core.ByteBufferSubsequence;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
@@ -153,41 +151,20 @@ public class ByteConverter {
 
   /**
    * Convert a variable length array of bytes to an integer
-   * @param bbs the Byte Buffer Subsequence pointing to the array of bytes that can be decoded as an integer
-   * @return integer
-   */
-  public static Number numeric(ByteBufferSubsequence bbs) {
-    return numeric(bbs, 0, bbs.length);
-  }
-
-  /**
-   * Convert a variable length array of bytes to an integer
    * @param bytes array of bytes that can be decoded as an integer
    * @return integer
    */
-
+  
   /**
    * Convert a variable length array of bytes to a Number
-   *
+   * 
    * @param bytes array of column bytes that can be decoded as Numeric
    * @param precision precision of the defined column
    * @param scale scale of the defined column
    * @return Number value of the given unscaled byte array
    */
-  public static Number redshiftNumeric(byte[] bytes, int precision, int scale) {
+  public static Number redshiftNumeric(byte [] bytes, int precision, int scale) {
     return redshiftNumeric(bytes, 0, bytes.length, precision, scale);
-  }
-  
-  /**
-   * Convert a variable length array of bytes to a Number
-   * 
-   * @param bbs the byte buffer subsequence pointing to the sequence of column bytes that can be decoded as Numeric
-   * @param precision precision of the defined column
-   * @param scale scale of the defined column
-   * @return Number value of the given unscaled byte array
-   */
-  public static Number redshiftNumeric(ByteBufferSubsequence bbs, int precision, int scale) {
-    return redshiftNumeric(bbs.page, bbs.index, bbs.length, precision, scale);
   }
   
   /**
@@ -259,17 +236,10 @@ public class ByteConverter {
       throw new IllegalArgumentException("number of bytes should be 8 or 16");
     }
 
-    BigInteger bigInt;
-    if (pos != 0 || numBytes != bytes.length) {
-      byte[] byteArray = new byte[numBytes];
-      System.arraycopy(bytes, pos, byteArray, 0, numBytes);
-      bigInt = new BigInteger(byteArray);
-    } else {
-      bigInt = new BigInteger(bytes);
-    }
+  	BigInteger bigInt = new BigInteger(bytes);
   	return new BigDecimal(bigInt, scale, new MathContext(precision));
   }
-
+  
   /**
    * Convert BigDecimal value into scaled bytes.
    * 
@@ -302,60 +272,8 @@ public class ByteConverter {
 
   	return rc;  	
   }
-
-  /**
-   * Convert a variable length array of bytes to an integer
-   * @param bbs the Byte Buffer Subsequence pointing to the array of bytes that can be decoded as an integer
-   * @param pos index of the start position of the bytes array for number
-   * @param numBytes number of bytes to use, length is already encoded
-   *                in the binary format but this is used for double checking
-   * @return integer
-   */
-  public static Number numeric(ByteBufferSubsequence bbs, int pos, int numBytes) {
-    if (numBytes < 8) {
-      throw new IllegalArgumentException("number of bytes should be at-least 8");
-    }
-
-    short len = ByteConverter.int2(bbs, pos);
-    short weight = ByteConverter.int2(bbs, pos + 2);
-    short sign = ByteConverter.int2(bbs, pos + 4);
-    short scale = ByteConverter.int2(bbs, pos + 6);
-
-    if (numBytes != (len * SHORT_BYTES + 8)) {
-      throw new IllegalArgumentException("invalid length of bytes \"numeric\" value");
-    }
-
-    if (!(sign == NUMERIC_POS
-        || sign == NUMERIC_NEG
-        || sign == NUMERIC_NAN)) {
-      throw new IllegalArgumentException("invalid sign in \"numeric\" value");
-    }
-
-    if (sign == NUMERIC_NAN) {
-      return Double.NaN;
-    }
-
-    if ((scale & NUMERIC_DSCALE_MASK) != scale) {
-      throw new IllegalArgumentException("invalid scale in \"numeric\" value");
-    }
-
-    short[] digits = new short[len];
-    int idx = pos + 8;
-    for (int i = 0; i < len; i++) {
-      short d = ByteConverter.int2(bbs, idx);
-      idx += 2;
-
-      if (d < 0 || d >= NBASE) {
-        throw new IllegalArgumentException("invalid digit in \"numeric\" value");
-      }
-
-      digits[i] = d;
-    }
-
-    String numString = numberBytesToString(digits, scale, weight, sign);
-    return new BigDecimal(numString);
-  }
-
+  
+  
   /**
    * Parses a long value from the byte array.
    *
@@ -376,25 +294,6 @@ public class ByteConverter {
   }
 
   /**
-   * Parses a long value from the byte array.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to The byte array to parse.
-   * @param idx The starting index of the parse in the byte array.
-   * @return parsed long value.
-   */
-  public static long int8(ByteBufferSubsequence bbs, int idx) {
-    return
-        ((long) (bbs.page[bbs.index + idx + 0] & 255) << 56)
-            + ((long) (bbs.page[bbs.index + idx + 1] & 255) << 48)
-            + ((long) (bbs.page[bbs.index + idx + 2] & 255) << 40)
-            + ((long) (bbs.page[bbs.index + idx + 3] & 255) << 32)
-            + ((long) (bbs.page[bbs.index + idx + 4] & 255) << 24)
-            + ((long) (bbs.page[bbs.index + idx + 5] & 255) << 16)
-            + ((long) (bbs.page[bbs.index + idx + 6] & 255) << 8)
-            + (bbs.page[bbs.index + idx + 7] & 255);
-  }
-
-  /**
    * Parses an int value from the byte array.
    *
    * @param bytes The byte array to parse.
@@ -410,21 +309,6 @@ public class ByteConverter {
   }
 
   /**
-   * Parses an int value from the byte array.
-   *
-   * @param bbs the Byte Buffer Subsequence pointint to The byte array to parse.
-   * @param idx The starting index of the parse in the byte array.
-   * @return parsed int value.
-   */
-  public static int int4(ByteBufferSubsequence bbs, int idx) {
-    return
-        ((bbs.page[bbs.index + idx] & 255) << 24)
-            + ((bbs.page[bbs.index + idx + 1] & 255) << 16)
-            + ((bbs.page[bbs.index + idx + 2] & 255) << 8)
-            + ((bbs.page[bbs.index + idx + 3] & 255));
-  }
-
-  /**
    * Parses a short value from the byte array.
    *
    * @param bytes The byte array to parse.
@@ -433,17 +317,6 @@ public class ByteConverter {
    */
   public static short int2(byte[] bytes, int idx) {
     return (short) (((bytes[idx] & 255) << 8) + ((bytes[idx + 1] & 255)));
-  }
-
-  /**
-   * Parses a short value from the byte array.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to The byte array to parse.
-   * @param idx The starting index of the parse in the byte array.
-   * @return parsed short value.
-   */
-  public static short int2(ByteBufferSubsequence bbs, int idx) {
-    return (short) (((bbs.page[bbs.index + idx] & 255) << 8) + ((bbs.page[bbs.index + idx + 1] & 255)));
   }
 
   /**
@@ -460,19 +333,6 @@ public class ByteConverter {
   }
 
   /**
-   * Parses a boolean value from the byte array.
-   *
-   * @param bbs
-   *          the Byte Buffer Subsequence pointing to The byte array to parse.
-   * @param idx
-   *          The starting index to read from bytes.
-   * @return parsed boolean value.
-   */
-  public static boolean bool(ByteBufferSubsequence bbs, int idx) {
-    return bbs.page[bbs.index + idx] == 1;
-  }
-
-  /**
    * Parses a float value from the byte array.
    *
    * @param bytes The byte array to parse.
@@ -484,17 +344,6 @@ public class ByteConverter {
   }
 
   /**
-   * Parses a float value from the byte array.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to The byte array to parse.
-   * @param idx The starting index of the parse in the byte array.
-   * @return parsed float value.
-   */
-  public static float float4(ByteBufferSubsequence bbs, int idx) {
-    return Float.intBitsToFloat(int4(bbs, idx));
-  }
-
-  /**
    * Parses a double value from the byte array.
    *
    * @param bytes The byte array to parse.
@@ -503,17 +352,6 @@ public class ByteConverter {
    */
   public static double float8(byte[] bytes, int idx) {
     return Double.longBitsToDouble(int8(bytes, idx));
-  }
-
-  /**
-   * Parses a double value from the byte array.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to The byte array to parse.
-   * @param idx The starting index of the parse in the byte array.
-   * @return parsed double value.
-   */
-  public static double float8(ByteBufferSubsequence bbs, int idx) {
-    return Double.longBitsToDouble(int8(bbs, idx));
   }
 
   /**

@@ -12,7 +12,6 @@ import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.copy.CopyManager;
 import com.amazon.redshift.core.BaseConnection;
 import com.amazon.redshift.core.BaseStatement;
-import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.core.CachedQuery;
 import com.amazon.redshift.core.ConnectionFactory;
 import com.amazon.redshift.core.Encoding;
@@ -747,73 +746,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
         	intervalObj.setValue(new String(byteValue));
         }
         else {
-          obj.setValue(value);
-        }
-      } else {
-        // If className is null, then the type is unknown.
-        // so return a RedshiftOject with the type set, and the value set
-        obj = new RedshiftObject();
-        obj.setType(type);
-        obj.setValue(value);
-      }
-
-      return obj;
-    } catch (SQLException sx) {
-      // rethrow the exception. Done because we capture any others next
-      throw sx;
-    } catch (Exception ex) {
-      throw new RedshiftException(GT.tr("Failed to create object for: {0}.", type),
-          RedshiftState.CONNECTION_FAILURE, ex);
-    }
-  }
-
-  /*
-   * This method is used internally to return an object based around com.amazon.redshift's more unique
-   * data types.
-   *
-   * <p>It uses an internal HashMap to get the handling class. If the type is not supported, then an
-   * instance of com.amazon.redshift.util.RedshiftObject is returned.
-   *
-   * You can use the getValue() or setValue() methods to handle the returned object. Custom objects
-   * can have their own methods.
-   *
-   * @return RedshiftObject for this type, and set to value
-   *
-   * @exception SQLException if value is not correct for this type
-   */
-  @Override
-  public Object getObject(String type, String value, ByteBufferSubsequence bbs) throws SQLException {
-    if (typemap != null) {
-      Class<?> c = typemap.get(type);
-      if (c != null) {
-        // Handle the type (requires SQLInput & SQLOutput classes to be implemented)
-        throw new RedshiftException(GT.tr("Custom type maps are not supported."),
-            RedshiftState.NOT_IMPLEMENTED);
-      }
-    }
-
-    RedshiftObject obj = null;
-
-    if (RedshiftLogger.isEnable()) {
-      logger.log(LogLevel.DEBUG, "Constructing object from type={0} value=<{1}>", new Object[]{type, value});
-    }
-
-    try {
-      Class<? extends RedshiftObject> klass = typeCache.getRSobject(type);
-
-      // If className is not null, then try to instantiate it,
-      // It must be basetype RedshiftObject
-
-      // This is used to implement the com.amazon.redshift unique types (like lseg,
-      // point, etc).
-
-      if (klass != null) {
-        obj = klass.newInstance();
-        obj.setType(type);
-        if (bbs != null && bbs.length > 0 && obj instanceof RedshiftBinaryObject) {
-          RedshiftBinaryObject binObj = (RedshiftBinaryObject) obj;
-          binObj.setByteValue(bbs, 0);
-        } else {
           obj.setValue(value);
         }
       } else {

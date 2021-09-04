@@ -45,9 +45,9 @@ class CopyQueryExecutor {
   CopyOperation startCopy(String sql, boolean suppressBegin)
       throws SQLException {
   	
-    // Wait for current buffer threads to finish, if any.
+    // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-  	queryExecutor.waitForResultBufferThreadsToFinish(false, false, null, null, null, null);
+  	queryExecutor.waitForRingBufferThreadToFinish(false, false, null, null);
   	
     synchronized(queryExecutor) {
     	queryExecutor.waitOnLock();

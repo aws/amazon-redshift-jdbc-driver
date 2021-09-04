@@ -7,15 +7,12 @@ package com.amazon.redshift.core;
 
 import com.amazon.redshift.RedshiftStatement;
 import com.amazon.redshift.core.v3.MessageLoopState;
-import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
-import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Driver-internal statement interface. Application code should not use this interface.
@@ -51,21 +48,19 @@ public interface BaseStatement extends RedshiftStatement, Statement {
    * @param originalQuery the query that generated this resultset; used when dealing with updateable
    *        resultsets
    * @param fields the column metadata for the resultset
-   * @param tuples the offsets to the resultset data
+   * @param tuples the resultset data
    * @param cursor the cursor to use to retrieve more data from the server; if null, no additional
    *        data is present.
-   * @param queueTuples the offsets to the actual data in a blocking queue. If this is set then tuples will be null.
-   * @param queuePages the pages in memory that are available to be read from
+   * @param queueTuples the actual data in a blocking queue. If this is set then tuples will be null.
 	 * @param rowCount number of rows fetched from the socket.
-	 * @param ringBufferThread a thread to fetch data in the buffer.
-   * @param processBufferThread a thread to process data from the buffer
+	 * @param ringBufferThread a thread to fetch rows in the limited rows buffer.
    * 
    * @return the new ResultSet
    * @throws SQLException if something goes wrong
    */
   ResultSet createResultSet(Query originalQuery, Field[] fields, List<Tuple> tuples,
-      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-      int[] rowCount, Thread ringBufferThread, Thread processBufferThread) throws SQLException;
+      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
+      int[] rowCount, Thread ringBufferThread) throws SQLException;
 
   /**
    * Execute a query, passing additional query flags.

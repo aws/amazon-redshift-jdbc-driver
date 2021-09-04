@@ -1,8 +1,21 @@
 Changelog
 =========
 
+v2.1.0.1 (2021-09-04)
+---------------------
+- Fix stack overflow for "unknown" type. [ilesh Garish]
+- Fix SQLWorkbench issue for underscore in database name. [ilesh Garish]
+- Support VARBYTE data type. [ilesh Garish]
+- Use derived user from JWT as role session name for JWT SSO. [ilesh Garish]
+- Fix Varying length precision and scale for numeric types. [ilesh
+  Garish]
+- Fix getColumns exception in federated query due to missing varchar
+  length. [ilesh Garish]
+- Fix for AuthProfile with IDP parameters. [ilesh Garish]
+
+
 v2.0.0.7 (2021-07-23)
-------------
+---------------------
 - Support nonProxyHosts system property for STS and Redshift coral service. [ilesh Garish]
 - Support of reading connection properties using an authentication profile.  [ilesh Garish]
 - Fix nano second issue with Timestamp to string conversion. [ilesh Garish]
@@ -10,7 +23,7 @@ v2.0.0.7 (2021-07-23)
 - Return current database instead of NULL for getSchemas() API. [ilesh Garish]
 
 v2.0.0.6 (2021-06-29)
-------------
+---------------------
 - Fix [issue#27](https://github.com/aws/amazon-redshift-jdbc-driver/issues/27). [ilesh Garish]
 - Add support for Profile process credentials. [Laurent Goujon]
 - Bump httpclient from 4.5.2 to 4.5.13. [dependabot[bot]]

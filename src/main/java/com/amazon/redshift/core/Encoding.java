@@ -15,7 +15,6 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 
-import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 
@@ -259,31 +258,6 @@ public class Encoding {
    */
   public String decode(byte[] encodedString) throws IOException {
     return decode(encodedString, 0, encodedString.length);
-  }
-
-  /**
-   * Decode an array of bytes into a string.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to a byte array containing the string to decode
-   * @param offset        the offset in <code>bbs</code> of the first byte of the encoded
-   *                      representation
-   * @param length        the length, in bytes, of the encoded representation
-   * @return the decoded string
-   * @throws IOException if something goes wrong
-   */
-  public String decode(ByteBufferSubsequence bbs, int offset, int length) throws IOException {
-    return new String(bbs.page, bbs.index+offset, length, encoding);
-  }
-
-  /**
-   * Decode an array of bytes into a string.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to a byte array containing the string to decode
-   * @return the decoded string
-   * @throws IOException if something goes wrong
-   */
-  public String decode(ByteBufferSubsequence bbs) throws IOException {
-    return decode(bbs, 0, bbs.length);
   }
 
   /**

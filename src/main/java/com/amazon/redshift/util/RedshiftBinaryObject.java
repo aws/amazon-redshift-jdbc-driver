@@ -5,8 +5,6 @@
 
 package com.amazon.redshift.util;
 
-import com.amazon.redshift.core.ByteBufferSubsequence;
-
 import java.sql.SQLException;
 
 /**
@@ -22,15 +20,6 @@ public interface RedshiftBinaryObject {
    * @throws SQLException thrown if value is invalid for this type
    */
   void setByteValue(byte[] value, int offset) throws SQLException;
-
-  /**
-   * This method is called to set the value of this object.
-   *
-   * @param bbs the Byte Buffer Subsequence pointing to the data containing the binary representation of the value of the object
-   * @param offset the offset in the Byte Buffer Subsequence where object data starts
-   * @throws SQLException thrown if value is invalid for this type
-   */
-  void setByteValue(ByteBufferSubsequence bbs, int offset) throws SQLException;
 
   /**
    * This method is called to return the number of bytes needed to store this object in the binary

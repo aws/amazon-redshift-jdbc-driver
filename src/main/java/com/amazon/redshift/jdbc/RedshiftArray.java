@@ -7,7 +7,6 @@ package com.amazon.redshift.jdbc;
 
 import com.amazon.redshift.core.BaseConnection;
 import com.amazon.redshift.core.BaseStatement;
-import com.amazon.redshift.core.ByteBufferSubsequence;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.Field;
 import com.amazon.redshift.core.Oid;
@@ -93,7 +92,6 @@ public class RedshiftArray implements java.sql.Array {
   protected RsArrayList arrayList;
 
   protected byte[] fieldBytes;
-  protected ByteBufferSubsequence bbs;
 
   private RedshiftArray(BaseConnection connection, int oid) throws SQLException {
     this.connection = connection;
@@ -125,19 +123,6 @@ public class RedshiftArray implements java.sql.Array {
   public RedshiftArray(BaseConnection connection, int oid, byte[] fieldBytes) throws SQLException {
     this(connection, oid);
     this.fieldBytes = fieldBytes;
-  }
-
-  /**
-   * Create a new Array.
-   *
-   * @param connection a database connection
-   * @param oid the oid of the array datatype
-   * @param bbs the Byte Buffer Subsequence pointing to the array data in byte form
-   * @throws SQLException if something wrong happens
-   */
-  public RedshiftArray(BaseConnection connection, int oid, ByteBufferSubsequence bbs) throws SQLException {
-    this(connection, oid);
-    this.bbs = bbs;
   }
 
   public Object getArray() throws SQLException {
@@ -175,10 +160,6 @@ public class RedshiftArray implements java.sql.Array {
 
     if (fieldBytes != null) {
       return readBinaryArray((int) index, count);
-    }
-
-    if (bbs != null) {
-      return readBinaryArrayWithBBS((int) index, count);
     }
 
     if (fieldString == null) {
@@ -233,7 +214,7 @@ public class RedshiftArray implements java.sql.Array {
   }
 
   private int storeValues(final Object[] arr, int elementOid, final int[] dims, int pos,
-                          final int thisDimension, int index) throws SQLException, IOException {
+      final int thisDimension, int index) throws SQLException, IOException {
     if (thisDimension == dims.length - 1) {
       for (int i = 1; i < index; ++i) {
         int len = ByteConverter.int4(fieldBytes, pos);
@@ -319,7 +300,7 @@ public class RedshiftArray implements java.sql.Array {
   }
 
   private int storeValues(List<Tuple> rows, Field[] fields, int elementOid, final int[] dims,
-                          int pos, final int thisDimension, int index) throws SQLException {
+      int pos, final int thisDimension, int index) throws SQLException {
     // handle an empty array
     if (dims.length == 0) {
       fields[0] = new Field("INDEX", Oid.INT4);
@@ -399,205 +380,6 @@ public class RedshiftArray implements java.sql.Array {
       }
     } else {
       pos = calcRemainingDataLength(dims, elementOid, pos, thisDimension + 1);
-    }
-    return pos;
-  }
-
-  private Object readBinaryArrayWithBBS(int index, int count) throws SQLException {
-    int dimensions = ByteConverter.int4(bbs, 0);
-    // int flags = ByteConverter.int4(fieldBytes, 4); // bit 0: 0=no-nulls, 1=has-nulls
-    int elementOid = ByteConverter.int4(bbs, 8);
-    int pos = bbs.index+12;
-    int[] dims = new int[dimensions];
-    for (int d = 0; d < dimensions; ++d) {
-      dims[d] = ByteConverter.int4(bbs, pos);
-      pos += 4;
-      /* int lbound = ByteConverter.int4(fieldBytes, pos); */
-      pos += 4;
-    }
-    if (dimensions == 0) {
-      return java.lang.reflect.Array.newInstance(elementOidToClass(elementOid), 0);
-    }
-    if (count > 0) {
-      dims[0] = Math.min(count, dims[0]);
-    }
-    Object arr = java.lang.reflect.Array.newInstance(elementOidToClass(elementOid), dims);
-    try {
-      storeValuesWithBBS((Object[]) arr, elementOid, dims, pos, 0, index);
-    } catch (IOException ioe) {
-      throw new RedshiftException(
-          GT.tr(
-              "Invalid character data was found.  This is most likely caused by stored data containing characters that are invalid for the character set the database was created in.  The most common example of this is storing 8bit data in a SQL_ASCII database."),
-          RedshiftState.DATA_ERROR, ioe);
-    }
-    return arr;
-  }
-
-  private int storeValuesWithBBS(final Object[] arr, int elementOid, final int[] dims, int pos,
-      final int thisDimension, int index) throws SQLException, IOException {
-    if (thisDimension == dims.length - 1) {
-      for (int i = 1; i < index; ++i) {
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len != -1) {
-          pos += len;
-        }
-      }
-      for (int i = 0; i < dims[thisDimension]; ++i) {
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len == -1) {
-          continue;
-        }
-        switch (elementOid) {
-          case Oid.INT2:
-            arr[i] = ByteConverter.int2(bbs, pos);
-            break;
-          case Oid.INT4:
-            arr[i] = ByteConverter.int4(bbs, pos);
-            break;
-          case Oid.INT8:
-            arr[i] = ByteConverter.int8(bbs, pos);
-            break;
-          case Oid.FLOAT4:
-            arr[i] = ByteConverter.float4(bbs, pos);
-            break;
-          case Oid.FLOAT8:
-            arr[i] = ByteConverter.float8(bbs, pos);
-            break;
-          case Oid.NUMERIC:
-            arr[i] = ByteConverter.numeric(bbs, pos, len);
-            break;
-          case Oid.TEXT:
-          case Oid.VARCHAR:
-            Encoding encoding = connection.getEncoding();
-            arr[i] = encoding.decode(bbs, pos, len);
-            break;
-          case Oid.BOOL:
-            arr[i] = ByteConverter.bool(bbs, pos);
-            break;
-          default:
-            ArrayAssistant arrAssistant = ArrayAssistantRegistry.getAssistant(elementOid);
-            if (arrAssistant != null) {
-              arr[i] = arrAssistant.buildElement(bbs, pos, len);
-            }
-        }
-        pos += len;
-      }
-    } else {
-      for (int i = 0; i < dims[thisDimension]; ++i) {
-        pos = storeValuesWithBBS((Object[]) arr[i], elementOid, dims, pos, thisDimension + 1, 0);
-      }
-    }
-    return pos;
-  }
-
-  private ResultSet readBinaryResultSetWithBBS(int index, int count) throws SQLException {
-    int dimensions = ByteConverter.int4(bbs, 0);
-    // int flags = ByteConverter.int4(fieldBytes, 4); // bit 0: 0=no-nulls, 1=has-nulls
-    int elementOid = ByteConverter.int4(bbs, 8);
-    int pos = bbs.index+12;
-    int[] dims = new int[dimensions];
-    for (int d = 0; d < dimensions; ++d) {
-      dims[d] = ByteConverter.int4(bbs, pos);
-      pos += 4;
-      /* int lbound = ByteConverter.int4(fieldBytes, pos); */
-      pos += 4;
-    }
-    if (count > 0 && dimensions > 0) {
-      dims[0] = Math.min(count, dims[0]);
-    }
-    List<Tuple> rows = new ArrayList<Tuple>();
-    Field[] fields = new Field[2];
-
-    storeValuesWithBBS(rows, fields, elementOid, dims, pos, 0, index);
-
-    BaseStatement stat = (BaseStatement) connection
-        .createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-    return stat.createDriverResultSet(fields, rows);
-  }
-
-  private int storeValuesWithBBS(List<Tuple> rows, Field[] fields, int elementOid, final int[] dims,
-      int pos, final int thisDimension, int index) throws SQLException {
-    // handle an empty array
-    if (dims.length == 0) {
-      fields[0] = new Field("INDEX", Oid.INT4);
-      fields[0].setFormat(Field.BINARY_FORMAT);
-      fields[1] = new Field("VALUE", elementOid);
-      fields[1].setFormat(Field.BINARY_FORMAT);
-      for (int i = 1; i < index; ++i) {
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len != -1) {
-          pos += len;
-        }
-      }
-    } else if (thisDimension == dims.length - 1) {
-      fields[0] = new Field("INDEX", Oid.INT4);
-      fields[0].setFormat(Field.BINARY_FORMAT);
-      fields[1] = new Field("VALUE", elementOid);
-      fields[1].setFormat(Field.BINARY_FORMAT);
-      for (int i = 1; i < index; ++i) {
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len != -1) {
-          pos += len;
-        }
-      }
-      for (int i = 0; i < dims[thisDimension]; ++i) {
-        byte[][] rowData = new byte[2][];
-        rowData[0] = new byte[4];
-        ByteConverter.int4(rowData[0], 0, i + index);
-        rows.add(new Tuple(rowData));
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len == -1) {
-          continue;
-        }
-        rowData[1] = new byte[len];
-        System.arraycopy(bbs.page, pos, rowData[1], 0, rowData[1].length);
-        pos += len;
-      }
-    } else {
-      fields[0] = new Field("INDEX", Oid.INT4);
-      fields[0].setFormat(Field.BINARY_FORMAT);
-      fields[1] = new Field("VALUE", oid);
-      fields[1].setFormat(Field.BINARY_FORMAT);
-      int nextDimension = thisDimension + 1;
-      int dimensionsLeft = dims.length - nextDimension;
-      for (int i = 1; i < index; ++i) {
-        pos = calcRemainingDataLengthWithBBS(dims, pos, elementOid, nextDimension);
-      }
-      for (int i = 0; i < dims[thisDimension]; ++i) {
-        byte[][] rowData = new byte[2][];
-        rowData[0] = new byte[4];
-        ByteConverter.int4(rowData[0], 0, i + index);
-        rows.add(new Tuple(rowData));
-        int dataEndPos = calcRemainingDataLengthWithBBS(dims, pos, elementOid, nextDimension);
-        int dataLength = dataEndPos - pos;
-        rowData[1] = new byte[12 + 8 * dimensionsLeft + dataLength];
-        ByteConverter.int4(rowData[1], 0, dimensionsLeft);
-        System.arraycopy(bbs.page, bbs.index+4, rowData[1], 4, 8);
-        System.arraycopy(bbs.page, bbs.index+12 + nextDimension * 8, rowData[1], 12, dimensionsLeft * 8);
-        System.arraycopy(bbs.page, bbs.index+pos, rowData[1], 12 + dimensionsLeft * 8, dataLength);
-        pos = dataEndPos;
-      }
-    }
-    return pos;
-  }
-
-  private int calcRemainingDataLengthWithBBS(int[] dims, int pos, int elementOid, int thisDimension) {
-    if (thisDimension == dims.length - 1) {
-      for (int i = 0; i < dims[thisDimension]; ++i) {
-        int len = ByteConverter.int4(bbs, pos);
-        pos += 4;
-        if (len == -1) {
-          continue;
-        }
-        pos += len;
-      }
-    } else {
-      pos = calcRemainingDataLengthWithBBS(dims, elementOid, pos, thisDimension + 1);
     }
     return pos;
   }
@@ -1006,7 +788,7 @@ public class RedshiftArray implements java.sql.Array {
       for (; count > 0; count--) {
         Object v = input.get(index++);
         if (v instanceof String) {
-          oa[length++] = connection.getObject(typeName, (String) v, (byte[]) null);
+          oa[length++] = connection.getObject(typeName, (String) v, null);
         } else if (v instanceof byte[]) {
           oa[length++] = connection.getObject(typeName, null, (byte[]) v);
         } else if (v == null) {
@@ -1074,10 +856,6 @@ public class RedshiftArray implements java.sql.Array {
 
     if (fieldBytes != null) {
       return readBinaryResultSet((int) index, count);
-    }
-
-    if (bbs != null) {
-      return readBinaryResultSetWithBBS((int) index, count);
     }
 
     buildArrayList();
@@ -1149,21 +927,6 @@ public class RedshiftArray implements java.sql.Array {
       } catch (SQLException e) {
         fieldString = "NULL"; // punt
       }
-    } else if (fieldString == null && bbs != null) {
-      try {
-        Object array = readBinaryArrayWithBBS(1, 0);
-
-        final PrimitiveArraySupport arraySupport = PrimitiveArraySupport.getArraySupport(array);
-        if (arraySupport != null) {
-          fieldString =
-              arraySupport.toArrayString(connection.getTypeInfo().getArrayDelimiter(oid), array);
-        } else {
-          java.sql.Array tmpArray = connection.createArrayOf(getBaseTypeName(), (Object[]) array);
-          fieldString = tmpArray.toString();
-        }
-      } catch (SQLException e) {
-        fieldString = "NULL"; // punt
-      }
     }
     return fieldString;
   }
@@ -1215,24 +978,17 @@ public class RedshiftArray implements java.sql.Array {
   }
 
   public boolean isBinary() {
-    return (fieldBytes != null) || (bbs != null);
+    return fieldBytes != null;
   }
 
   public byte[] toBytes() {
-    if (fieldBytes != null) {
-      return fieldBytes;
-    } else {
-      byte[] result = new byte[bbs.length];
-      System.arraycopy(bbs.page, bbs.index, result, 0, bbs.length);
-      return result;
-    }
+    return fieldBytes;
   }
 
   public void free() throws SQLException {
     connection = null;
     fieldString = null;
     fieldBytes = null;
-    bbs = null;
     arrayList = null;
   }
 }

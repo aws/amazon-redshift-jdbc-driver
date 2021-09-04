@@ -2,8 +2,6 @@ package com.amazon.redshift.core.v3;
 
 import com.amazon.redshift.core.Tuple;
 
-import java.nio.ByteBuffer;
-
 /**
  * Keep the state of the message loop for Ring Buffer to work on separate thread.
  * This is use in processResult(). It store all local vars of processResult() methods,
@@ -15,9 +13,7 @@ import java.nio.ByteBuffer;
 public class MessageLoopState 
 {
 	// All vars are package-private, so no need to expose accessor methods.
-  RedshiftByteBufferBlockingQueue<ByteBuffer> bufferQueue;
-  RedshiftRowsBlockingQueue<Tuple> queueTuples;
-  RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages;
+	RedshiftRowsBlockingQueue<Tuple> queueTuples;
 
   // At the end of a command execution we have the CommandComplete
   // message to tell us we're done, but with a describeOnly command
@@ -25,41 +21,29 @@ public class MessageLoopState
   // look for the next RowDescription or NoData message and return
   // from there.
   boolean doneAfterRowDescNoData;
-  boolean doneProcessingRows;
-  boolean firstRow;
   
   // Constructor
   public MessageLoopState()
   {
-  	initMessageLoopState(null, null, null, false);
+  	initMessageLoopState(null, false);
   }
   
-  public MessageLoopState(RedshiftByteBufferBlockingQueue<ByteBuffer> bufferQueue,
-                          RedshiftRowsBlockingQueue<Tuple> queueTuples,
-                          RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-                          boolean doneAfterRowDescNoData)
+  public MessageLoopState(RedshiftRowsBlockingQueue<Tuple> queueTuples,
+													boolean doneAfterRowDescNoData)
   {
-  	initMessageLoopState(bufferQueue,
-                         queueTuples,
-                         queuePages,
-  											 doneAfterRowDescNoData);
+  	initMessageLoopState(queueTuples, 
+  											doneAfterRowDescNoData);
   }
 
   /**
    * Initialize the object before starting the run.
    * 
    */
-	void initMessageLoopState(RedshiftByteBufferBlockingQueue<ByteBuffer> bufferQueue,
-                            RedshiftRowsBlockingQueue<Tuple> queueTuples,
-                            RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-                            boolean doneAfterRowDescNoData)
+	void initMessageLoopState(RedshiftRowsBlockingQueue<Tuple> queueTuples,
+														boolean doneAfterRowDescNoData)
   {
-    this.bufferQueue = bufferQueue;
-    this.queueTuples = queueTuples;
-		this.queuePages = queuePages;
+		this.queueTuples = queueTuples;
 		this.doneAfterRowDescNoData = doneAfterRowDescNoData;
-		this.doneProcessingRows = false;
-		this.firstRow = false;
   }
 }
 

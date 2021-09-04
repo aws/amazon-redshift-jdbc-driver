@@ -6,13 +6,11 @@
 
 package com.amazon.redshift.core;
 
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
 
 import com.amazon.redshift.core.v3.MessageLoopState;
-import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
 /**
@@ -38,16 +36,14 @@ public interface ResultHandler {
    *        specific (e.g. it may be a query that includes multiple statements).
    * @param fields column metadata for the resultset; might be <code>null</code> if
    *        Query.QUERY_NO_METADATA was specified.
-   * @param tuples the offset to the actual data. If this is set then queueTuples will be null.
+   * @param tuples the actual data. If this is set then queueTuples will be null.
    * @param cursor a cursor to use to fetch additional data; <code>null</code> if no further results
    *        are present.
-   * @param queueTuples the offset to the actual data in a blocking queue. If this is set then tuples will be null.
-   * @param queuePages the pages in memory that are available to be read from
+   * @param queueTuples the actual data in a blocking queue. If this is set then tuples will be null.
 	 * @param rowCount number of rows fetched from the socket.
-	 * @param ringBufferThread a thread to fetch data in the buffer.
-   * @param processBufferThread a thread to process data in the buffer
+	 * @param ringBufferThread a thread to fetch rows in the limited rows buffer.
 	 */
-  void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages, int[] rowCount, Thread ringBufferThread, Thread processBufferThread);
+  void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples, ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, int[] rowCount, Thread ringBufferThread);
 
   /**
    * Called when a query that did not return a resultset completes.

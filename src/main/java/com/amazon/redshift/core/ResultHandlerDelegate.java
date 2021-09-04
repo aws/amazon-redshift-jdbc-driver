@@ -5,13 +5,11 @@
 
 package com.amazon.redshift.core;
 
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
 
 import com.amazon.redshift.core.v3.MessageLoopState;
-import com.amazon.redshift.core.v3.RedshiftByteBufferBlockingQueue;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
 /**
@@ -29,10 +27,10 @@ public class ResultHandlerDelegate implements ResultHandler {
 
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
-      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples, RedshiftByteBufferBlockingQueue<ByteBuffer> queuePages,
-      int[] rowCount, Thread ringBufferThread, Thread processBufferThread) {
+      ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
+      int[] rowCount, Thread ringBufferThread) {
     if (delegate != null) {
-      delegate.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, queuePages, rowCount, ringBufferThread, processBufferThread);
+      delegate.handleResultRows(fromQuery, fields, tuples, cursor, queueTuples, rowCount, ringBufferThread);
     }
   }
 
