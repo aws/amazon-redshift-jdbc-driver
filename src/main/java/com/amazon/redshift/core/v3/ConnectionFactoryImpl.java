@@ -30,6 +30,7 @@ import com.amazon.redshift.util.DriverInfo;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
 import com.amazon.redshift.util.MD5Digest;
+import com.amazon.redshift.util.ExtensibleDigest;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.ServerErrorMessage;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -68,6 +70,11 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   private static final int AUTH_REQ_SASL = 10;
   private static final int AUTH_REQ_SASL_CONTINUE = 11;
   private static final int AUTH_REQ_SASL_FINAL = 12;
+  private static final int AUTH_REQ_DIGEST = 13;
+  
+  private static final int AUTH_DIGEST_SHA256 = 0;
+  private static final int AUTH_DIGEST_SCRYPT = 1;
+  private static final int AUTH_DIGEST_ARGON2 = 2;
   
   // Server protocol versions
   public static int BASE_SERVER_PROTOCOL_VERSION = 0;
@@ -609,6 +616,60 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
                 break;
               }
 
+              case AUTH_REQ_DIGEST: {
+              	// Extensible user password hashing algorithm constant value 
+                int algo = pgStream.receiveInteger4();
+                String[] algoNames = { "SHA-256" };
+              	
+                int saltLen = pgStream.receiveInteger4();
+                byte[] salt = pgStream.receive(saltLen);
+                int serverNonceLen = pgStream.receiveInteger4();
+                byte[] serverNonce = pgStream.receive(serverNonceLen);
+                
+                String dateTimeString = Long.toString(new Date().getTime());
+                byte[] clientNonce = dateTimeString.getBytes();                
+                
+                if(RedshiftLogger.isEnable()) {
+                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqDigest: Algo:" + algo);
+                }
+                
+
+                if (password == null) {
+                  throw new RedshiftException(
+                      GT.tr(
+                          "The server requested password-based authentication, but no password was provided."),
+                      RedshiftState.CONNECTION_REJECTED);
+                }
+
+                if (algo > algoNames.length) {
+                  throw new RedshiftException(
+                      GT.tr(
+                          "The server requested password-based authentication, but requested algorithm " + algo + " is not supported."),
+                      RedshiftState.CONNECTION_REJECTED);
+                }
+                
+                byte[] digest =
+                    ExtensibleDigest.encode(clientNonce, 
+                    								password.getBytes("UTF-8"), 
+                    								salt,
+                    								algoNames[algo],
+                    								serverNonce);
+
+                if(RedshiftLogger.isEnable()) {
+                  logger.log(LogLevel.DEBUG, " FE=> Password(extensible digest)");
+                }
+                
+                pgStream.sendChar('d');
+                pgStream.sendInteger4(4 + 4 + digest.length + 4 + clientNonce.length);
+                pgStream.sendInteger4(digest.length);
+                pgStream.send(digest);
+                pgStream.sendInteger4(clientNonce.length);
+                pgStream.send(clientNonce);
+                pgStream.flush();
+
+                break;
+              }
+              
               case AUTH_REQ_PASSWORD: {
                 if(RedshiftLogger.isEnable()) {
 	                logger.log(LogLevel.DEBUG, "<=BE AuthenticationReqPassword");
