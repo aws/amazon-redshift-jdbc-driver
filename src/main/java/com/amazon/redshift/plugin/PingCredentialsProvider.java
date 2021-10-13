@@ -117,11 +117,18 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
               		m_log.logDebug("name: {0} , id: {1}", name, id);
                 
                 if (username == null
-                    && "username".equals(id) && isText(inputTag)) 
+                    && (("username".equals(id)) 
+                    		 || ("pf.username".equals(id))
+                    		 || ("username".equals(name))                    		 
+                    		 || ("pf.username".equals(name))
+                    		)
+                    && isText(inputTag)) 
                 {
                 	username = new BasicNameValuePair(name, m_userName);
 		            } 
-                else if (("pf.pass".equals(name) || name.contains("pass"))
+                else if (("pf.pass".equals(name) 
+                					|| name.contains("pass")
+                				)
 		                    && isPassword(inputTag))
 		            {
 		                if (pass != null)
@@ -150,6 +157,13 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
 		            for (String inputTag : getInputTagsfromHTML(body)) 
 		            {
 		                String name = getValueByKey(inputTag, "name");
+		                
+	                	if(RedshiftLogger.isEnable()) {
+	                		m_log.log(LogLevel.DEBUG, format("inputTag: %s " +
+	                                    "has name with field: %s",
+	                            inputTag, name));
+	                	}
+		                
 		                if (("email".equals(name) || name.contains("user")
 		                        || name.contains("email")) && isText(inputTag))
 		                {
@@ -160,9 +174,13 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
 		        
 		        if (username == null || pass == null)
 		        {
+		        	boolean noUserName = (username == null);
+		        	boolean noPass = (pass == null);
+		        	
 		        	if(RedshiftLogger.isEnable())
 		        		m_log.log(LogLevel.DEBUG, body);
-		          throw new IOException("Failed to parse login form.");
+		        	
+		          throw new IOException("Failed to parse login form. noUserName = " + noUserName + " noPass=" + noPass);
 		        }
 		        
 		        parameters.add(username);

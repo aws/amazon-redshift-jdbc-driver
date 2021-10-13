@@ -698,6 +698,17 @@ public abstract class SamlCredentialsProvider implements IPlugin
         return "";
     }
 
+    protected String getValueByKeyWithoutQuotesAndValueInSingleQuote(String input, String key)
+    {
+        Pattern keyValuePattern = Pattern.compile("(" + key + ")\\s*=\\s*'(.*?)'");
+        Matcher keyValueMatcher = keyValuePattern.matcher(input);
+        if (keyValueMatcher.find())
+        {
+            return escapeHtmlEntity(keyValueMatcher.group(2));
+        }
+        return "";
+    }
+    
     /**
      * Escape certain HTML entities for the given input string.
      *
@@ -771,11 +782,25 @@ public abstract class SamlCredentialsProvider implements IPlugin
     
     protected boolean isText(String inputTag)
     {
-        return "text".equals(getValueByKey(inputTag, "type"));
+    		String typeVal = getValueByKey(inputTag, "type");
+    		if(typeVal == null
+    				|| typeVal.length() == 0)
+    		{
+    			typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
+    		}
+    		
+        return "text".equals(typeVal);
     }
 
     protected boolean isPassword(String inputTag)
     {
-        return "password".equals(getValueByKey(inputTag, "type"));
+  		String typeVal = getValueByKey(inputTag, "type");
+  		if(typeVal == null
+  				|| typeVal.length() == 0)
+  		{
+  			typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
+  		}
+  		
+      return "password".equals(typeVal);
     }    
 }
