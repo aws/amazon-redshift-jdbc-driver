@@ -382,7 +382,7 @@ public class RedshiftStream implements Closeable, Flushable {
   public int receiveChar() throws IOException {
     int c = pgInput.read();
     if (c < 0) {
-      throw new EOFException();
+      throw new EOFException("The server closed the connection.");
     }
     return c;
   }

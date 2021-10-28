@@ -604,7 +604,10 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
     if (x == null) {
       setNull(parameterIndex, Types.DECIMAL);
     } else {
-      bindLiteral(parameterIndex, x.toString(), Oid.NUMERIC);
+      if(x instanceof BigInteger)
+        setString(parameterIndex, x.toString());
+      else
+        bindLiteral(parameterIndex, x.toString(), Oid.NUMERIC);
     }
   }
 
