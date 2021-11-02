@@ -972,9 +972,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     
     sql = "SELECT current_database() AS PROCEDURE_CAT, n.nspname AS PROCEDURE_SCHEM, p.proname AS PROCEDURE_NAME, "
           + "NULL, NULL, NULL, d.description AS REMARKS, "
-          + " CASE p.prokind "
-          + " WHEN 'f' THEN 2 "
-          + " WHEN 'p' THEN 1 "
+          + " CASE  "
+          + " WHEN p.prokind='f' or p.proargmodes is not null THEN 2 "
+          + " WHEN p.prokind='p' THEN 1 "
           + " ELSE 0 "
           + " END AS PROCEDURE_TYPE, "
           + " p.proname || '_' || p.prooid AS SPECIFIC_NAME "
