@@ -1475,7 +1475,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " proname AS PROCEDURE_NAME, "
             + " CASE WHEN (proallargtypes is NULL) THEN proargnames[pos+1] "
             + " ELSE proargnames[pos] END AS COLUMN_NAME,"
-            + " CASE WHEN proargmodes is NULL THEN proargtypes[pos] "
+            + " CASE WHEN proargmodes is NULL THEN 105 "
             + " ELSE CAST(proargmodes[pos] AS INT) END AS COLUMN_TYPE, "
             + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
             + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS DATA_TYPE,"
