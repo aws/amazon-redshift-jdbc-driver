@@ -3,6 +3,7 @@ package com.amazon.redshift.core;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.amazonaws.SdkClientException;
@@ -64,6 +65,12 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
         }
 
         Map<String, BasicProfile> map = getAllBasicProfiles();
+        
+        if(RedshiftLogger.isEnable()) {
+          Set<String> profiles = map.keySet();
+          m_log.logInfo("profiles:" + profiles.toString());
+        }
+        
         BasicProfile profile = map.get(profileName);
         if (profile == null)
         {
