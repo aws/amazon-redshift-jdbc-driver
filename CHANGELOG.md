@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v2.1.0.2 (2021-11-10)
+----------------------
+- Fix getProcedures procedure_type having  OUT param. [ilesh Garish]
+- Fix column type for IN type stored procedure. [ilesh Garish]
+- Fix [issue#37](https://github.com/aws/amazon-redshift-jdbc-driver/issues/37). [ilesh Garish]
+- Fix TIMETZ OUT param type issue. [ilesh Garish]
+- Fix ADFS form parsing issue. [ilesh Garish]
+- Support SHA256 password digest. [ilesh Garish]
+
 v2.1.0.1 (2021-09-04)
 ---------------------
 - Fix stack overflow for "unknown" type. [ilesh Garish]
