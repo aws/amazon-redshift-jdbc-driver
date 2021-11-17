@@ -87,6 +87,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private static final SQLPermission SQL_PERMISSION_ABORT = new SQLPermission("callAbort");
   private static final SQLPermission SQL_PERMISSION_NETWORK_TIMEOUT = new SQLPermission("setNetworkTimeout");
 
+  // Internal properties
+  public static final String IS_SERVERLESS = "isServerless";
+  public static final String SERVERLESS_ACCT_ID = "serverlessAcctId";
+  
   private enum ReadOnlyBehavior {
     ignore,
     transaction,
@@ -234,6 +238,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     m_settings.m_iamAuth = (iamAuth == null) ? false : Boolean.parseBoolean(iamAuth);
     if (m_settings.m_iamAuth)
     {
+        boolean redshiftNativeAuth = false;
+        
     	if (sslExplicitlyDisabled) {
 	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
 	      			RedshiftState.UNEXPECTED_ERROR);
@@ -241,36 +247,48 @@ public class RedshiftConnectionImpl implements BaseConnection {
     	
       if (RedshiftLogger.isEnable())
         logger.log(LogLevel.DEBUG, "Start IAM authentication");
-    	
-    	info = IamHelper.setIAMProperties(info, m_settings, logger);
+      
+      // Check for JWT and convert into Redshift Native Auth
+      String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
+                                      RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
+                                      info);
+      if(iamCredentialProvider != null
+          && iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")) {
+        redshiftNativeAuth = true;
+      }
 
-//      if (RedshiftLogger.isEnable())
-//        logger.log(LogLevel.DEBUG, "info after setIAMProperties" + info);
-    	
-    	// Set the user name and temporary password in the property
-    	Properties updatedInfo = new Properties();
-    	updatedInfo.putAll(info);
-    	if(m_settings.m_username != null) {
-    		updatedInfo.put(RedshiftProperty.USER.getName(), m_settings.m_username);
-    		user = m_settings.m_username;
-    	}
-    	if(m_settings.m_password != null)
-    		updatedInfo.put(RedshiftProperty.PASSWORD.getName(), m_settings.m_password);
-    	
-    	if(m_settings.m_host != null) {
-    		updatedInfo.putIfAbsent(RedshiftProperty.HOST.getName(), m_settings.m_host);
-    	}
-    	
-    	if(m_settings.m_port != 0) {
-    		updatedInfo.putIfAbsent(RedshiftProperty.PORT.getName(), String.valueOf(m_settings.m_port));
-    	}
-    	
-    	if (hostSpecs == null) {
-    		hostSpecs = Driver.hostSpecs(updatedInfo);
-    	}
-    	
-    	info = updatedInfo;
-    }
+      
+       if(!redshiftNativeAuth) {
+      	info = IamHelper.setIAMProperties(info, m_settings, logger);
+  
+  //      if (RedshiftLogger.isEnable())
+  //        logger.log(LogLevel.DEBUG, "info after setIAMProperties" + info);
+      	
+      	// Set the user name and temporary password in the property
+      	Properties updatedInfo = new Properties();
+      	updatedInfo.putAll(info);
+      	if(m_settings.m_username != null) {
+      		updatedInfo.put(RedshiftProperty.USER.getName(), m_settings.m_username);
+      		user = m_settings.m_username;
+      	}
+      	if(m_settings.m_password != null)
+      		updatedInfo.put(RedshiftProperty.PASSWORD.getName(), m_settings.m_password);
+      	
+      	if(m_settings.m_host != null) {
+      		updatedInfo.putIfAbsent(RedshiftProperty.HOST.getName(), m_settings.m_host);
+      	}
+      	
+      	if(m_settings.m_port != 0) {
+      		updatedInfo.putIfAbsent(RedshiftProperty.PORT.getName(), String.valueOf(m_settings.m_port));
+      	}
+      	
+      	if (hostSpecs == null) {
+      		hostSpecs = Driver.hostSpecs(updatedInfo);
+      	}
+      	
+      	info = updatedInfo;
+       } // !Redshift Native Auth
+    } // IAM auth
     
     this.creatingURL = url;
 

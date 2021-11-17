@@ -30,4 +30,6 @@
 
 mvn install:install-file -Dfile=lib/aws-java-sdk-redshift-internal-1.12.x.jar -DgroupId=com.amazonaws -DartifactId=aws-java-sdk-redshift-internal -Dversion=1.12.x -Dpackaging=jar -DgeneratePom=true
 
+mvn install:install-file -Dfile=lib/aws-java-sdk-redshift-arcadia-internal-1.0.jar -DgroupId=com.amazonaws -DartifactId=aws-java-sdk-redshift-arcadia-internal -Dversion=1.0 -Dpackaging=jar -DgeneratePom=true
+
 mvn -P release-artifacts clean install

@@ -74,7 +74,10 @@ public class Driver implements java.sql.Driver {
 
 	private static final Pattern HOST_PATTERN =
 			Pattern.compile("(.+)\\.(.+)\\.(.+).redshift(-dev)?\\.amazonaws\\.com(.)*");
-  
+
+	private static final Pattern SERVERLESS_HOST_PATTERN =
+			Pattern.compile("(.+)\\.(.+).redshift-serverless(-dev)?\\.amazonaws\\.com(.)*");
+
 	private static RedshiftLogger logger;
   private static final String DEFAULT_INI_FILE = "rsjdbc.ini";
   private static final String DEFAULT_DRIVER_SECTION = "DRIVER";
@@ -568,6 +571,13 @@ public class Driver implements java.sql.Driver {
 
   /**
    * Constructs a new DriverURL, splitting the specified URL into its component parts.
+   * URL formats:
+   *  1. jdbc:redshift://endpoint:port/database
+   *  2. jdbc:redshift:iam://endpoint:port/database
+   *  3. jdbc:redshift:iam://cluster-id:region/database
+   *  
+   *  if endpoint contains "redshift-serverless" then it's
+   *  serverless end point.
    *
    * @param url JDBC URL to parse
    * @param defaults Default properties
@@ -631,6 +641,7 @@ public class Driver implements java.sql.Driver {
         }
         urlProps.setProperty(RedshiftProperty.PORT.getName(), port);
 
+        // Try first provision cluster endpoint host format.
         // Trying to infer clusterID and region,
         // ClusterID and region can be override by parameters.
         Matcher m = HOST_PATTERN.matcher(host);
@@ -638,6 +649,25 @@ public class Driver implements java.sql.Driver {
         {
         	urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
         	urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), m.group(3));
+        }
+        else
+        {
+        	// Try serverless endpoint host format
+          Matcher m2 = SERVERLESS_HOST_PATTERN.matcher(host);
+          if (m2.matches())
+          {
+            String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), urlProps);
+            
+          	String acctId = m2.group(1);
+          	String region = m2.group(2);
+//          	urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
+          	if(awsRegion == null || awsRegion.length() == 0)
+          	  urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
+          	
+          	urlProps.setProperty(RedshiftConnectionImpl.IS_SERVERLESS,"true");
+          	urlProps.setProperty(RedshiftConnectionImpl.SERVERLESS_ACCT_ID,acctId);
+          }
+        	
         }
       }
       

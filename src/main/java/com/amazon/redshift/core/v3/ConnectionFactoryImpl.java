@@ -71,6 +71,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   private static final int AUTH_REQ_SASL_CONTINUE = 11;
   private static final int AUTH_REQ_SASL_FINAL = 12;
   private static final int AUTH_REQ_DIGEST = 13;
+  private static final int AUTH_REQ_IDP = 14; /* Redshift Native IDP Integration */
   
   private static final int AUTH_DIGEST_SHA256 = 0;
   private static final int AUTH_DIGEST_SCRYPT = 1;
@@ -348,7 +349,23 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 
   private List<String[]> getParametersForStartup(String user, String database, Properties info, boolean driverOsVersionParams) {
     List<String[]> paramList = new ArrayList<String[]>();
-    paramList.add(new String[]{"user", user});
+    boolean redshiftNativeAuth = false;
+    String idpType = "";
+    
+    String pluginName = RedshiftProperty.CREDENTIALS_PROVIDER.get(info);
+    if(pluginName != null
+        && pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")) {
+      idpType = "AzureAD";
+      redshiftNativeAuth = true;
+    }
+    
+    if(!redshiftNativeAuth)
+      paramList.add(new String[]{"user", user});
+    else {
+      if(user != null && user.length() > 0)
+        paramList.add(new String[]{"user", user});
+    }
+    
     paramList.add(new String[]{"database", database});
     paramList.add(new String[]{"client_encoding", "UTF8"});
     paramList.add(new String[]{"DateStyle", "ISO"});
@@ -383,7 +400,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    }
 	    paramList.add(new String[]{"os_version",os_version});
 	    
-	    String pluginName = RedshiftProperty.CREDENTIALS_PROVIDER.get(info);
 	    if (pluginName != null && pluginName.length() != 0) {
 		    paramList.add(new String[]{"plugin_name",pluginName});
 	    }
@@ -392,6 +408,17 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    String clientProtocolVersion = info.getProperty("client_protocol_version", Integer.toString(DEFAULT_SERVER_PROTOCOL_VERSION)); // Undocumented property to lower the protocol version.
 	    paramList.add(new String[]{"client_protocol_version",clientProtocolVersion}); 
     } // New parameters
+    
+    // Redshift Native Auth values
+    if(redshiftNativeAuth) {
+      paramList.add(new String[]{"idp_type",idpType});
+      
+      String providerName = RedshiftProperty.PROVIDER_NAME.get(info);
+      if (providerName != null && providerName.length() != 0) {
+        paramList.add(new String[]{"provider_name",providerName});
+      }
+    }
+    
     
     String replication = RedshiftProperty.REPLICATION.get(info);
     if (replication != null && assumeVersion.getVersionNum() >= ServerVersion.v9_4.getVersionNum()) {
@@ -667,6 +694,34 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
                 pgStream.send(clientNonce);
                 pgStream.flush();
 
+                break;
+              }
+              
+              case AUTH_REQ_IDP: {
+                String aadToken = RedshiftProperty.WEB_IDENTITY_TOKEN.get(info);
+
+                if(RedshiftLogger.isEnable()) {
+                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqIDP");
+                }
+                
+                if (aadToken == null || aadToken.length() == 0) {
+                  throw new RedshiftException(
+                      GT.tr(
+                          "The server requested AAD token-based authentication, but no token was provided."),
+                      RedshiftState.CONNECTION_REJECTED);
+                }
+                
+                if(RedshiftLogger.isEnable()) {
+                  logger.log(LogLevel.DEBUG, " FE=> IDP(AAD Token)");
+                }
+                
+                byte[] token = aadToken.getBytes("UTF-8");
+                pgStream.sendChar('i');
+                pgStream.sendInteger4(4 + token.length + 1);
+                pgStream.send(token);
+                pgStream.sendChar(0);
+                pgStream.flush();
+                
                 break;
               }
               

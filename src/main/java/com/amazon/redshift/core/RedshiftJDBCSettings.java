@@ -292,4 +292,15 @@ public class RedshiftJDBCSettings
      * Used in V2 API.
      */
     public String m_roleArn;
+    
+    /**
+     * is it serverless?
+     */
+    public boolean m_isServerless;
+    
+    /**
+     * The acct id of the Redshift serverless.
+     */
+    public String m_acctId;
+    
 }

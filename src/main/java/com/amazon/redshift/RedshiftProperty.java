@@ -1013,6 +1013,20 @@ public enum RedshiftProperty {
   					"false",
   					"Use the IDP Groups in the Redshift"),
   
+  /**
+   * The Oauth access token for an idp connection.
+   */
+  WEB_IDENTITY_TOKEN("webIdentityToken",
+           null,
+           "The Oauth access token for an idp connection"),
+  
+
+  /**
+   * The name of the Redshift Native Auth Provider.
+   */
+  PROVIDER_NAME("providerName",
+           null,
+           "The name of the Redshift Native Auth Provider"),
   
   ;
   
