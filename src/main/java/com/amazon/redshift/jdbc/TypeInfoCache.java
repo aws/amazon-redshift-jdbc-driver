@@ -100,6 +100,7 @@ public class TypeInfoCache implements TypeInfo {
       {GEOMETRY_NAME, Oid.GEOMETRYHEX, Types.LONGVARBINARY, "[B", Oid.GEOMETRYHEX_ARRAY},
       {XID_NAME, Oid.XIDOID, Types.BIGINT, "java.lang.Long", Oid.XIDARRAYOID},
       {TID_NAME, Oid.TIDOID, Types.VARCHAR, "java.lang.String", Oid.TIDARRAYOID},
+      {"abstime", Oid.ABSTIMEOID, Types.TIMESTAMP, "java.sql.Timestamp", Oid.ABSTIMEARRAYOID},
       
       // Actual types
       {"int2", Oid.INT2, Types.SMALLINT, "java.lang.Integer", Oid.INT2_ARRAY},
@@ -702,6 +703,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.SUPER:
       case Oid.VARBYTE:
       case Oid.TIDOID:
+      case Oid.ABSTIMEOID:
       	
         if (typmod == -1) {
           return unknownLength;
@@ -877,6 +879,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.SUPER:
       case Oid.VARBYTE:
       case Oid.TIDOID:
+      case Oid.ABSTIMEOID:
         if (typmod == -1) {
           return unknownLength;
         }

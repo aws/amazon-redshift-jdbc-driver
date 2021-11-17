@@ -92,6 +92,9 @@ public class Oid {
 
   public static final int ACLITEM = 1033; // In Binary mode treat it as VARCHAR, as data comes from server same as VARCHAR.
   public static final int ACLITEM_ARRAY = 1034;
+  
+  public static final int ABSTIMEOID = 702; // validuntil col in pg_user
+  public static final int ABSTIMEARRAYOID = 1023; // UNSPECIFIED
 
   // Keep this as last field to log correctly. As we have many UNSPECIFIED values.
   public static final int UNSPECIFIED = 0;

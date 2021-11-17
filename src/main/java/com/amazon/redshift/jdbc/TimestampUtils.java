@@ -1169,6 +1169,39 @@ public class TimestampUtils {
     return ts;
   }
 
+  /**
+   * Returns the SQL Timestamp object matching the given bytes with {@link Oid#TIMESTAMP} or
+   * {@link Oid#TIMESTAMPTZ}.
+   *
+   * @param tz The timezone used when received data is {@link Oid#TIMESTAMP}, ignored if data
+   *        already contains {@link Oid#TIMESTAMPTZ}.
+   * @param bytes The binary encoded timestamp value of ABSTIME. ABSTIME has 4 bytes.
+   * @param timestamptz True if the binary is in GMT.
+   * @param cal Calendar to use
+   * @return The parsed timestamp object.
+   * @throws RedshiftException If binary format could not be parsed.
+   */
+  public Timestamp toTimestampAbsTimeBin(TimeZone tz, byte[] bytes, boolean timestamptz,java.util.Calendar cal)
+      throws RedshiftException {
+
+    ParsedBinaryTimestamp parsedTimestamp = this.toParsedTimestampAbsTimeBin(tz, bytes, timestamptz);
+    if (parsedTimestamp.infinity == Infinity.POSITIVE) {
+      return new Timestamp(RedshiftStatement.DATE_POSITIVE_INFINITY);
+    } else if (parsedTimestamp.infinity == Infinity.NEGATIVE) {
+      return new Timestamp(RedshiftStatement.DATE_NEGATIVE_INFINITY);
+    }
+
+    Timestamp ts;
+    if(timestamptz) {
+      ts = new RedshiftTimestamp(parsedTimestamp.millis, cal);
+    } else {
+      ts = new Timestamp(parsedTimestamp.millis);
+    }
+
+    ts.setNanos(parsedTimestamp.nanos);
+    return ts;
+  }
+  
   private ParsedBinaryTimestamp toParsedTimestampBinPlain(byte[] bytes)
       throws RedshiftException {
 
@@ -1227,6 +1260,67 @@ public class TimestampUtils {
     return ts;
   }
 
+  // Restricted ABSTIME is 4bytes.
+  private ParsedBinaryTimestamp toParsedTimestampBinAbsTimePlain(byte[] bytes)
+      throws RedshiftException {
+
+    if (bytes.length != 4) {
+      throw new RedshiftException(GT.tr("Unsupported binary encoding of {0}.", "abstime"),
+              RedshiftState.BAD_DATETIME_FORMAT);
+    }
+
+    long secs;
+    int nanos;
+
+    if (usesDouble) {
+      double time = ByteConverter.float4(bytes, 0);
+      if (time == Double.POSITIVE_INFINITY) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.POSITIVE;
+        return ts;
+      } else if (time == Double.NEGATIVE_INFINITY) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.NEGATIVE;
+        return ts;
+      }
+
+      secs = (long) time;
+      nanos = (int) ((time - secs) * 1000000);
+    } else {
+      long time = ByteConverter.int4(bytes, 0); // Time in secs
+      
+      time *= 1000000; // Time in micro secs
+
+      // compatibility with text based receiving, not strictly necessary
+      // and can actually be confusing because there are timestamps
+      // that are larger than infinite
+      if (time == Long.MAX_VALUE) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.POSITIVE;
+        return ts;
+      } else if (time == Long.MIN_VALUE) {
+        ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+        ts.infinity = Infinity.NEGATIVE;
+        return ts;
+      }
+
+      secs = time / 1000000;
+      nanos = (int) (time - secs * 1000000);
+    }
+    if (nanos < 0) {
+      secs--;
+      nanos += 1000000;
+    }
+    nanos *= 1000;
+
+    long millis = secs * 1000L;
+
+    ParsedBinaryTimestamp ts = new ParsedBinaryTimestamp();
+    ts.millis = millis;
+    ts.nanos = nanos;
+    return ts;
+  }
+  
   private ParsedBinaryTimestamp toParsedTimestampBin(TimeZone tz, byte[] bytes, boolean timestamptz)
       throws RedshiftException {
 
@@ -1249,6 +1343,28 @@ public class TimestampUtils {
     return ts;
   }
 
+  private ParsedBinaryTimestamp toParsedTimestampAbsTimeBin(TimeZone tz, byte[] bytes, boolean timestamptz)
+      throws RedshiftException {
+
+    ParsedBinaryTimestamp ts = toParsedTimestampBinAbsTimePlain(bytes);
+    if (ts.infinity != null) {
+      return ts;
+    }
+
+    long secs = ts.millis / 1000L;
+
+//    secs = toJavaSecs(secs);
+    long millis = secs * 1000L;
+    if (!timestamptz) {
+      // Here be dragons: backend did not provide us the timezone, so we guess the actual point in
+      // time
+      millis = guessTimestamp(millis, tz);
+    }
+
+    ts.millis = millis;
+    return ts;
+  }
+  
   private ParsedBinaryTimestamp toProlepticParsedTimestampBin(byte[] bytes)
       throws RedshiftException {
 

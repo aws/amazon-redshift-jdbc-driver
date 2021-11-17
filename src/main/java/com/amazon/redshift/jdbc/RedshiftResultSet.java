@@ -601,10 +601,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     int col = i - 1;
     int oid = fields[col].getOID();
     if (isBinary(i)) {
-      if (oid == Oid.TIMESTAMPTZ || oid == Oid.TIMESTAMP) {
+      if (oid == Oid.TIMESTAMPTZ || oid == Oid.TIMESTAMP || oid == Oid.ABSTIMEOID) {
         boolean hasTimeZone = oid == Oid.TIMESTAMPTZ;
         TimeZone tz = cal.getTimeZone();
-        return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone, cal);
+        if(oid == Oid.ABSTIMEOID)
+          return connection.getTimestampUtils().toTimestampAbsTimeBin(tz, thisRow.get(col), hasTimeZone, cal);
+        else
+          return connection.getTimestampUtils().toTimestampBin(tz, thisRow.get(col), hasTimeZone, cal);
       } else {
         // JDBC spec says getTimestamp of Time and Date must be supported
         long millis;
