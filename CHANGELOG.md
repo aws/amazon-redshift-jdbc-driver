@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.3 (2021-12-03)
+---------------------
+- Support ABSTIME datatype. [ilesh Garish]
+- Support Serverless. [ilesh Garish]
+- Support Redshift Native Auth Federation. [ilesh garish]
+
 v2.1.0.2 (2021-11-10)
 ----------------------
 - Fix getProcedures procedure_type having  OUT param. [ilesh Garish]
