@@ -455,6 +455,22 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
     preparedParameters.setBytea(parameterIndex, x);
   }
 
+  public void setVarbyte(int parameterIndex, byte[] x) throws SQLException {
+    if (RedshiftLogger.isEnable())
+        connection.getLogger().logFunction(true, parameterIndex, x);
+    
+    checkClosed();
+
+    if (null == x) {
+      setNull(parameterIndex, Types.VARBINARY);
+      return;
+    }
+
+    byte[] copy = new byte[x.length];
+    System.arraycopy(x, 0, copy, 0, x.length);
+    preparedParameters.setVarbyte(parameterIndex, copy, 0, x.length);
+  }
+  
   public void setDate(int parameterIndex, java.sql.Date x) throws SQLException {
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, parameterIndex, x);

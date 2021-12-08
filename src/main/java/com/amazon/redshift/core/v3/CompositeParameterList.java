@@ -113,6 +113,11 @@ class CompositeParameterList implements V3ParameterList {
     subparams[sub].setBytea(index - offsets[sub], writer);
   }
 
+  public void setVarbyte(int index, byte[] data, int offset, int length) throws SQLException {
+    int sub = findSubParam(index);
+    subparams[sub].setVarbyte(index - offsets[sub], data, offset, length);
+  }
+  
   public void setText(int index, InputStream stream) throws SQLException {
     int sub = findSubParam(index);
     subparams[sub].setText(index - offsets[sub], stream);

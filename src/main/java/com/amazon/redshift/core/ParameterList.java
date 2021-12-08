@@ -104,6 +104,17 @@ public interface ParameterList {
   void setBytea(int index, byte[] data, int offset, int length) throws SQLException;
 
   /**
+   * Proprietary bind method for VARBYTE datatype.
+   * 
+   * @param index the 1-based parameter index to bind.
+   * @param data an array containing the raw data value
+   * @param offset the offset within <code>data</code> of the start of the parameter data.
+   * @param length the number of bytes of parameter data within <code>data</code> to use.
+   * @throws SQLException SQLException on error or if <code>index</code> is out of range
+   */
+  void setVarbyte(int index, byte[] data, int offset, int length) throws SQLException;
+  
+  /**
    * Binds a binary bytea value stored as an InputStream. The parameter's type is implicitly set to
    * 'bytea'. The stream should remain valid until query execution has completed.
    *
