@@ -71,7 +71,10 @@ public class TypeInfoCache implements TypeInfo {
 
   public static final String VARBYTE_NAME = "varbyte";
   public static final int VARBYTEOID = Oid.VARBYTE;
-  
+
+  public static final String GEOGRAPHY_NAME = "geography";
+  public static final int GEOGRAPHYOID = Oid.GEOGRAPHY;
+
   public static final String TID_NAME = "tid";
   public static final String TID_ARRAY_NAME = "_tid";
   public static final String XID_NAME = "xid";
@@ -126,7 +129,8 @@ public class TypeInfoCache implements TypeInfo {
       {"point", Oid.POINT, Types.OTHER, "com.amazon.redshift.geometric.RedshiftPoint", Oid.POINT_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRY, Types.LONGVARBINARY, "[B", Oid.GEOMETRY_ARRAY},
       {SUPER_NAME, Oid.SUPER, Types.LONGVARCHAR, "java.lang.String", Oid.SUPER_ARRAY},
-      {VARBYTE_NAME, Oid.VARBYTE, Types.LONGVARBINARY, "[B", Oid.VARBYTE_ARRAY}
+      {VARBYTE_NAME, Oid.VARBYTE, Types.LONGVARBINARY, "[B", Oid.VARBYTE_ARRAY},
+      {GEOGRAPHY_NAME, Oid.GEOGRAPHY, Types.LONGVARBINARY, "[B", Oid.GEOGRAPHY_ARRAY}
   };
 
   /**
@@ -702,6 +706,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.VARCHAR:
       case Oid.SUPER:
       case Oid.VARBYTE:
+      case Oid.GEOGRAPHY:
       case Oid.TIDOID:
       case Oid.ABSTIMEOID:
       	
@@ -788,6 +793,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.TIMESTAMP:
       case Oid.TIMESTAMPTZ:
       case Oid.INTERVAL:
+      case Oid.GEOGRAPHY:
         return false;
       default:
         return true;
@@ -878,6 +884,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.BPCHAR:
       case Oid.SUPER:
       case Oid.VARBYTE:
+      case Oid.GEOGRAPHY:
       case Oid.TIDOID:
       case Oid.ABSTIMEOID:
         if (typmod == -1) {
@@ -931,6 +938,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.SUPER:
         return 4194304;
       case Oid.VARBYTE:
+      case Oid.GEOGRAPHY:
         return 1000000;
       case Oid.BIT:
       case Oid.VARBIT:

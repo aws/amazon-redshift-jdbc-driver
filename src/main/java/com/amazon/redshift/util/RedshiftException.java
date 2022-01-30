@@ -31,6 +31,14 @@ public class RedshiftException extends SQLException {
     super(msg, state == null ? null : state.getState());
   }
 
+  public RedshiftException(String msg, Throwable cause) {
+    super(msg, null , cause);
+  }
+  
+  public RedshiftException(String msg) {
+    super(msg, "");
+  }
+  
   public RedshiftException(ServerErrorMessage serverError) {
     this(serverError, true);
   }

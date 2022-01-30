@@ -16,6 +16,7 @@ import com.amazon.redshift.core.CachedQuery;
 import com.amazon.redshift.core.ConnectionFactory;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.IamHelper;
+import com.amazon.redshift.core.NativeAuthPluginHelper;
 import com.amazon.redshift.core.Oid;
 import com.amazon.redshift.core.Provider;
 import com.amazon.redshift.core.Query;
@@ -231,6 +232,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     
     // IAM 
     boolean sslExplicitlyDisabled = setAuthMech(info);
+    boolean redshiftNativeAuth = false;
 
     // This need to be called after setAuthMech() and before checking some required settings.
     // host, port, username and password may be set in setIAMProperties().
@@ -238,8 +240,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
     m_settings.m_iamAuth = (iamAuth == null) ? false : Boolean.parseBoolean(iamAuth);
     if (m_settings.m_iamAuth)
     {
-        boolean redshiftNativeAuth = false;
-        
     	if (sslExplicitlyDisabled) {
 	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
 	      			RedshiftState.UNEXPECTED_ERROR);
@@ -289,6 +289,20 @@ public class RedshiftConnectionImpl implements BaseConnection {
       	info = updatedInfo;
        } // !Redshift Native Auth
     } // IAM auth
+    else
+    {
+      // Check for Browser based OAuth Native authentication
+      String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
+          RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
+          info);
+      if(iamCredentialProvider != null
+          && iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")) {
+        redshiftNativeAuth = true;
+        
+        // Call OAuth2 Browser plugin and get the JWT token
+        info = NativeAuthPluginHelper.setNativeAuthPluginProperties(info, m_settings, logger);
+      }
+    }
     
     this.creatingURL = url;
 

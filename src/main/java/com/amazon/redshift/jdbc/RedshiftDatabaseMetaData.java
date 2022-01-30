@@ -1090,6 +1090,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN -4 "
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
@@ -1127,6 +1128,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
+            + " WHEN 'geography' THEN NULL "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE pg_catalog.format_type(p.prorettype, NULL) "
@@ -1163,6 +1165,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
+            + " WHEN 'geography' THEN NULL "
             + " END AS LENGTH, "
             + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
             + " WHEN 'smallint' THEN 0 "
@@ -1234,6 +1237,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN -4 "
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -1317,6 +1321,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN -4 "
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " TYPE_NAME, "
@@ -1355,6 +1360,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
+            + " WHEN 'geography' THEN NULL "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE LENGTH "
@@ -1391,6 +1397,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
+            + " WHEN 'geography' THEN NULL "
             + " END AS LENGTH, "
             + " CAST(CASE DECIMAL_DIGITS "
             + " WHEN 'smallint' THEN 0 "
@@ -1463,6 +1470,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN -4 "
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -2131,6 +2139,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'geometry' THEN -4 ");
       result.append("when 'super' THEN -16 ");
       result.append("when 'varbyte' THEN -4 ");
+      result.append("when 'geography' THEN -4 ");
       result.append("else 1111 END as SMALLINT) AS DATA_TYPE, ");
       result.append("t.typname as TYPE_NAME, ");
       result.append("case typname ");
@@ -2174,6 +2183,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'geometry' THEN NULL ");
       result.append("when 'super' THEN NULL ");
       result.append("when 'varbyte' THEN NULL ");
+      result.append("when 'geography' THEN NULL ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as COLUMN_SIZE , ");
@@ -2197,9 +2207,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'geometry' then NULL ");
       result.append("when 'super' then NULL ");
       result.append("when 'varbyte' then NULL ");
+      result.append("when 'geography' then NULL ");
       result.append("else 0 end as DECIMAL_DIGITS, ");
       result.append("case typname ");
       result.append("when 'varbyte' then 2 ");
+      result.append("when 'geography' then 2 ");
       result.append("else 10 end as NUM_PREC_RADIX, ");
       result.append("case a.attnotnull OR (t.typtype = 'd' AND t.typnotnull) ");
       result.append("when 'false' then 1 ");
@@ -2256,6 +2268,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'geometry' THEN -4 ");
       result.append("when 'super' THEN -16 ");
       result.append("when 'varbyte' THEN -4 ");
+      result.append("when 'geography' THEN -4 ");
       result.append("else 1111 END as SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) as SQL_DATETIME_SUB , ");
       result.append("case typname ");
@@ -2299,6 +2312,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'geometry' THEN NULL ");
       result.append("when 'super' THEN NULL ");
       result.append("when 'varbyte' THEN NULL ");
+      result.append("when 'geography' THEN NULL ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as CHAR_OCTET_LENGTH , ");
@@ -2399,6 +2413,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geometry' THEN -4 ");
       result.append("WHEN 'super' THEN -16 ");
       result.append("WHEN 'varbyte' THEN -4 ");
+      result.append("WHEN 'geography' THEN -4 ");
       result.append("ELSE 1111 END AS SMALLINT) AS DATA_TYPE, ");
       result.append("COALESCE(NULL,CASE columntype WHEN 'boolean' THEN 'bool' ");
       result.append("WHEN 'character varying' THEN 'varchar' ");
@@ -2455,6 +2470,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geometry' THEN NULL ");
       result.append("WHEN 'super' THEN NULL ");
       result.append("WHEN 'varbyte' THEN NULL ");
+      result.append("WHEN 'geography' THEN NULL ");
       result.append("ELSE 2147483647 END AS COLUMN_SIZE, ");
       result.append("NULL AS BUFFER_LENGTH, ");
       result.append("CASE columntype ");
@@ -2467,9 +2483,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geometry' THEN NULL ");
       result.append("WHEN 'super' THEN NULL ");
       result.append("WHEN 'varbyte' THEN NULL ");
+      result.append("WHEN 'geography' THEN NULL ");
       result.append("ELSE 0 END AS DECIMAL_DIGITS, ");
       result.append("CASE columntype ");
       result.append("WHEN 'varbyte' THEN 2 ");
+      result.append("WHEN 'geography' THEN 2 ");
       result.append("ELSE 10 END AS NUM_PREC_RADIX, ");
       result.append("NULL AS NULLABLE,  NULL AS REMARKS,   NULL AS COLUMN_DEF, ");
       result.append("CAST(CASE columntype_rep ");
@@ -2515,6 +2533,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geometry' THEN -4 ");
       result.append("WHEN 'super' THEN -16 ");
       result.append("WHEN 'varbyte' THEN -4 ");
+      result.append("WHEN 'geography' THEN -4 ");
       result.append("ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, CASE ");
       result.append("WHEN LEFT (columntype,7) = 'varchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
@@ -2609,6 +2628,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'geometry' THEN -4 "
     + " WHEN 'super' THEN -16 "
     + " WHEN 'varbyte' THEN -4 "
+    + " WHEN 'geography' THEN -4 "
     + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE, "
     + " CASE data_type "
     + " WHEN 'boolean' THEN 'bool' "
@@ -2667,6 +2687,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'geometry' THEN NULL "
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
+    + " WHEN 'geography' THEN NULL "
     + " ELSE   2147483647 "
     + " END AS COLUMN_SIZE, "
     + " NULL AS BUFFER_LENGTH, "
@@ -2687,10 +2708,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'geometry' THEN NULL "
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
+    + " WHEN 'geography' THEN NULL "
     + " ELSE 0 "
     + " END AS DECIMAL_DIGITS, "
     + " CASE data_type "
     + " WHEN 'varbyte' THEN 2 "
+    + " WHEN 'geography' THEN 2 "
     + " ELSE 10 "
     + " END AS NUM_PREC_RADIX, "
     + " CASE is_nullable WHEN 'YES' THEN 1 "
@@ -2741,6 +2764,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'geometry' THEN -4 "
     + " WHEN 'super' THEN -16 "
     + " WHEN 'varbyte' THEN -4 "
+    + " WHEN 'geography' THEN -4 "
     + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, "
     + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
     + " CASE data_type "
@@ -2785,6 +2809,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'geometry' THEN NULL "
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
+    + " WHEN 'geography' THEN NULL "
     + " ELSE   2147483647 "
     + " END AS CHAR_OCTET_LENGTH, "
     + " ordinal_position AS ORDINAL_POSITION, "
@@ -2875,6 +2900,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'geometry' THEN -4 "
         + " WHEN 'super' THEN -16 "
         + " WHEN 'varbyte' THEN -4 "
+        + " WHEN 'geography' THEN -4 "
 	      + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE,"
 	      + " COALESCE("
 	      + " domain_name,"
@@ -2935,6 +2961,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'geometry' THEN NULL"
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
+        + " WHEN 'geography' THEN NULL"
 	      + " ELSE " + unknownColumnSize
 	      + " END AS COLUMN_SIZE,"
 	      + " NULL AS BUFFER_LENGTH,"
@@ -2955,10 +2982,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'geometry' THEN NULL"
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
+        + " WHEN 'geography' THEN NULL"
 	      + " ELSE 0"
 	      + " END AS DECIMAL_DIGITS,"
 	      + " CASE data_type"
 	      + " WHEN 'varbyte' THEN 2"
+          + " WHEN 'geography' THEN 2"
 	      + " ELSE 10"
 	      + " END AS NUM_PREC_RADIX,"
 	      + " CASE is_nullable WHEN 'YES' THEN 1"
@@ -3009,6 +3038,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'geometry' THEN -4"
         + " WHEN 'super' THEN -16"
         + " WHEN 'varbyte' THEN -4"
+        + " WHEN 'geography' THEN -4"
 	      + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE,"
 	      + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB,"
 	      + " CASE data_type"
@@ -3053,6 +3083,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'geometry' THEN NULL"
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
+        + " WHEN 'geography' THEN NULL"
 	      + " ELSE " + unknownColumnSize
 	      + " END AS CHAR_OCTET_LENGTH,"
 	      + " ordinal_position AS ORDINAL_POSITION,"
@@ -3149,6 +3180,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'geometry' THEN -4"
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
+    + " WHEN external_type = 'geography' THEN -4"
     + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE," 
     + " CASE WHEN left(external_type, 17) = 'character varying' THEN 'varchar'" 
     + " WHEN left(external_type, 7) = 'varchar' THEN 'varchar'" 
@@ -3233,6 +3265,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'geometry' THEN NULL"
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
+    + " WHEN external_type = 'geography' THEN NULL"
     + " ELSE 2147483647 END AS COLUMN_SIZE," 
     + " NULL AS BUFFER_LENGTH," 
     + " CASE WHEN external_type = 'real'THEN 8" 
@@ -3253,8 +3286,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'geometry' THEN NULL"
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
+    + " WHEN external_type = 'geography' THEN NULL"
     + " ELSE 0 END AS DECIMAL_DIGITS," 
     + " CASE WHEN external_type = 'varbyte' THEN 2"
+    + " CASE WHEN external_type = 'geography' THEN 2"
     + " ELSE 10"
     + " END AS NUM_PREC_RADIX,"
     + " NULL AS NULLABLE," 
@@ -3307,6 +3342,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'geometry' THEN -4"
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
+    + " WHEN external_type = 'geography' THEN -4"
     + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE," 
     + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB," 
     + " CASE WHEN left(external_type, 7) = 'varchar' "
@@ -4005,7 +4041,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 //          + " AND "
     		  + " WHERE "
           + " t.typname in ("
-          + "'bool','char','int8','int2','int4','float4','float8','bpchar','varchar','date','time','timestamp','timestamptz','numeric','refcursor','geometry','super','varbyte')";
+          + "'bool','char','int8','int2','int4','float4','float8','bpchar','varchar','date','time','timestamp','timestamptz','numeric','refcursor','geometry','super','varbyte','geography')";
 //          + " AND "
 //          + " (t.typrelid = 0 OR (SELECT c.relkind = 'c' FROM pg_catalog.pg_class c WHERE c.oid = t.typrelid))";
 
@@ -4070,8 +4106,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       // 12 - LOCAL_TYPE_NAME is null
       // 15 & 16 are unused so we return null
 
-      // VARBYTE is base2,everything else is base 10      
-      tuple[17] = (typeOid == Oid.VARBYTE) ? b2 : b10; 
+      // VARBYTE and GEOGRAPHY is base2,everything else is base 10      
+      tuple[17] = (typeOid == Oid.VARBYTE || typeOid == Oid.GEOGRAPHY) ? b2 : b10; 
       v.add(new Tuple(tuple));
 
       // add pseudo-type serial, bigserial
@@ -4585,6 +4621,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	final String unknownColumnSize = "2147483647";
 	final String superMaxLength = "4194304 ";
 	final String varbyteMaxLength = "1000000 ";
+    final String geographyMaxLength = "1000000 ";
 	
 	StringBuilder functionColumnQuery = new StringBuilder();
 	
@@ -4664,6 +4701,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'geometry' THEN -4 "
 	        + " WHEN 'super' THEN -1 "
 	        + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
 	        + " ELSE 1111 "
 	        + " END AS SMALLINT) AS DATA_TYPE, "
 	        + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
@@ -4695,6 +4733,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'geometry' THEN NULL "
 	        + " WHEN 'super' THEN " + superMaxLength
 	        + " WHEN 'varbyte' THEN " + varbyteMaxLength
+            + " WHEN 'geography' THEN " + geographyMaxLength
 	        + " ELSE " + unknownColumnSize
 	        + " END AS COLUMN_SIZE, "
 	        + " CASE pg_catalog.format_type(p.prorettype, NULL) "
@@ -4724,6 +4763,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'geometry' THEN NULL "
 	        + " WHEN 'super' THEN " + superMaxLength
 	        + " WHEN 'varbyte' THEN " + varbyteMaxLength
+            + " WHEN 'geography' THEN " + geographyMaxLength
 	        + " END AS LENGTH, "
 	        + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
 	        + " WHEN 'smallint' THEN 0 "
@@ -4826,6 +4866,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN -4 "
             + " WHEN 'super' THEN -1 "
             + " WHEN 'varbyte' THEN -4 "
+            + " WHEN 'geography' THEN -4 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " TYPE_NAME, "
@@ -4857,6 +4898,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN " + superMaxLength
             + " WHEN 'varbyte' THEN " + varbyteMaxLength
+            + " WHEN 'geography' THEN " + geographyMaxLength
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE LENGTH "
@@ -4886,6 +4928,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'geometry' THEN NULL "
             + " WHEN 'super' THEN " + superMaxLength
             + " WHEN 'varbyte' THEN " + varbyteMaxLength
+            + " WHEN 'geography' THEN " + geographyMaxLength
             + " END AS LENGTH, "
             + " CAST(CASE DECIMAL_DIGITS "
             + " WHEN 'smallint' THEN 0 "

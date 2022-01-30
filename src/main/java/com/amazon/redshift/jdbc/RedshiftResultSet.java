@@ -30,6 +30,7 @@ import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftTokenizer;
 import com.amazon.redshift.util.RedshiftVarbyte;
 import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftGeography;
 import com.amazon.redshift.util.RedshiftGeometry;
 import com.amazon.redshift.util.RedshiftState;
 
@@ -2286,6 +2287,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       	// Convert raw binary to HEX
   	   return trimString(columnIndex, RedshiftVarbyte.convertToString((byte[])obj));
       } // VARBYTE
+      else
+      if(isGeography(columnIndex)) {
+        // Convert raw binary to HEX
+       return trimString(columnIndex, RedshiftGeography.convertToString((byte[])obj));
+      } // GEOGRAPHY
       
       return trimString(columnIndex, obj.toString());
     }
@@ -2863,6 +2869,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     if (fields[columnIndex - 1].getOID() == Oid.VARBYTE) {
       return trimBytes(columnIndex, RedshiftVarbyte.toBytes(thisRow.get(columnIndex - 1)));
     } 
+    else
+    if (fields[columnIndex - 1].getOID() == Oid.GEOGRAPHY) {
+      return trimBytes(columnIndex, RedshiftGeography.toBytes(thisRow.get(columnIndex - 1)));
+    } 
     else {
       return trimBytes(columnIndex, thisRow.get(columnIndex - 1));
     }
@@ -3290,6 +3300,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   protected boolean isVarbyte(int column) {
     return (fields[column - 1].getOID() == Oid.VARBYTE);
+  }
+
+  protected boolean isGeography(int column) {
+    return (fields[column - 1].getOID() == Oid.GEOGRAPHY);
   }
   
   // ----------------- Formatting Methods -------------------

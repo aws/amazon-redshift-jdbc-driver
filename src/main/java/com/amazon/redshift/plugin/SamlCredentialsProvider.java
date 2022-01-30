@@ -21,12 +21,10 @@ import com.amazon.redshift.core.IamHelper;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
-import com.amazon.redshift.ssl.NonValidatingFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -38,9 +36,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -50,29 +45,18 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.client.config.CookieSpecs;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import static java.lang.String.format;
-
-public abstract class SamlCredentialsProvider implements IPlugin
+public abstract class SamlCredentialsProvider extends IdpCredentialsProvider implements IPlugin
 {
 
     protected static final String KEY_IDP_HOST = "idp_host";
     private static final String KEY_IDP_PORT = "idp_port";
     private static final String KEY_DURATION = "duration";
     private static final String KEY_PREFERRED_ROLE = "preferred_role";
-    private static final String KEY_SSL_INSECURE = "ssl_insecure";
 
     protected String m_userName;
     protected String m_password;
@@ -80,7 +64,6 @@ public abstract class SamlCredentialsProvider implements IPlugin
     protected int m_idpPort = 443;
     protected int m_duration;
     protected String m_preferredRole;
-    protected boolean m_sslInsecure;
     protected String m_dbUser;
     protected String m_dbGroups;
     protected String m_dbGroupsFilter;
@@ -625,37 +608,6 @@ public abstract class SamlCredentialsProvider implements IPlugin
             attributeValues.add(node.getNodeValue());
         }
         return attributeValues;
-    }
-
-    protected CloseableHttpClient getHttpClient() throws GeneralSecurityException
-    {
-        RequestConfig rc = RequestConfig.custom()
-                .setSocketTimeout(60000)
-                .setConnectTimeout(60000)
-                .setExpectContinueEnabled(false)
-                .setCookieSpec(CookieSpecs.STANDARD)
-                .build();
-
-        HttpClientBuilder builder = HttpClients.custom()
-                .setDefaultRequestConfig(rc)
-                .setRedirectStrategy(new LaxRedirectStrategy())
-                .useSystemProperties(); // this is needed for proxy setting using system properties.
-
-        if (m_sslInsecure)
-        {
-            SSLContext ctx = SSLContext.getInstance("TLSv1.2");
-            TrustManager[] tma = new TrustManager[]{ new NonValidatingFactory.NonValidatingTM()};
-            ctx.init(null, tma, null);
-            SSLSocketFactory factory = ctx.getSocketFactory();
-
-            SSLConnectionSocketFactory sf = new SSLConnectionSocketFactory(
-                    factory,
-                    new NoopHostnameVerifier());
-
-            builder.setSSLSocketFactory(sf);
-        }
-
-        return builder.build();
     }
 
     protected List<String> getInputTagsfromHTML(String body)

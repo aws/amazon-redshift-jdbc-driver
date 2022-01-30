@@ -117,6 +117,11 @@ class CompositeParameterList implements V3ParameterList {
     int sub = findSubParam(index);
     subparams[sub].setVarbyte(index - offsets[sub], data, offset, length);
   }
+
+  public void setGeography(int index, byte[] data, int offset, int length) throws SQLException {
+    int sub = findSubParam(index);
+    subparams[sub].setGeography(index - offsets[sub], data, offset, length);
+  }
   
   public void setText(int index, InputStream stream) throws SQLException {
     int sub = findSubParam(index);

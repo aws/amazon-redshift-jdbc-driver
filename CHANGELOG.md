@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.4 (2022-01-30)
+------------
+- Support GEOGRAPHY data type. [ilesh Garish]
+- Fix [issue#39](https://github.com/aws/amazon-redshift-jdbc-driver/issues/39) [ilesh Garish]
+- Support Native Auth with Browser Azure IDP
+
 v2.1.0.3 (2021-12-03)
 ---------------------
 - Support ABSTIME datatype. [ilesh Garish]

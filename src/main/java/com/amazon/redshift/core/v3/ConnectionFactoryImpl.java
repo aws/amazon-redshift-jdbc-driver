@@ -354,7 +354,11 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     
     String pluginName = RedshiftProperty.CREDENTIALS_PROVIDER.get(info);
     if(pluginName != null
-        && pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")) {
+        && 
+        (pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")
+         || pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")
+        )
+       ) {
       idpType = "AzureAD";
       redshiftNativeAuth = true;
     }

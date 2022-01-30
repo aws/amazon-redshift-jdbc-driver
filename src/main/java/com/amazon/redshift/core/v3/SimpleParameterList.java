@@ -162,6 +162,11 @@ class SimpleParameterList implements V3ParameterList {
   public void setVarbyte(int index, byte[] data, int offset, int length) throws SQLException {
     bind(index, new StreamWrapper(data, offset, length), Oid.VARBYTE, BINARY);
   }
+
+  @Override
+  public void setGeography(int index, byte[] data, int offset, int length) throws SQLException {
+    bind(index, new StreamWrapper(data, offset, length), Oid.GEOGRAPHY, BINARY);
+  }
   
   @Override
   public void setText(int index, InputStream stream) throws SQLException {

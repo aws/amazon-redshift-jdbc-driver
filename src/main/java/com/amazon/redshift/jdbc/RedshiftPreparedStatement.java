@@ -295,7 +295,7 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
         oid = Oid.BYTEA;
         break;
       case Types.LONGVARBINARY:
-        oid = Oid.VARBYTE;
+        oid = Oid.VARBYTE; // For NULL it's ambiguity which one to use as both (Oid.VARBYTE & Oid.GEOGRAPHY) map to same SQL type. 
         break;
       case Types.CLOB: {
       	// In case of NULL, CLOB can be seen as VARCHAR
@@ -469,6 +469,22 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
     byte[] copy = new byte[x.length];
     System.arraycopy(x, 0, copy, 0, x.length);
     preparedParameters.setVarbyte(parameterIndex, copy, 0, x.length);
+  }
+
+  public void setGeography(int parameterIndex, byte[] x) throws SQLException {
+    if (RedshiftLogger.isEnable())
+        connection.getLogger().logFunction(true, parameterIndex, x);
+    
+    checkClosed();
+
+    if (null == x) {
+      setNull(parameterIndex, Types.VARBINARY);
+      return;
+    }
+
+    byte[] copy = new byte[x.length];
+    System.arraycopy(x, 0, copy, 0, x.length);
+    preparedParameters.setGeography(parameterIndex, copy, 0, x.length);
   }
   
   public void setDate(int parameterIndex, java.sql.Date x) throws SQLException {
