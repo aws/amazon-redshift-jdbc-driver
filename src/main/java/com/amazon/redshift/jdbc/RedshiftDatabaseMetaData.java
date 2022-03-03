@@ -3289,7 +3289,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'geography' THEN NULL"
     + " ELSE 0 END AS DECIMAL_DIGITS," 
     + " CASE WHEN external_type = 'varbyte' THEN 2"
-    + " CASE WHEN external_type = 'geography' THEN 2"
+    + " WHEN external_type = 'geography' THEN 2"
     + " ELSE 10"
     + " END AS NUM_PREC_RADIX,"
     + " NULL AS NULLABLE," 

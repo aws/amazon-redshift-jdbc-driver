@@ -24,6 +24,7 @@
     # check version
     FULL_VERSION=$1
     check_version 
+    echo "version=${FULL_VERSION}" >|./src/main/resources/redshift_jdbc_driver.properties
     mvn versions:set -DartifactId=redshift-jdbc42 -DnewVersion=$1
     mvn versions:commit
  fi
