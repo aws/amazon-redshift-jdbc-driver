@@ -2433,13 +2433,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'bit' THEN 1    ");
       result.append("WHEN 'bool' THEN 1");
       result.append("WHEN 'boolean' THEN 1");
-      result.append("WHEN 'varchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
-      result.append("WHEN 'character varying' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
-      result.append("WHEN 'char' THEN regexp_substr (columntype,'[0-9]+',4)::INTEGER ");
-      result.append("WHEN 'character' THEN regexp_substr (columntype,'[0-9]+',4)::INTEGER ");
-      result.append("WHEN 'nchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
-      result.append("WHEN 'bpchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
-      result.append("WHEN 'nvarchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
+      result.append("WHEN 'varchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
+      result.append("WHEN 'character varying' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
+      result.append("WHEN 'char' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',4),''),'0')::INTEGER ");
+      result.append("WHEN 'character' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',4),''),'0')::INTEGER ");
+      result.append("WHEN 'nchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
+      result.append("WHEN 'bpchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
+      result.append("WHEN 'nvarchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
       result.append("WHEN 'date' THEN 13 ");
       result.append("WHEN 'time' THEN 15 ");
       result.append("WHEN 'time without time zone' THEN 15 ");
@@ -2456,13 +2456,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'int4' THEN 10 ");
       result.append("WHEN 'bigint' THEN 19 ");
       result.append("WHEN 'int8' THEN 19 ");
-      result.append("WHEN 'decimal' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
+      result.append("WHEN 'decimal' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
       result.append("WHEN 'real' THEN 8 ");
       result.append("WHEN 'float4' THEN 8 ");
       result.append("WHEN 'double precision' THEN 17 ");
       result.append("WHEN 'float8' THEN 17 ");
       result.append("WHEN 'float' THEN 17");
-      result.append("WHEN 'numeric' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
+      result.append("WHEN 'numeric' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
       result.append("WHEN '_float4' THEN 8 ");
       result.append("WHEN 'oid' THEN 10 ");
       result.append("WHEN '_int4' THEN 10 ");
@@ -2536,8 +2536,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geography' THEN -4 ");
       result.append("ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, CASE ");
-      result.append("WHEN LEFT (columntype,7) = 'varchar' THEN regexp_substr (columntype,'[0-9]+',7)::INTEGER ");
-      result.append("WHEN LEFT (columntype,4) = 'char' THEN regexp_substr (columntype,'[0-9]+',4)::INTEGER ");
+      result.append("WHEN LEFT (columntype,7) = 'varchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
+      result.append("WHEN LEFT (columntype,4) = 'char' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',4),''),'0')::INTEGER ");
       result.append("WHEN columntype = 'string' THEN 16383  ELSE NULL ");
       result.append("END AS CHAR_OCTET_LENGTH, columnnum AS ORDINAL_POSITION, ");
       result.append("NULL AS IS_NULLABLE,  NULL AS SCOPE_CATALOG,  NULL AS SCOPE_SCHEMA, ");
@@ -3248,7 +3248,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'int4' THEN 10" 
     + " WHEN external_type = 'bigint' THEN 19" 
     + " WHEN external_type = 'int8' THEN 19" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN regexp_substr(external_type, '[0-9]+', 7)::integer" 
+    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer" 
     + " WHEN external_type = 'real' THEN 8" 
     + " WHEN external_type = 'float4' THEN 8" 
     + " WHEN external_type = '_float4' THEN 8" 
@@ -3257,7 +3257,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'float8' THEN 17" 
     + " WHEN external_type = '_float8' THEN 17" 
     + " WHEN external_type = 'float' THEN 17" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN regexp_substr(external_type, '[0-9]+', 7)::integer" 
+    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer" 
     + " WHEN external_type = '_float4' THEN 8" 
     + " WHEN external_type = 'oid' THEN 10" 
     + " WHEN external_type = '_int4' THEN 10" 
@@ -3273,8 +3273,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'double' THEN 17" 
     + " WHEN external_type = 'double precision' THEN 17" 
     + " WHEN external_type = 'float8' THEN 17" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN regexp_substr(external_type, '[0-9]+', 10)::integer" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN regexp_substr(external_type, '[0-9]+', 10)::integer" 
+    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 10),''),'0')::integer" 
+    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 10),''),'0')::integer" 
     + " WHEN external_type = 'time' THEN 6 "
     + " WHEN external_type = 'time without time zone' THEN 6 "
     + " WHEN external_type = 'timetz' THEN 6 "
