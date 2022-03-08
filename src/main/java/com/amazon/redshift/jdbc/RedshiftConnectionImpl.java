@@ -37,6 +37,7 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.replication.RedshiftReplicationConnection;
 import com.amazon.redshift.replication.RedshiftReplicationConnectionImpl;
 import com.amazon.redshift.ssl.NonValidatingFactory;
+import com.amazon.redshift.util.ByteConverter;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
 import com.amazon.redshift.util.LruCache;
@@ -775,7 +776,37 @@ public class RedshiftConnectionImpl implements BaseConnection {
         }
         else if (byteValue != null && obj instanceof RedshiftInterval) {
         	RedshiftInterval intervalObj = (RedshiftInterval) obj;
-        	intervalObj.setValue(new String(byteValue));
+        	
+        	// Binary format is 8 bytes time and 4 byes months
+        	long time = ByteConverter.int8(byteValue, 0);
+        	int month = ByteConverter.int4(byteValue, 8);
+        	int tm_year;
+        	int tm_mon;
+        	
+        	if(month != 0)
+        	{
+        	    tm_year = month / 12;
+        	    tm_mon = month % 12;
+        	}
+        	else
+        	{
+        	  tm_year = 0;
+        	  tm_mon = 0;
+        	}
+        	
+        	int tm_mday = (int)(time / 86400000000L);
+        	time -= (tm_mday * 86400000000L);
+        	int tm_hour = (int)(time / 3600000000L);
+        	time -= (tm_hour * 3600000000L);
+        	int tm_min = (int)(time / 60000000L);
+        	time -= (tm_min * 60000000L);
+        	int tm_sec = (int)(time / 1000000L);
+        	int fsec = (int)(time - (tm_sec * 1000000));
+        	double sec = tm_sec + (fsec/1000000.0);
+        	
+        	intervalObj.setValue(tm_year, tm_mon, tm_mday, tm_hour, tm_min, sec);
+        	
+//        	intervalObj.setValue(new String(byteValue));
         }
         else {
           obj.setValue(value);

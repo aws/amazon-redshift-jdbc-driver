@@ -2244,7 +2244,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   						|| colType == Types.NCHAR
   						|| colType == Types.LONGNVARCHAR
   						|| colType == Types.REF_CURSOR
-                        || colType == Types.OTHER);
+                        || (colType == Types.OTHER && !isInterval(columnIndex)));
   }
   
   @Override
@@ -3305,6 +3305,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   protected boolean isGeography(int column) {
     return (fields[column - 1].getOID() == Oid.GEOGRAPHY);
   }
+  
+  protected boolean isInterval(int column) {
+    return (fields[column - 1].getOID() == Oid.INTERVAL);
+  }
+  
   
   // ----------------- Formatting Methods -------------------
 
