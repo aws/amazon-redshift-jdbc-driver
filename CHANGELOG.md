@@ -1,5 +1,11 @@
 Changelog
 =========
+v2.1.0.5 (2022-03-11)
+------------
+- Fix INTERVAL type value issue in BINARY from date calculation. [ilesh
+  Garish]
+- Fix [issue#45](https://github.com/aws/amazon-redshift-jdbc-driver/issues/45) [ilesh Garish]
+- Fix external table's columns query. [ilesh Garish]
 
 v2.1.0.4 (2022-01-30)
 ------------
