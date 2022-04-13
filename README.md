@@ -47,6 +47,10 @@ See [CONTRIBUTING](CONTRIBUTING.md#Reporting-Bugs/Feature-Requests) for more inf
 
 See [CONTRIBUTING](CONTRIBUTING.md#Contributing-via-Pull-Requests) for more information.
 
+ ## Changelog Generation
+ An entry in the changelog is generated upon release using `gitchangelog <https://github.com/vaab/gitchangelog>`.
+ Please use the configuration file, ``.gitchangelog.rc`` when generating the changelog.
+	 
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
