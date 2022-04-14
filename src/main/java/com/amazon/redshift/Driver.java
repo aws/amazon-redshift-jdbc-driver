@@ -269,6 +269,8 @@ public class Driver implements java.sql.Driver {
       connLogger = getLogger(props);
 
       if(RedshiftLogger.isEnable()) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        
       	String temp = RedshiftLogger.maskSecureInfoInUrl(url);
       	logger.log(LogLevel.DEBUG, "===================================");
       	logger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
@@ -280,6 +282,11 @@ public class Driver implements java.sql.Driver {
       		connLogger.log(LogLevel.DEBUG, "JDBC INI FileName {0}", iniFileName);
 //      		connLogger.log(LogLevel.DEBUG, "After merging JDBC INI FileName props:" + props);
       	}
+      	
+        connLogger.log(LogLevel.DEBUG, "Caller stack[{0}]: {1}", 
+                    Thread.currentThread().getName(), 
+                    stacktrace[stacktrace.length-1].toString());
+      	
       	
 /*	    	String useProxyStr = System.getProperty("http.useProxy");
 	    	String proxyHost = System.getProperty("https.proxyHost");

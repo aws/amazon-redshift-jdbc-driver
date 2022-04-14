@@ -897,10 +897,13 @@ public final class IamHelper extends IdpAuthHelper {
       if (!settings.m_groupFederation)
         return GET_CLUSTER_CREDENTIALS_V1_API;
       else {
-        if (providerType == CredentialProviderType.PROFILE) {
+/*        if (providerType == CredentialProviderType.PROFILE) {
           // profile may have role based and it's not supported in V2 API
           throw new AmazonClientException("Authentication with profile is not supported for group federation");
-        } else if (providerType != CredentialProviderType.PLUGIN)
+        } 
+        else 
+*/        
+        if (providerType != CredentialProviderType.PLUGIN)
           return GET_CLUSTER_CREDENTIALS_IAM_V2_API;
         else {
           throw new AmazonClientException("Authentication with plugin is not supported for group federation");
@@ -919,10 +922,12 @@ public final class IamHelper extends IdpAuthHelper {
       if (!settings.m_groupFederation)
         return GET_SERVERLESS_CREDENTIALS_V1_API;
       else {
-        if (providerType == CredentialProviderType.PROFILE) {
+/*        if (providerType == CredentialProviderType.PROFILE) {
           // profile may have role based and it's not supported in V2 API
           throw new AmazonClientException("Authentication with profile is not supported for group federation");
-        } else if (providerType != CredentialProviderType.PLUGIN)
+        } else
+*/         
+        if (providerType != CredentialProviderType.PLUGIN)
           return GET_CLUSTER_CREDENTIALS_IAM_V2_API; // Fallback to Provision
                                                      // API support in
                                                      // serverless

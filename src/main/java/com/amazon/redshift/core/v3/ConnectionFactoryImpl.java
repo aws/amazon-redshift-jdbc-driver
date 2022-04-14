@@ -382,13 +382,21 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     if (assumeVersion.getVersionNum() >= ServerVersion.v9_0.getVersionNum()) {
       // User is explicitly telling us this is a 9.0+ server so set properties here:
       paramList.add(new String[]{"extra_float_digits", "3"});
-      String appName = RedshiftProperty.APPLICATION_NAME.get(info);
-      if (appName != null) {
-        paramList.add(new String[]{"application_name", appName});
-      }
     } else {
       // User has not explicitly told us that this is a 9.0+ server so stick to old default:
       paramList.add(new String[]{"extra_float_digits", "2"});
+    }
+    
+    String appName = RedshiftProperty.APPLICATION_NAME.get(info);
+    if(appName == null)
+    {
+      StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+      appName = "[" + Thread.currentThread().getName() + "]"
+                        + stacktrace[stacktrace.length-1].toString();
+    }
+    
+    if (appName != null) {
+      paramList.add(new String[]{"application_name", appName});
     }
     
     if(driverOsVersionParams) {
@@ -496,11 +504,24 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       case 'E':
         if(RedshiftLogger.isEnable())
         	logger.log(LogLevel.DEBUG, " <=BE SSLError");
+        
+        // An error occurred, so pass the error message to the
+        // user.
+        //
+        int elen = pgStream.receiveInteger4();
 
+        ServerErrorMessage errorMsg =
+            new ServerErrorMessage(pgStream.receiveErrorString(elen - 4));
+        
+        if(RedshiftLogger.isEnable())
+            logger.log(LogLevel.DEBUG, " <=BE ErrorMessage({0})", errorMsg);
+        
         // Server doesn't even know about the SSL handshake protocol
         if (sslMode.requireEncryption()) {
-          throw new RedshiftException(GT.tr("The server does not support SSL."),
-              RedshiftState.CONNECTION_REJECTED);
+          throw new RedshiftException(errorMsg, RedshiftProperty.LOG_SERVER_ERROR_DETAIL.getBoolean(info));
+          
+//          throw new RedshiftException(GT.tr("The server does not support SSL."),
+//              RedshiftState.CONNECTION_REJECTED);
         }
 
         // We have to reconnect to continue.

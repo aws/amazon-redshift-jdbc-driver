@@ -1,14 +1,21 @@
 Changelog
 =========
+
+v2.1.0.6 (2022-04-14)
+---------------------
+- Preserve server error in case of SSL Request's response
+- Remove IAM Role check for V2 API as CDO team requested
+- Get the caller application class name to use as application_name
+
 v2.1.0.5 (2022-03-11)
-------------
+---------------------
 - Fix INTERVAL type value issue in BINARY from date calculation. [ilesh
   Garish]
 - Fix [issue#45](https://github.com/aws/amazon-redshift-jdbc-driver/issues/45) [ilesh Garish]
 - Fix external table's columns query. [ilesh Garish]
 
 v2.1.0.4 (2022-01-30)
-------------
+---------------------
 - Support GEOGRAPHY data type. [ilesh Garish]
 - Fix [issue#39](https://github.com/aws/amazon-redshift-jdbc-driver/issues/39) [ilesh Garish]
 - Support Native Auth with Browser Azure IDP
