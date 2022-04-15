@@ -5,7 +5,7 @@ v2.1.0.6 (2022-04-14)
 ---------------------
 - Preserve server error in case of SSL Request's response
 - Remove IAM Role check for V2 API as CDO team requested
-- Get the caller application class name to use as application_name
+- ApplicationName connection parameter is auto-populated with the caller application class name, if it is not set explicitly by the caller in the connection string.
 
 v2.1.0.5 (2022-03-11)
 ---------------------
