@@ -15,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Ad-hoc http server. Listen for one incoming connection or stop after timeout.
@@ -69,6 +70,8 @@ public class Server
     
     private RedshiftLogger m_log;
     
+    private CountDownLatch m_startSignal = null;    
+    
 
     /**
      * Ad-hoc http server.
@@ -122,7 +125,19 @@ public class Server
             serverSocket.setSoTimeout(m_defaultSocketConfig.getSoTimeout());
             this.local_port = serverSocket.getLocalPort();
             m_listener = new ListenerThread(serverSocket);
+            m_startSignal = new CountDownLatch(1);            
             m_listener.start();
+            
+            // Wait for listener thread to start
+            try
+            {
+              m_startSignal.await();
+              m_startSignal = null;
+            }
+            catch(InterruptedException ie)
+            {
+              // Ignore
+            }
         }
         catch (Throwable ex)
         {
@@ -193,6 +208,9 @@ public class Server
             HttpServerConnection conn = null;
             try
             {
+               // Signal listener thread started
+                m_startSignal.countDown();
+                
                 final Socket socket = serverSocket.accept();
                 socket.setKeepAlive(m_defaultSocketConfig.isSoKeepAlive());
                 socket.setTcpNoDelay(m_defaultSocketConfig.isTcpNoDelay());
