@@ -347,7 +347,7 @@ public class Driver implements java.sql.Driver {
     		connLogger.logError(ex2);
       throw new RedshiftException(
           GT.tr(
-              "Something unusual has occurred to cause the driver to fail. Please report this exception."),
+              "Something unusual has occurred to cause the driver to fail. Please report this exception:" + ex2.getMessage()),
           RedshiftState.UNEXPECTED_ERROR, ex2);
     }
   }

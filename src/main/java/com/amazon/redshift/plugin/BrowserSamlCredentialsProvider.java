@@ -8,6 +8,7 @@ import org.apache.http.NameValuePair;
 
 import java.awt.*;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -73,6 +74,7 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
                 m_idp_response_timeout < 10,
                 KEY_IDP_RESPONSE_TIMEOUT + " should be 10 seconds or greater.");
             checkInvalidAndThrows((m_listen_port < 1 || m_listen_port > 65535), KEY_LISTEN_PORT);
+            vaildateURL();
             return authenticate();
         }
         catch (InternalPluginException ex)
@@ -196,6 +198,36 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
     }
 
     /**
+     * Validate the given login URL.
+     *
+     * @throws InternalPluginException in case of error
+     */
+    private void vaildateURL() throws InternalPluginException
+    {
+        URI authorizeRequestUrl = URI.create(m_login_url);
+        String error = "Invalid url:" + m_login_url;
+        
+        if(RedshiftLogger.isEnable())
+          m_log.log(LogLevel.DEBUG,
+              String.format("SSO URI: \n%s", authorizeRequestUrl.toString())
+              );
+        
+        try 
+        {
+          if(!authorizeRequestUrl.toURL().getProtocol().equalsIgnoreCase("https"))
+          {
+            m_log.log(LogLevel.ERROR, error);
+            
+            throw new InternalPluginException(error);
+          }
+        } 
+        catch (MalformedURLException e) 
+        {
+          throw new InternalPluginException(error, e);
+        } 
+    }
+    
+    /**
      * Opens the default browser with the authorization request to the web service.
      *
      * @throws IOException in case of error
@@ -204,10 +236,11 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
     {
         URI authorizeRequestUrl = URI.create(m_login_url);
         
-      	if(RedshiftLogger.isEnable())
-	        m_log.log(LogLevel.DEBUG,
-	            String.format("SSO URI: \n%s", authorizeRequestUrl.toString())
-	            );
+        if(RedshiftLogger.isEnable())
+          m_log.log(LogLevel.DEBUG,
+              String.format("SSO URI: \n%s", authorizeRequestUrl.toString())
+              );
+        
         Desktop.getDesktop().browse(authorizeRequestUrl);
     }
 }
