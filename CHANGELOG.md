@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v2.1.0.7 (2022-05-04)
+---------------------
+- Validate login URL for Browser SAML plugin. [ilesh Garish]
+- Fix race condition for Browser Plugin. [ilesh Garish]
+
 v2.1.0.6 (2022-04-14)
 ---------------------
 - Preserve server error in case of SSL Request's response
