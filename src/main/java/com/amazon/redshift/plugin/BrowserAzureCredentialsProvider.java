@@ -396,14 +396,17 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
      *
      * @param authorizationCode authorization authorizationCode
      * @return object containing the request data
+     * @throws IOException 
      */
-    private HttpPost createAuthorizationRequest(String authorizationCode)
+    private HttpPost createAuthorizationRequest(String authorizationCode) throws IOException
     {
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_SCHEMA)
             .setHost(MICROSOFT_IDP_HOST)
             .setPath("/" + m_idp_tenant + "/oauth2/token");
 
         String tokenRequestUrl = builder.toString();
+        validateURL(tokenRequestUrl);
+        
         HttpPost post = new HttpPost(tokenRequestUrl);
         final List<BasicNameValuePair> parameters = new ArrayList<>();
         parameters.add(new BasicNameValuePair(OAUTH_IDP_CODE_PARAMETER_NAME, authorizationCode));
@@ -454,6 +457,9 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             .addParameter(OAUTH_STATE_PARAMETER_NAME, state);
         URI authorizeRequestUrl;
         authorizeRequestUrl = builder.build();
+        
+        validateURL(authorizeRequestUrl.toString());
+        
         Desktop.getDesktop().browse(authorizeRequestUrl);
         
       	if(RedshiftLogger.isEnable())

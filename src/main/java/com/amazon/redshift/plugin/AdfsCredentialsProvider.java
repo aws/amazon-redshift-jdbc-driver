@@ -103,6 +103,7 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
             if (RedshiftLogger.isEnable())
           		m_log.logDebug("Command: {0}:{1}:{2}", cmd[0],cmd[1],cmd[2]);
             
+            validateURL(cmd[1]);
             Process process = Runtime.getRuntime().exec(cmd);
             is = process.getInputStream();
             os = process.getOutputStream();
@@ -146,7 +147,7 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
         {
           if (RedshiftLogger.isEnable())
         		m_log.logDebug("uri: {0}", uri);
-        	
+        	validateURL(uri);
             client = getHttpClient();
             HttpGet get = new HttpGet(uri);
             CloseableHttpResponse resp = client.execute(get);
@@ -204,6 +205,7 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
             if (RedshiftLogger.isEnable())
           		m_log.logDebug("action uri: {0}", uri);
             
+            validateURL(uri);
             HttpPost post = new HttpPost(uri);
             post.setEntity(new UrlEncodedFormEntity(parameters));
             resp = client.execute(post);

@@ -157,6 +157,8 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
         if (RedshiftLogger.isEnable())
       		m_log.logDebug("uri: {0}", uri);
         
+        validateURL(uri);
+        
         CloseableHttpClient client = null;
         CloseableHttpResponse resp = null;
 

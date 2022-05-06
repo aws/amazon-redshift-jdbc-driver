@@ -21,7 +21,6 @@ import org.apache.commons.logging.LogFactory;
 public abstract class JwtCredentialsProvider extends IdpCredentialsProvider implements INativePlugin
 {
     private static final String KEY_PROVIDER_NAME = "providerName";
-    protected RedshiftLogger m_log;
     protected Boolean m_disableCache = false;
     
     // Optional parameters
@@ -185,8 +184,9 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
             if (RedshiftLogger.isEnable())
           		m_log.logDebug(
                   String.format("JWT : %s", jwt));
-            
-            Date expiration = null;
+
+            // Default expiration until server sends actual expirations
+            Date expiration = new Date(System.currentTimeMillis() + 15 * 60 * 1000);            
             NativeTokenHolder credentials = NativeTokenHolder.newInstance(jwt, expiration);
             credentials.setRefresh(true);
             

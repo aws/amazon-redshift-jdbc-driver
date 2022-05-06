@@ -19,11 +19,14 @@ import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.core.IamHelper;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
+import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,7 +55,6 @@ import org.xml.sax.SAXException;
 
 public abstract class SamlCredentialsProvider extends IdpCredentialsProvider implements IPlugin
 {
-
     protected static final String KEY_IDP_HOST = "idp_host";
     private static final String KEY_IDP_PORT = "idp_port";
     private static final String KEY_DURATION = "duration";
@@ -71,7 +73,6 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
     protected Boolean m_autoCreate;
     protected String m_stsEndpoint;
     protected String m_region;
-    protected RedshiftLogger m_log;
     protected Boolean m_disableCache = false;
     protected Boolean m_groupFederation = false;
 
@@ -754,5 +755,5 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
   		}
   		
       return "password".equals(typeVal);
-    }    
+    }   
 }

@@ -87,6 +87,7 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
             if (RedshiftLogger.isEnable())
           		m_log.logDebug("uri: {0}", uri);
             
+            validateURL(uri);
             client = getHttpClient();
             HttpGet get = new HttpGet(uri);
             resp = client.execute(get);
@@ -194,6 +195,8 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
 
             if (RedshiftLogger.isEnable())
           		m_log.logDebug("action uri: {0}", uri);
+            
+            validateURL(uri);
             
             HttpPost post = new HttpPost(uri);
             post.setEntity(new UrlEncodedFormEntity(parameters));

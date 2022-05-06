@@ -403,8 +403,9 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
      *
      * @param authorizationCode authorization authorizationCode
      * @return object containing the request data
+     * @throws IOException 
      */
-    private HttpPost createAuthorizationRequest(String authorizationCode)
+    private HttpPost createAuthorizationRequest(String authorizationCode) throws IOException
     {
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_SCHEMA)
             .setHost(MICROSOFT_IDP_HOST)
@@ -412,6 +413,8 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
 
         String tokenRequestUrl = builder.toString();
         String scope = "openid " + m_scope;
+        
+        validateURL(tokenRequestUrl);        
         HttpPost post = new HttpPost(tokenRequestUrl);
         final List<BasicNameValuePair> parameters = new ArrayList<>();
         parameters.add(new BasicNameValuePair(OAUTH_IDP_CODE_PARAMETER_NAME, authorizationCode));
@@ -466,6 +469,9 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
             .addParameter(OAUTH_STATE_PARAMETER_NAME, state);
         URI authorizeRequestUrl;
         authorizeRequestUrl = builder.build();
+        
+        validateURL(authorizeRequestUrl.toString());           
+        
         Desktop.getDesktop().browse(authorizeRequestUrl);
         
       	if(RedshiftLogger.isEnable())

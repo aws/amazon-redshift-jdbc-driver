@@ -94,6 +94,8 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             if (RedshiftLogger.isEnable())
           		m_log.logDebug("uri: {0}", uri);
             
+            validateURL(uri);
+            
             HttpPost httpost = new HttpPost(uri);
             httpost.addHeader("Accept", "application/json");
             httpost.addHeader("Content-Type", "application/json");
@@ -150,12 +152,15 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             // Ensure that the string is properly encoded.
             m_app_name = URLEncoder.encode(m_app_name, "UTF-8");
         }
+        
         String oktaAWSAppUrl = "https://" + m_idpHost + "/home/" + m_app_name + "/" + m_app_id;
+        String oktaAWSAppUrlWithToken = oktaAWSAppUrl + "?onetimetoken=" + oktaSessionToken;
         
         if (RedshiftLogger.isEnable())
       		m_log.logDebug("oktaAWSAppUrl: {0}", oktaAWSAppUrl);
         
-        HttpGet httpget = new HttpGet(oktaAWSAppUrl + "?onetimetoken=" + oktaSessionToken);
+        validateURL(oktaAWSAppUrlWithToken);
+        HttpGet httpget = new HttpGet(oktaAWSAppUrlWithToken);
         CloseableHttpResponse responseSAML = httpClient.execute(httpget);
 
         int requestStatus = responseSAML.getStatusLine().getStatusCode();

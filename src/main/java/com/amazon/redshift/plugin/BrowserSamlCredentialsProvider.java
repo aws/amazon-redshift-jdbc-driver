@@ -13,6 +13,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 
 import static com.amazon.redshift.plugin.utils.CheckUtils.*;
 import static com.amazon.redshift.plugin.utils.ResponseUtils.findParameter;
@@ -74,7 +75,7 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
                 m_idp_response_timeout < 10,
                 KEY_IDP_RESPONSE_TIMEOUT + " should be 10 seconds or greater.");
             checkInvalidAndThrows((m_listen_port < 1 || m_listen_port > 65535), KEY_LISTEN_PORT);
-            vaildateURL();
+            validateURL(m_login_url);
             return authenticate();
         }
         catch (InternalPluginException ex)
@@ -197,36 +198,6 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
         throw new InternalPluginException("Fail to login during timeout.");
     }
 
-    /**
-     * Validate the given login URL.
-     *
-     * @throws InternalPluginException in case of error
-     */
-    private void vaildateURL() throws InternalPluginException
-    {
-        URI authorizeRequestUrl = URI.create(m_login_url);
-        String error = "Invalid url:" + m_login_url;
-        
-        if(RedshiftLogger.isEnable())
-          m_log.log(LogLevel.DEBUG,
-              String.format("SSO URI: \n%s", authorizeRequestUrl.toString())
-              );
-        
-        try 
-        {
-          if(!authorizeRequestUrl.toURL().getProtocol().equalsIgnoreCase("https"))
-          {
-            m_log.log(LogLevel.ERROR, error);
-            
-            throw new InternalPluginException(error);
-          }
-        } 
-        catch (MalformedURLException e) 
-        {
-          throw new InternalPluginException(error, e);
-        } 
-    }
-    
     /**
      * Opens the default browser with the authorization request to the web service.
      *
