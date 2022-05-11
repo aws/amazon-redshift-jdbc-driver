@@ -38,7 +38,7 @@ public class SocketFactoryFactory {
       return SocketFactory.getDefault();
     }
     try {
-      return (SocketFactory) ObjectFactory.instantiate(socketFactoryClassName, info, true,
+      return ObjectFactory.instantiate(SocketFactory.class, socketFactoryClassName, info, true,
           RedshiftProperty.SOCKET_FACTORY_ARG.get(info));
     } catch (Exception e) {
       throw new RedshiftException(
@@ -66,7 +66,7 @@ public class SocketFactoryFactory {
       if (classname.equals(RedshiftConnectionImpl.NON_VALIDATING_SSL_FACTORY))
       		classname = NonValidatingFactory.class.getName();
     	
-      return (SSLSocketFactory) ObjectFactory.instantiate(classname, info, true,
+      return  ObjectFactory.instantiate(SSLSocketFactory.class, classname, info, true,
           RedshiftProperty.SSL_FACTORY_ARG.get(info));
     } catch (Exception e) {
       throw new RedshiftException(

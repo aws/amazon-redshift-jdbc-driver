@@ -61,7 +61,7 @@ public class LibPQFactory extends WrappedFactory {
     String sslpasswordcallback = RedshiftProperty.SSL_PASSWORD_CALLBACK.get(info);
     if (sslpasswordcallback != null) {
       try {
-        cbh = (CallbackHandler) ObjectFactory.instantiate(sslpasswordcallback, info, false, null);
+        cbh =  ObjectFactory.instantiate(CallbackHandler.class,sslpasswordcallback, info, false, null);
       } catch (Exception e) {
         throw new RedshiftException(
           GT.tr("The password callback class provided {0} could not be instantiated.",
