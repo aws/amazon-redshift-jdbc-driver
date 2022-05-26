@@ -2473,7 +2473,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'geography' THEN NULL ");
       result.append("ELSE 2147483647 END AS COLUMN_SIZE, ");
       result.append("NULL AS BUFFER_LENGTH, ");
-      result.append("CASE columntype ");
+      result.append("CASE REGEXP_REPLACE(columntype,'[()0-9,]') ");
       result.append("WHEN 'real' THEN 8 ");
       result.append("WHEN 'float4' THEN 8 ");
       result.append("WHEN 'double precision' THEN 17 ");
@@ -2482,6 +2482,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'timestamp without time zone' THEN 6 ");
       result.append("WHEN 'geometry' THEN NULL ");
       result.append("WHEN 'super' THEN NULL ");
+      result.append("WHEN 'numeric' THEN regexp_substr (columntype,'[0-9]+',charindex (',',columntype))::INTEGER ");      
       result.append("WHEN 'varbyte' THEN NULL ");
       result.append("WHEN 'geography' THEN NULL ");
       result.append("ELSE 0 END AS DECIMAL_DIGITS, ");

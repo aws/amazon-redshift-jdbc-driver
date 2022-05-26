@@ -1897,6 +1897,12 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     int c;
     boolean endQuery = false;
+    
+    if (RedshiftLogger.isEnable()) {
+      logger.log(LogLevel.DEBUG, "  useRingBuffer={0}, handler.wantsScrollableResultSet()={1}, subQueries={2}, bothRowsAndStatus={3}",
+          new Object[]{useRingBuffer, handler.wantsScrollableResultSet(), subQueries, bothRowsAndStatus});
+    }
+    
 
     while (!endQuery) {
       c = pgStream.receiveChar();
