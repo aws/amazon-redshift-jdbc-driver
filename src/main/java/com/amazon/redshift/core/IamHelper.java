@@ -109,13 +109,13 @@ public final class IamHelper extends IdpAuthHelper {
       
       String authProfile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AUTH_PROFILE.getName(), info);
       
-      String isServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftConnectionImpl.IS_SERVERLESS, info);
+      String isServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IS_SERVERLESS.getName(), info);
       settings.m_isServerless = isServerless == null ? false : Boolean.valueOf(isServerless);
 
       String clusterId = (!settings.m_isServerless)
           ? RedshiftConnectionImpl.getRequiredConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info) : null;
       String acctId = (settings.m_isServerless)
-          ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftConnectionImpl.SERVERLESS_ACCT_ID, info) : null;
+          ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_ACCT_ID.getName(), info) : null;
       String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
       String endpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.ENDPOINT_URL.getName(), info);
       String stsEndpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.STS_ENDPOINT_URL.getName(),

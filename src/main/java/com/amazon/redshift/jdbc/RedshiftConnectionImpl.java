@@ -90,8 +90,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private static final SQLPermission SQL_PERMISSION_NETWORK_TIMEOUT = new SQLPermission("setNetworkTimeout");
 
   // Internal properties
-  public static final String IS_SERVERLESS = "isServerless";
-  public static final String SERVERLESS_ACCT_ID = "serverlessAcctId";
   
   private enum ReadOnlyBehavior {
     ignore,

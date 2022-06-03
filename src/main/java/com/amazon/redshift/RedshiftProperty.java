@@ -1028,6 +1028,27 @@ public enum RedshiftProperty {
            null,
            "The name of the Redshift Native Auth Provider"),
   
+  /**
+   * Set true when end point host is for serverless.
+   * Driver auto detect from the given host.
+   * For NLB, it won't so user can set explicitly.
+   * Default value is false.
+   */
+  IS_SERVERLESS("isServerless",
+                    "false",
+                    "Redshift end-point is serverless or provisional."),
+  
+  /**
+   * The account ID of the serverless.
+   * Driver auto detect from the given host.
+   * For NLB, it won't so user can set explicitly.
+   * Default value is null.
+   * 
+   */
+  SERVERLESS_ACCT_ID("serverlessAcctId",
+           null,
+           "The account ID of the serverless"),
+  
   ;
   
   private final String name;
