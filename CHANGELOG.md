@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v2.1.0.8 (2022-06-08)
+------------
+- Fix [issue#54](https://github.com/aws/amazon-redshift-jdbc-driver/issues/54) [ilesh Garish]
+- Fix [issue#53](https://github.com/aws/amazon-redshift-jdbc-driver/issues/53) [ilesh Garish]
+- Fix Object Factory to check class type when instantiating an object
+  from class name. [ilesh Garish]
+- Set default 15 min timeout to protect pops-up for OAuth2 Browser Plugin [ilesh Garish]
+
 v2.1.0.7 (2022-05-04)
 ---------------------
 - Updated SAML Plugin browser launch process. [ilesh Garish]
