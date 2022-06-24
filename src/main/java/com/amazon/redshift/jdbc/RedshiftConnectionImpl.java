@@ -90,7 +90,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private static final SQLPermission SQL_PERMISSION_NETWORK_TIMEOUT = new SQLPermission("setNetworkTimeout");
 
   // Internal properties
-  
   private enum ReadOnlyBehavior {
     ignore,
     transaction,

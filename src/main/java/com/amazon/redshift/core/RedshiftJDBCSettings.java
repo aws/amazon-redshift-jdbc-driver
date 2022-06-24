@@ -302,5 +302,9 @@ public class RedshiftJDBCSettings
      * The acct id of the Redshift serverless.
      */
     public String m_acctId;
-    
+
+    /**
+     * The work group of the Redshift serverless.
+     */
+    public String m_workGroup;
 }

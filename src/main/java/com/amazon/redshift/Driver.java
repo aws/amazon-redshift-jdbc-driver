@@ -75,9 +75,12 @@ public class Driver implements java.sql.Driver {
 	private static final Pattern HOST_PATTERN =
 			Pattern.compile("(.+)\\.(.+)\\.(.+).redshift(-dev)?\\.amazonaws\\.com(.)*");
 
-	private static final Pattern SERVERLESS_HOST_PATTERN =
-			Pattern.compile("(.+)\\.(.+).redshift-serverless(-dev)?\\.amazonaws\\.com(.)*");
+//	private static final Pattern SERVERLESS_HOST_PATTERN =
+//			Pattern.compile("(.+)\\.(.+).redshift-serverless(-dev)?\\.amazonaws\\.com(.)*");
 
+    private static final Pattern SERVERLESS_WORKGROUP_HOST_PATTERN =
+        Pattern.compile("(.+)\\.(.+)\\.(.+).redshift-serverless(-dev)?\\.amazonaws\\.com(.)*");
+	
 	private static RedshiftLogger logger;
   private static final String DEFAULT_INI_FILE = "rsjdbc.ini";
   private static final String DEFAULT_DRIVER_SECTION = "DRIVER";
@@ -659,23 +662,25 @@ public class Driver implements java.sql.Driver {
         }
         else
         {
-        	// Try serverless endpoint host format
-          Matcher m2 = SERVERLESS_HOST_PATTERN.matcher(host);
+          Matcher m2;
+          
+          // Try serverless endpoint host format with WorkGroup
+          m2 = SERVERLESS_WORKGROUP_HOST_PATTERN.matcher(host);
           if (m2.matches())
           {
             String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), urlProps);
-            
-          	String acctId = m2.group(1);
-          	String region = m2.group(2);
-//          	urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
-          	if(awsRegion == null || awsRegion.length() == 0)
-          	  urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
-          	
-          	urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
-          	urlProps.setProperty(RedshiftProperty.SERVERLESS_ACCT_ID.getName(),acctId);
-          }
-        	
-        }
+            String workGroup = m2.group(1);
+            String acctId = m2.group(2);
+            String region = m2.group(3);
+//                urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
+            if(awsRegion == null || awsRegion.length() == 0)
+              urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
+
+            urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
+            urlProps.setProperty(RedshiftProperty.SERVERLESS_ACCT_ID.getName(),acctId);
+            urlProps.setProperty(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(),workGroup);
+          } // with workgroup
+        } // Serverless
       }
       
       if (null != schema)

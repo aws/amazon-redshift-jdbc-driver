@@ -8,13 +8,13 @@ import com.amazon.redshift.core.IamHelper.CredentialProviderType;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.redshiftarcadiainternal.RedshiftArcadiaInternalClient;
-import com.amazonaws.services.redshiftarcadiainternal.RedshiftArcadiaInternalClientBuilder;
-import com.amazonaws.services.redshiftarcadiainternal.model.DescribeConfigurationRequest;
-import com.amazonaws.services.redshiftarcadiainternal.model.DescribeConfigurationResult;
-import com.amazonaws.services.redshiftarcadiainternal.model.Endpoint;
-import com.amazonaws.services.redshiftarcadiainternal.model.GetCredentialsRequest;
-import com.amazonaws.services.redshiftarcadiainternal.model.GetCredentialsResult;
+import com.amazonaws.services.redshiftserverless.AWSRedshiftServerlessClient;
+import com.amazonaws.services.redshiftserverless.AWSRedshiftServerlessClientBuilder;
+import com.amazonaws.services.redshiftserverless.model.GetWorkgroupRequest;
+import com.amazonaws.services.redshiftserverless.model.GetWorkgroupResult;
+import com.amazonaws.services.redshiftserverless.model.Endpoint;
+import com.amazonaws.services.redshiftserverless.model.GetCredentialsRequest;
+import com.amazonaws.services.redshiftserverless.model.GetCredentialsResult;
 
 // In Serverless there is no V2 API.
 // If user specify group_federation with serverless,
@@ -22,7 +22,7 @@ import com.amazonaws.services.redshiftarcadiainternal.model.GetCredentialsResult
 public final class ServerlessIamHelper {
 	
 	private RedshiftLogger log;
-	private RedshiftArcadiaInternalClient client;
+	private AWSRedshiftServerlessClient client;
 	
 	private static Map<String, GetCredentialsResult> credentialsCache = new HashMap<String, GetCredentialsResult>();
 	
@@ -31,26 +31,37 @@ public final class ServerlessIamHelper {
 											AWSCredentialsProvider credProvider) {
 		
 		this.log = log;
-		RedshiftArcadiaInternalClientBuilder builder = RedshiftArcadiaInternalClientBuilder.standard();
+		AWSRedshiftServerlessClientBuilder builder = AWSRedshiftServerlessClientBuilder.standard();
 		
-		builder = (RedshiftArcadiaInternalClientBuilder) IamHelper.setBuilderConfiguration(settings, log, builder);		
+		builder = (AWSRedshiftServerlessClientBuilder) IamHelper.setBuilderConfiguration(settings, log, builder);		
 		
-		client = (RedshiftArcadiaInternalClient) builder.withCredentials(credProvider).build();
+		client = (AWSRedshiftServerlessClient) builder.withCredentials(credProvider).build();
 	}
 	
 	synchronized void describeConfiguration(RedshiftJDBCSettings settings) {
-		DescribeConfigurationRequest req = new DescribeConfigurationRequest();
-		DescribeConfigurationResult  resp = client.describeConfiguration(req);
+	  com.amazonaws.services.redshiftserverless.model.GetWorkgroupRequest req = new GetWorkgroupRequest();
+	  
+      if(settings.m_workGroup != null && settings.m_workGroup.length() > 0) {
+        // Set workgroup in the request
+        req.setWorkgroupName(settings.m_workGroup);
+      }
+      else
+      {
+        throw new AmazonClientException("Serverless workgroup is not set.");
+        
+      }
+	  
+	  com.amazonaws.services.redshiftserverless.model.GetWorkgroupResult   resp = client.getWorkgroup(req);
 		
-		Endpoint endpoint = resp.getEndpoint();	
+	  Endpoint endpoint = resp.getWorkgroup().getEndpoint();	
 		
-    if (null == endpoint)
-    {
-        throw new AmazonClientException("Serverless endpoint is not available yet.");
-    }
+      if (null == endpoint)
+      {
+          throw new AmazonClientException("Serverless endpoint is not available yet.");
+      }
 		
-    settings.m_host = endpoint.getAddress();
-    settings.m_port = endpoint.getPort();
+      settings.m_host = endpoint.getAddress();
+      settings.m_port = endpoint.getPort();
 	}
 	
 	synchronized void getCredentialsResult(RedshiftJDBCSettings settings,
@@ -83,6 +94,10 @@ public final class ServerlessIamHelper {
         }
 
         request.setDbName(settings.m_Schema);
+        if(settings.m_workGroup != null && settings.m_workGroup.length() > 0) {
+          // Set workgroup in the request
+          request.setWorkgroupName(settings.m_workGroup);
+        }
 //        request.setDbUser(settings.m_dbUser == null ? settings.m_username : settings.m_dbUser);
 //        request.setAutoCreate(settings.m_autocreate);
 //        request.setDbGroups(settings.m_dbGroups);

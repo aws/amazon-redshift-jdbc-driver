@@ -20,10 +20,10 @@ import com.amazonaws.services.redshift.model.DescribeClustersResult;
 import com.amazonaws.services.redshift.model.Endpoint;
 import com.amazonaws.services.redshift.model.GetClusterCredentialsRequest;
 import com.amazonaws.services.redshift.model.GetClusterCredentialsResult;
-import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternalClient;
-import com.amazonaws.services.redshiftinternal.AmazonRedshiftInternalClientBuilder;
-import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMRequest;
-import com.amazonaws.services.redshiftinternal.model.GetClusterCredentialsWithIAMResult;
+import com.amazonaws.services.redshift.AmazonRedshiftClient;
+import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
+import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMRequest;
+import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMResult;
 import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
@@ -116,6 +116,9 @@ public final class IamHelper extends IdpAuthHelper {
           ? RedshiftConnectionImpl.getRequiredConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info) : null;
       String acctId = (settings.m_isServerless)
           ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_ACCT_ID.getName(), info) : null;
+      String workGroup = (settings.m_isServerless)
+          ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(), info) : null;
+
       String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
       String endpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.ENDPOINT_URL.getName(), info);
       String stsEndpointUrl = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.STS_ENDPOINT_URL.getName(),
@@ -153,8 +156,10 @@ public final class IamHelper extends IdpAuthHelper {
         throw err;
       }
 
-      if (settings.m_isServerless)
+      if (settings.m_isServerless) {
         settings.m_acctId = acctId;
+        settings.m_workGroup = workGroup;
+      }
 
       // Regions.fromName(string) requires the string to be lower case and in
       // this format:
@@ -583,11 +588,11 @@ public final class IamHelper extends IdpAuthHelper {
       else if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API) {
         // Call V2 IAM API Provision
 
-        AmazonRedshiftInternalClientBuilder builder = AmazonRedshiftInternalClientBuilder.standard();
+        AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
 
-        builder = (AmazonRedshiftInternalClientBuilder) setBuilderConfiguration(settings, log, builder);
+        builder = (AmazonRedshiftClientBuilder) setBuilderConfiguration(settings, log, builder);
 
-        AmazonRedshiftInternalClient client = (AmazonRedshiftInternalClient) builder.withCredentials(credProvider)
+        AmazonRedshiftClient client = (AmazonRedshiftClient) builder.withCredentials(credProvider)
             .build();
 
         if (RedshiftLogger.isEnable())
@@ -685,7 +690,7 @@ public final class IamHelper extends IdpAuthHelper {
   }
 
   private static synchronized GetClusterCredentialsWithIAMResult getClusterCredentialsResultV2(
-      RedshiftJDBCSettings settings, AmazonRedshiftInternalClient client, RedshiftLogger log,
+      RedshiftJDBCSettings settings, AmazonRedshiftClient client, RedshiftLogger log,
       CredentialProviderType providerType, boolean idpCredentialsRefresh, AWSCredentialsProvider provider,
       int getClusterCredentialApiType) throws AmazonClientException {
     String key = null;
@@ -799,6 +804,7 @@ public final class IamHelper extends IdpAuthHelper {
     }
 
     key = ((!serverless) ? settings.m_clusterIdentifier : settings.m_acctId) + ";"
+        + ((serverless && settings.m_workGroup != null) ? settings.m_workGroup : "") + ";"        
         + (settings.m_dbUser == null ? settings.m_username : settings.m_dbUser) + ";"
         + (settings.m_Schema == null ? "" : settings.m_Schema) + ";" + dbGroups + ";" + settings.m_autocreate + ";"
         + settings.m_iamDuration;
@@ -841,6 +847,7 @@ public final class IamHelper extends IdpAuthHelper {
     // Combine IDP key with V2 API parameters
 
     key += (((!serverless) ? settings.m_clusterIdentifier : settings.m_acctId) + ";"
+        + ((serverless && settings.m_workGroup != null) ? settings.m_workGroup : "") + ";"        
         + (settings.m_Schema == null ? "" : settings.m_Schema) + ";" + settings.m_iamDuration);
 
     if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_SAML_V2_API) {

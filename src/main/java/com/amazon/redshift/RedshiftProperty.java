@@ -1049,6 +1049,18 @@ public enum RedshiftProperty {
            null,
            "The account ID of the serverless"),
   
+  /**
+   * The work group of the serverless.
+   * Driver auto detect from the given host.
+   * For NLB, it won't so user can set explicitly.
+   * Default value is null.
+   * 
+   */
+  SERVERLESS_WORK_GROUP("serverlessWorkGroup",
+           null,
+           "The work group of the serverless"),
+  
+  
   ;
   
   private final String name;
