@@ -916,9 +916,15 @@ public class Driver implements java.sql.Driver {
   		fileName = System.getenv("AMAZON_REDSHIFT_JDBC_INI_FILE");
   		if (!isFileExist(fileName, true)) {
   			// 3. Get Driver Jar file location
-  			String filePath = Driver.class.getProtectionDomain().getCodeSource().getLocation().getPath();					
+  			String filePath = null;
   			
-  			filePath = filePath.substring(0,filePath.lastIndexOf("/") );
+  			if((Driver.class.getProtectionDomain().getCodeSource() != null)
+  			    && (Driver.class.getProtectionDomain().getCodeSource().getLocation() != null))
+  			  filePath = Driver.class.getProtectionDomain().getCodeSource().getLocation().getPath();					
+  			
+  			if(filePath != null)
+  			  filePath = filePath.substring(0,filePath.lastIndexOf("/") );
+  			
   			fileName = getIniFullFileName(filePath);
   			
   			if(!isFileExist(fileName, false)) {
