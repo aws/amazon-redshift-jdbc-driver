@@ -34,7 +34,7 @@ dependencies {
     
     implementation 'com.amazonaws:aws-java-sdk-redshift:1.12.236', withoutjmespathSupport
     implementation 'com.amazonaws:aws-java-sdk-sts:1.12.23', withoutjmespathSupport
-    implementation 'com.amazonaws:aws-java-sdk-redshiftserverless:1.12.242', withoutjmespathSupport
+    implementation 'com.amazonaws:aws-java-sdk-redshiftserverless:1.12.251', withoutjmespathSupport
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
 
     
