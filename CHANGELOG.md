@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.1.0.9 (2022-07-01)
+---------------------
+- Support serverless using public Java SDK. [ilesh Garish]
+- Upgrade jackson version from 2.12.3 to 2.12.6.
+- Fix [issue#58](https://github.com/aws/amazon-redshift-jdbc-driver/issues/58) [ilesh Garish]
+- Fix [issue#59](https://github.com/aws/amazon-redshift-jdbc-driver/issues/59) [ilesh Garish]
+
 v2.1.0.8 (2022-06-08)
 ------------
 - Fix [issue#54](https://github.com/aws/amazon-redshift-jdbc-driver/issues/54) [ilesh Garish]
