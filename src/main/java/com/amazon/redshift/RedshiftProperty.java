@@ -22,7 +22,8 @@ import java.util.Properties;
  */
 public enum RedshiftProperty {
   /**
-   * TODO: description
+   * Override Schema Pattern Type used in getTables()
+   * This is due to performance issues with svv_* redshift tables
    */
   OVERRIDE_SCHEMA_PATTERN_TYPE(
     "OverrideSchemaPatternType",
