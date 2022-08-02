@@ -21,6 +21,13 @@ import java.util.Properties;
  * datasource setters.
  */
 public enum RedshiftProperty {
+  /**
+   * TODO: description
+   */
+  OVERRIDE_SCHEMA_PATTERN_TYPE(
+    "OverrideSchemaPatternType",
+    null,
+    "Override the type of query used in getTables calls"),
 
   /**
    * When using the V3 protocol the driver monitors changes in certain server configuration

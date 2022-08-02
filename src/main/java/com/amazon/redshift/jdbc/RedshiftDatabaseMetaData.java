@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.StringTokenizer;
 
 public class RedshiftDatabaseMetaData implements DatabaseMetaData {
@@ -1573,7 +1574,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
     
-    int schemaPatternType = getExtSchemaPatternMatch(schemaPattern);
+    
+    int schemaPatternType = Optional.ofNullable(connection.getOverrideSchemaPatternType()).orElse(getExtSchemaPatternMatch(schemaPattern));
 
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
