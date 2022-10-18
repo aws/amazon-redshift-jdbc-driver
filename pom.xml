@@ -33,7 +33,7 @@
 
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
-        <jackson.version>2.13.3</jackson.version> 
+        <jackson.version>2.13.4</jackson.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
