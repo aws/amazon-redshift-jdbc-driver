@@ -843,6 +843,16 @@ public enum RedshiftProperty {
     "Enable or disable TCP keep-alive. The default is {@code true}."),
 
   /**
+   * Specifies the number of minutes of inactivity after which TCP keep alive messages will be transmitted.
+   * Only used when {@link TCP_KEEP_ALIVE} is {@code true}.
+   */
+  TCP_KEEP_ALIVE_MINUTES(
+    "tcpKeepAliveMinutes",
+    null,
+    "Specifies the number of minutes of inactivity after which TCP keep alive messages will be transmitted.",
+    false),
+
+  /**
    * Specifies the length to return for types of unknown length.
    */
   UNKNOWN_LENGTH(

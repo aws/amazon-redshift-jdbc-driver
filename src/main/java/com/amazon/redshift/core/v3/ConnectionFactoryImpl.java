@@ -34,6 +34,7 @@ import com.amazon.redshift.util.ExtensibleDigest;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.ServerErrorMessage;
+import jdk.net.ExtendedSocketOptions;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -121,8 +122,12 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	
 	    // Enable TCP keep-alive probe if required.
 	    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
+        Integer keepAliveMinutes = RedshiftProperty.TCP_KEEP_ALIVE_MINUTES.getInteger(info);
 	    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
-	
+        if (requireTCPKeepAlive && keepAliveMinutes != null) {
+          newStream.getSocket().setOption(ExtendedSocketOptions.TCP_KEEPINTERVAL, keepAliveMinutes * 60);
+        }
+
 	    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
 	    // If receiveBufferSize and send_buffer_size are set to a value greater
 	    // than 0, adjust. -1 means use the system default, 0 is ignored since not
