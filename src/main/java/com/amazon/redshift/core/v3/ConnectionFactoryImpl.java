@@ -124,10 +124,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
 	    Integer keepAliveMinutes = RedshiftProperty.TCP_KEEP_ALIVE_MINUTES.getInteger(info);
 	    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
-	      if (requireTCPKeepAlive && keepAliveMinutes != null) {
-	        newStream.getSocket().setOption(ExtendedSocketOptions.TCP_KEEPIDLE, keepAliveMinutes * 60);
-	        newStream.getSocket().setOption(ExtendedSocketOptions.TCP_KEEPINTERVAL, 1);
-	      }
+	    if (requireTCPKeepAlive && keepAliveMinutes != null) {
+	      newStream.getSocket().setOption(ExtendedSocketOptions.TCP_KEEPIDLE, keepAliveMinutes * 60);
+	      newStream.getSocket().setOption(ExtendedSocketOptions.TCP_KEEPINTERVAL, 1);
+	    }
 
 	    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
 	    // If receiveBufferSize and send_buffer_size are set to a value greater
