@@ -1,6 +1,16 @@
 Changelog
 =========
 
+v2.1.0.10 (2022-11-30)
+----------------------
+- Removed loggerLevel and loggerFile properties. [Brooke White]
+- Fix for extended properties not working with iam endpoints. [Brooke
+  White]
+- Chore: align aws-sdk versions. [Brooke White]
+- Fix github issue-53. [Brooke White]
+- Update pom.xml. [Brooke White]
+- Update pom.xml. [ilesh garish]
+
 v2.1.0.9 (2022-07-01)
 ---------------------
 - Support serverless using public Java SDK. [ilesh Garish]
