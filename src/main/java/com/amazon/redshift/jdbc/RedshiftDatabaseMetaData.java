@@ -2482,7 +2482,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'timestamp without time zone' THEN 6 ");
       result.append("WHEN 'geometry' THEN NULL ");
       result.append("WHEN 'super' THEN NULL ");
-      result.append("WHEN 'numeric' THEN regexp_substr (columntype,'[0-9]+',charindex (',',columntype))::INTEGER ");      
+      result.append("WHEN 'numeric' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',charindex (',',columntype)),''),'0')::INTEGER ");
       result.append("WHEN 'varbyte' THEN NULL ");
       result.append("WHEN 'geography' THEN NULL ");
       result.append("ELSE 0 END AS DECIMAL_DIGITS, ");
