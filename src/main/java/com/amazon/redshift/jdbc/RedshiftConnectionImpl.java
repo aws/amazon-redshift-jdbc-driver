@@ -150,6 +150,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private boolean readOnly = false;
   // Filter out database objects for which the current user has no privileges granted from the DatabaseMetaData
   private boolean  hideUnprivilegedObjects ;
+  // Override getTables metadata type
+  private Integer overrideSchemaPatternType ;
   // Bind String to UNSPECIFIED or VARCHAR?
   private final boolean bindStringAsVarchar;
 
@@ -332,6 +334,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     this.databaseMetadataCurrentDbOnly = RedshiftProperty.DATABASE_METADATA_CURRENT_DB_ONLY.getBoolean(info);
 
     this.hideUnprivilegedObjects = RedshiftProperty.HIDE_UNPRIVILEGED_OBJECTS.getBoolean(info);
+
+    this.overrideSchemaPatternType = RedshiftProperty.OVERRIDE_SCHEMA_PATTERN_TYPE.getInteger(info);
 
     this.reWriteBatchedInsertsSize = RedshiftProperty.REWRITE_BATCHED_INSERTS_SIZE.getInt(info);
     
@@ -1352,6 +1356,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
   
   public int getReWriteBatchedInsertsSize() {
     return this.reWriteBatchedInsertsSize;
+  }
+
+  public Integer getOverrideSchemaPatternType() {
+    return this.overrideSchemaPatternType;
   }
 
   public void setPrepareThreshold(int newThreshold) {
