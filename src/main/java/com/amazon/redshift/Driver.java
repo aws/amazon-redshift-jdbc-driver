@@ -588,7 +588,7 @@ public class Driver implements java.sql.Driver {
    * @return Properties with elements added from the url
    */
   public static Properties parseURL(String url, Properties defaults) {
-    Properties urlProps = new Properties(defaults);
+    Properties urlProps = defaults == null ? new Properties() : defaults;
 
     String urlServer = url;
     String urlArgs = "";
