@@ -47,7 +47,7 @@ class CopyQueryExecutor {
   	
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-  	queryExecutor.waitForRingBufferThreadToFinish(false, false, null, null);
+  	queryExecutor.waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
     synchronized(queryExecutor) {
     	queryExecutor.waitOnLock();

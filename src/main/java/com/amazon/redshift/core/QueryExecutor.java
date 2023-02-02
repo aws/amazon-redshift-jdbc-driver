@@ -506,6 +506,12 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    * @return returns true if Ring buffer thread is running, otherwise false.
    */
   boolean isRingBufferThreadRunning();
+
+  void waitForRingBufferThreadToFinish(boolean calledFromConnectionClose,
+                                       boolean calledFromResultsetClose,
+                                       boolean calledFromStatementClose,
+                                       RedshiftRowsBlockingQueue<Tuple> queueRows,
+                                       Thread ringBufferThread);
   
   /**
    * Close the statement and portal when statement get closed.

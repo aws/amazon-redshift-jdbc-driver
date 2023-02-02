@@ -627,8 +627,8 @@ public class Driver implements java.sql.Driver {
       String port = matcher.group(4);
       String schema = matcher.group(6);
       String queryString = matcher.group(8);
-      
-    	urlProps.setProperty(RedshiftProperty.IAM_AUTH.getName(), String.valueOf(iamAuth));
+
+      urlProps.setProperty(RedshiftProperty.IAM_AUTH.getName(), String.valueOf(iamAuth));
 
       if (null != port && !port.matches("\\d*"))
       {

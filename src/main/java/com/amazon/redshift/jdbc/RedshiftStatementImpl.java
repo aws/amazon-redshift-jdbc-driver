@@ -729,7 +729,13 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
    * {@inheritDoc}
    */
   public final void close() throws SQLException {
-  	
+    if(connection.getQueryExecutor().isRingBufferThreadRunning())
+    {
+      // Wait for current ring buffer thread to finish, if any.
+      // Shouldn't call from synchronized method, which can cause dead-lock.
+      connection.getQueryExecutor().waitForRingBufferThreadToFinish(false, false, true, null, null);
+    }
+
     if (RedshiftLogger.isEnable()) 
     	connection.getLogger().logFunction(true);
   	

@@ -321,7 +321,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       int maxRows, int fetchSize, int flags) throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null, null);
+    waitForRingBufferThreadToFinish(false, false, false, null, null);
     
     synchronized(this) {
 	  	waitOnLock();
@@ -533,7 +533,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     
   	// Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null, null);
+    waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -1715,16 +1715,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
 
   public void closeStatementAndPortal() {
-  	
-    // Wait for current ring buffer thread to finish, if any.
-  	// Shouldn't call from synchronized method, which can cause dead-lock.
-  	// TODO: Pass statement close flag
-    waitForRingBufferThreadToFinish(false, false, null, null);
-
-    synchronized(this) {
+      synchronized(this) {
 	    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
 	    try {
-				processDeadParsedQueries();
+			processDeadParsedQueries();
 		    processDeadPortals();
 	//	    sendCloseStatement(null);
 	//	    sendClosePortal("unnamed");
@@ -1808,7 +1802,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   @Override
   public void closeRingBufferThread(RedshiftRowsBlockingQueue<Tuple> queueRows, Thread ringBufferThread) {
     // Abort current ring buffer thread, if any.
-    waitForRingBufferThreadToFinish(false, true, queueRows, ringBufferThread);
+    waitForRingBufferThreadToFinish(false, true, false, queueRows, ringBufferThread);
   }
   
   @Override
@@ -1823,7 +1817,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     while (!endQuery) {
       c = pgStream.receiveChar();
-      
+
       switch (c) {
         case 'A': // Asynchronous Notify
           receiveAsyncNotify();
@@ -2468,7 +2462,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
-    waitForRingBufferThreadToFinish(false, false, null, null);
+    waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
     synchronized(this) {
 	    waitOnLock();
@@ -2688,7 +2682,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   @Override
   protected void sendCloseMessage() throws IOException {
     // Wait for current ring buffer thread to finish, if any.
-    waitForRingBufferThreadToFinish(true, false, null, null);
+    waitForRingBufferThreadToFinish(true, false, false, null, null);
   	
     pgStream.sendChar('X');
     pgStream.sendInteger4(4);
@@ -2902,7 +2896,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    */
   public void waitForRingBufferThreadToFinish(boolean calledFromConnectionClose, 
   																						boolean calledFromResultsetClose,
-  																						RedshiftRowsBlockingQueue<Tuple> queueRows,
+  																						boolean calledFromStatementClose,
+                                                                                        RedshiftRowsBlockingQueue<Tuple> queueRows,
   																						Thread ringBufferThread)
   {
   	synchronized(m_ringBufferThreadLock) {
@@ -2912,7 +2907,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 				if(m_ringBufferThread != null)
 				{
 					long joinWaitTime = 120*1000; // 2 min
-					
 					try
 					{
 						if(calledFromConnectionClose)
@@ -2937,6 +2931,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 							if (queueRows != null)
 								queueRows.close();
 						}
+                        else if(calledFromStatementClose)
+                        {
+                            // Wait for thread associated with result to terminate.
+                            m_ringBufferThread.join(joinWaitTime);
+                        }
 						else {
 							// Application is trying to execute another SQL on same connection.
 							// Wait for current thread to terminate.
