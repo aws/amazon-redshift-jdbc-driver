@@ -73,7 +73,7 @@ public enum SslMode {
       String iamAuthStr = RedshiftProperty.IAM_AUTH.get(info);
       Boolean iamAuth = (iamAuthStr == null) ? false : Boolean.parseBoolean(iamAuthStr);
       
-      return (iamAuth) ? PREFER : ALLOW;
+      return (iamAuth) ? PREFER : DISABLE;
     }
 
     for (SslMode sslMode : VALUES) {
