@@ -359,6 +359,18 @@ public enum RedshiftProperty {
     "false",
     "If disabled hosts are connected in the given order. If enabled hosts are chosen randomly from the set of suitable candidates"),
 
+  /**
+   * <p>File name output of the Logger, if set, the Logger will use a
+   * {@link java.util.logging.FileHandler} to write to a specified file. If the parameter is not set
+   * or the file can't be created the {@link java.util.logging.ConsoleHandler} will be used instead.</p>
+   *
+   * <p>Parameter should be use together with {@link RedshiftProperty#LOGGER_LEVEL}</p>
+   */
+  LOGGER_FILE(
+    "loggerFile",
+    null,
+    "File name output of the Logger"),
+
   LOG_PATH(
       "LogPath",
       null,
@@ -374,6 +386,28 @@ public enum RedshiftProperty {
       null,
       "Maximum number of log files"),
   
+  /**
+   * <p>Logger level of the driver. Allowed values: {@code OFF}, {@code DEBUG} or {@code TRACE}.</p>
+   *
+   * <p>This enable the {@link java.util.logging.Logger} of the driver based on the following mapping
+   * of levels:</p>
+   * <ul>
+   *     <li>FINE -&gt; DEBUG</li>
+   *     <li>FINEST -&gt; TRACE</li>
+   * </ul>
+   *
+   * <p><b>NOTE:</b> The recommended approach to enable java.util.logging is using a
+   * {@code logging.properties} configuration file with the property
+   * {@code -Djava.util.logging.config.file=myfile} or if your are using an application server
+   * you should use the appropriate logging subsystem.</p>
+   */
+  LOGGER_LEVEL(
+    "loggerLevel",
+    null,
+    "Logger level of the driver",
+    false,
+    new String[] {"OFF", "FATAL", "ERROR", "WARNING", "INFO", "FUNCTION", "DEBUG", "TRACE"}),
+
   /**
    * Added for backward compatibility.
    */

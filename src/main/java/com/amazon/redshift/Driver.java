@@ -363,17 +363,23 @@ public class Driver implements java.sql.Driver {
    * @param props Connection Properties
    */
   private RedshiftLogger getLogger(final Properties props) {
+    final String logLevel = RedshiftProperty.LOGGER_LEVEL.get(props);
     final String alias1LogLevel = RedshiftProperty.LOG_LEVEL.get(props);
     final String alias2LogLevel = RedshiftProperty.DSI_LOG_LEVEL.get(props);
-    final String driverLogLevel = (alias1LogLevel != null)
-                                    ? LogLevel.getLogLevel(alias1LogLevel).toString()
-                                    : (alias2LogLevel != null)
-                                        ? LogLevel.getLogLevel(alias2LogLevel).toString()
-                                        : null;
+    final String driverLogLevel = (logLevel != null) 
+    															? logLevel 
+    															: (alias1LogLevel != null)
+    																? LogLevel.getLogLevel(alias1LogLevel).toString()
+    																: (alias2LogLevel != null)
+    																	? LogLevel.getLogLevel(alias2LogLevel).toString()
+    																	: null;
     
     ExpressionProperties exprProps = new ExpressionProperties(props, System.getProperties());
+    final String logFile = RedshiftProperty.LOGGER_FILE.get(exprProps);
     final String logPath = RedshiftProperty.LOG_PATH.get(exprProps);
-    final String driverLogFile = RedshiftLogger.getLogFileUsingPath(driverLogLevel, logPath);
+    final String driverLogFile = (logFile != null) 
+    																? logFile 
+    																: RedshiftLogger.getLogFileUsingPath(driverLogLevel, logPath);
     String maxLogFileSize = RedshiftProperty.MAX_LOG_FILE_SIZE.get(exprProps);
     String maxLogFileCount = RedshiftProperty.MAX_LOG_FILE_COUNT.get(exprProps);
     

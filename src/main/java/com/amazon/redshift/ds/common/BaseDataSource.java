@@ -1180,26 +1180,63 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   }
 
   /**
-   * @return Log Level of the JDBC Driver
-   * @see RedshiftProperty#LOG_LEVEL
+   * @return Logger Level of the JDBC Driver
+   * @see RedshiftProperty#LOGGER_LEVEL
    */
-  public String getLogLevel() {
-    return RedshiftProperty.LOG_LEVEL.get(properties);
+  public String getLoggerLevel() {
+    String logLevel = RedshiftProperty.LOGGER_LEVEL.get(properties);
+    if (logLevel == null)
+    			logLevel = RedshiftProperty.LOG_LEVEL.get(properties);
+    return logLevel;
   }
 
   /**
+   * @param loggerLevel logger level of the JDBC Driver
+   * @see RedshiftProperty#LOGGER_LEVEL
+   */
+  public void setLoggerLevel(String loggerLevel) {
+    RedshiftProperty.LOGGER_LEVEL.set(properties, loggerLevel);
+  }
+  
+ 
+  /**
    * Added for backward compatibility.
    * 
-   * @param level Log Level of the JDBC Driver
-   * @see RedshiftProperty#LOG_LEVEL
+   * @param level logger level of the JDBC Driver
+   * @see RedshiftProperty#LOGGER_LEVEL
    */
   public void setLogLevel(String level) {
     RedshiftProperty.LOG_LEVEL.set(properties, level);
 	}
 
+  /**
+   * @return File output of the Logger.
+   * @see RedshiftProperty#LOGGER_FILE
+   */
+  public String getLoggerFile() {
+    ExpressionProperties exprProps = new ExpressionProperties(properties, System.getProperties());
+    String logFile = RedshiftProperty.LOGGER_FILE.get(exprProps);
+    if (logFile == null) {
+    	String logPath = getLogDirectory();
+    	if (logPath != null)
+    		logFile = logPath + File.pathSeparator + "redshift_jdbc.log";
+    }
+    
+    return logFile;
+  }
+  
   public String getLogDirectory() {
     ExpressionProperties exprProps = new ExpressionProperties(properties, System.getProperties());
     return RedshiftProperty.LOG_PATH.get(exprProps);
+  }
+  
+
+  /**
+   * @param loggerFile File output of the Logger.
+   * @see RedshiftProperty#LOGGER_LEVEL
+   */
+  public void setLoggerFile(String loggerFile) {
+    RedshiftProperty.LOGGER_FILE.set(properties, loggerFile);
   }
 
   /**
