@@ -125,6 +125,10 @@ public class TypeInfoCache implements TypeInfo {
       //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
       //JCP! endif
+      {"aclitem", Oid.ACLITEM, Types.OTHER, "java.lang.Object", Oid.ACLITEM_ARRAY}, 
+      {"regproc", Oid.REGPROC, Types.OTHER, "java.lang.Object", Oid.REGPROC_ARRAY},
+      {"oidvector", Oid.OIDVECTOR, Types.VARCHAR, "java.lang.Object", Oid.OIDVECTOR_ARRAY},
+          
       {"json", Oid.JSON, Types.OTHER, "com.amazon.redshift.util.RedshiftObject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "com.amazon.redshift.geometric.RedshiftPoint", Oid.POINT_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRY, Types.LONGVARBINARY, "[B", Oid.GEOMETRY_ARRAY},
@@ -311,6 +315,10 @@ public class TypeInfoCache implements TypeInfo {
       return i;
     }
 
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null){
+      conn.getLogger().log(LogLevel.INFO, "Unknown pgTypeName found when retrieving the SQL Type --" + pgTypeName);
+    }
+
     if (getTypeInfoStatement == null) {
       getTypeInfoStatement = conn.prepareStatement(getSQLTypeQuery(true));
     }
@@ -447,6 +455,10 @@ public class TypeInfoCache implements TypeInfo {
     if (oid != null) {
       return oid;
     }
+    
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null){
+      conn.getLogger().log(LogLevel.INFO, "Unknown pgTypeName found when retrieving the RedShift Type -- " + pgTypeName);
+    }
 
     PreparedStatement oidStatement = getOidStatement(pgTypeName);
 
@@ -478,6 +490,9 @@ public class TypeInfoCache implements TypeInfo {
     if (rsTypeName != null) {
       return rsTypeName;
     }
+
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null)
+      conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the RedShift Type --" + oid);
 
     if (getNameStatement == null) {
       String sql;
@@ -552,7 +567,10 @@ public class TypeInfoCache implements TypeInfo {
     if (delim != null) {
       return delim;
     }
-
+    
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null)
+      conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the Array Delimiter Type --" + oid);
+    
     if (getArrayDelimiterStatement == null) {
       String sql;
       sql = "SELECT e.typdelim FROM pg_catalog.pg_type t, pg_catalog.pg_type e "
@@ -593,6 +611,9 @@ public class TypeInfoCache implements TypeInfo {
     if (rsType != null) {
       return rsType;
     }
+    
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null)
+      conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the RS Array Element --" + oid);
 
     if (getArrayElementOidStatement == null) {
       String sql;
@@ -646,6 +667,9 @@ public class TypeInfoCache implements TypeInfo {
     if (result != null) {
       return result;
     }
+
+    if(RedshiftLogger.isEnable() && conn.getLogger()!=null)
+      conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the java class Type --" + oid);
 
     if (getSQLType(pgTypeName) == Types.ARRAY) {
       result = "java.sql.Array";

@@ -99,6 +99,12 @@ public class Oid {
   public static final int ABSTIMEOID = 702; // validuntil col in pg_user
   public static final int ABSTIMEARRAYOID = 1023; // UNSPECIFIED
 
+  public static final int REGPROC = 24; // validuntil col in pg_type, pg_operator
+  public static final int REGPROC_ARRAY = 1008; 
+
+  public static final int OIDVECTOR = 30; // validuntil col in pg_proc
+  public static final int OIDVECTOR_ARRAY= 1013; 
+
   // Keep this as last field to log correctly. As we have many UNSPECIFIED values.
   public static final int UNSPECIFIED = 0;
 
