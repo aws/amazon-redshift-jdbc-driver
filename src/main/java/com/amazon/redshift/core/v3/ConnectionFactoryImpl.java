@@ -361,6 +361,16 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
        ) {
       idpType = "AzureAD";
       redshiftNativeAuth = true;
+      if(RedshiftLogger.isEnable())
+          logger.log(LogLevel.INFO, "using azure plugin idptype");
+    }
+
+    else if ((pluginName != null) && (pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserOktaSAMLCredentialsProvider")||
+            pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicNativeSamlCredentialsProvider"))) {
+      idpType = "Okta";
+      redshiftNativeAuth = true;
+      if(RedshiftLogger.isEnable())
+          logger.log(LogLevel.INFO, "using okta plugin idptype");
     }
     
     if(!redshiftNativeAuth)
@@ -723,24 +733,24 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
               }
               
               case AUTH_REQ_IDP: {
-                String aadToken = RedshiftProperty.WEB_IDENTITY_TOKEN.get(info);
+                String idpToken = RedshiftProperty.WEB_IDENTITY_TOKEN.get(info);
 
                 if(RedshiftLogger.isEnable()) {
                   logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqIDP");
                 }
                 
-                if (aadToken == null || aadToken.length() == 0) {
+                if (idpToken == null || idpToken.length() == 0) {
                   throw new RedshiftException(
                       GT.tr(
-                          "The server requested AAD token-based authentication, but no token was provided."),
+                          "The server requested IDP token-based authentication, but no token was provided."),
                       RedshiftState.CONNECTION_REJECTED);
                 }
-                
+
                 if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " FE=> IDP(AAD Token)");
+                  logger.log(LogLevel.DEBUG, " FE=> IDP(IDP Token)");
                 }
                 
-                byte[] token = aadToken.getBytes("UTF-8");
+                byte[] token = idpToken.getBytes("UTF-8");
                 pgStream.sendChar('i');
                 pgStream.sendInteger4(4 + token.length + 1);
                 pgStream.send(token);
