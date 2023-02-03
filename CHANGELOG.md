@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v2.1.0.11 (2023-02-03)
+----------------------
+- Fix views when CAST NULL [Bhavik Shah]
+- fix to allow sslMode to be set as DISABLE when ssl is explicitly set to false [Bhavik Shah]
+- Fix to allow ring buffer threading to finish before statement close [Bhavik Shah]
+- Allow overriding schema pattern type using property 'OverrideSchemaPatternType' [Bhavik Shah]
+- Fix to properly cancel socket timeout [Bhavik Shah]
+- Addressed the issue for caching of PG queries [Bhavik Shah]
+
 v2.1.0.10 (2022-11-30)
 ----------------------
 - Removed loggerLevel and loggerFile properties. [Brooke White]
