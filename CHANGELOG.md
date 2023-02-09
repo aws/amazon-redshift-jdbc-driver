@@ -4,10 +4,11 @@ Changelog
 v2.1.0.11 (2023-02-03)
 ----------------------
 - Fix views when CAST NULL [issue#75](https://github.com/aws/amazon-redshift-jdbc-driver/pull/75) [Bhavik Shah]
-- fix to allow sslMode to be set as DISABLE when ssl is explicitly set to false [issue#76](https://github.com/aws/amazon-redshift-jdbc-driver/issues/76) [Bhavik Shah]
+- Fix to allow sslMode to be set as DISABLE when ssl is explicitly set to false [issue#76](https://github.com/aws/amazon-redshift-jdbc-driver/issues/76) [Bhavik Shah]
 - Fix to allow ring buffer threading to finish before statement close [issue#63](https://github.com/aws/amazon-redshift-jdbc-driver/issues/63) [Bhavik Shah]
 - Allow overriding schema pattern type using property 'OverrideSchemaPatternType' [issue#64](https://github.com/aws/amazon-redshift-jdbc-driver/issues/64) [issue#65](https://github.com/aws/amazon-redshift-jdbc-driver/pull/65) [Bhavik Shah]
-- Fix to properly cancel socket timeout [issue#75](https://github.com/aws/amazon-redshift-jdbc-driver/issues/77) [Bhavik Shah]
+- Fix to properly cancel socket timeout [issue#77](https://github.com/aws/amazon-redshift-jdbc-driver/issues/77) [Bhavik Shah]
+- Fix getColumns for Late binding views [issue#74](https://github.com/aws/amazon-redshift-jdbc-driver/pull/74) [Bhavik Shah]
 - Addressed the issue for caching of PG queries [Bhavik Shah]
 
 v2.1.0.10 (2022-11-30)
