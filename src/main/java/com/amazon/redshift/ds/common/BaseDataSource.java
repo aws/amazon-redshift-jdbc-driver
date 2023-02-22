@@ -16,10 +16,9 @@ import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.URLCoder;
 import com.amazon.redshift.core.BaseConnection;
-
+import com.amazon.redshift.util.RedshiftProperties;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -54,7 +53,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   private int[] portNumbers = new int[] {0};
 
   // Map for all other properties
-  private Properties properties = new Properties();
+  private Properties properties = new RedshiftProperties();
 
   /*
    * Ensure the driver is loaded as JDBC Driver might be invisible to Java's ServiceLoader.

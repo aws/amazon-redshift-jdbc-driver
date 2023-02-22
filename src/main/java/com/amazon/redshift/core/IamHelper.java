@@ -1,5 +1,6 @@
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.util.RedshiftProperties;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentials;
@@ -90,7 +91,7 @@ public final class IamHelper extends IdpAuthHelper {
    * @throws RedshiftException
    *           If an error occurs.
    */
-  public static Properties setIAMProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log)
+  public static RedshiftProperties setIAMProperties(RedshiftProperties info, RedshiftJDBCSettings settings, RedshiftLogger log)
       throws RedshiftException {
     try {
       

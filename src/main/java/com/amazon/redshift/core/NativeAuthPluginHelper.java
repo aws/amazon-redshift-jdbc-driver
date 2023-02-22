@@ -1,5 +1,6 @@
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.util.RedshiftProperties;
 import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.INativePlugin;
 import com.amazon.redshift.IPlugin;
@@ -42,7 +43,7 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
    * @throws RedshiftException
    *           If an error occurs.
    */
-  public static Properties setNativeAuthPluginProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log)
+  public static RedshiftProperties setNativeAuthPluginProperties(RedshiftProperties info, RedshiftJDBCSettings settings, RedshiftLogger log)
       throws RedshiftException {
     try {
         String authProfile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AUTH_PROFILE.getName(), info);

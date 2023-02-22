@@ -46,7 +46,7 @@ import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftInterval;
 import com.amazon.redshift.util.RedshiftState;
-
+import com.amazon.redshift.util.RedshiftProperties;
 import java.io.IOException;
 import java.sql.Array;
 import java.sql.Blob;
@@ -148,10 +148,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private boolean autoCommit = true;
   // Connection's readonly state.
   private boolean readOnly = false;
-  // Filter out database objects for which the current user has no privileges granted from the DatabaseMetaData
-  private boolean  hideUnprivilegedObjects ;
   // Override getTables metadata type
   private Integer overrideSchemaPatternType ;
+  // Filter out database objects for which the current user has no privileges granted from the DatabaseMetaData
+  private boolean  hideUnprivilegedObjects ;
   // Bind String to UNSPECIFIED or VARCHAR?
   private final boolean bindStringAsVarchar;
 
@@ -219,7 +219,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public RedshiftConnectionImpl(HostSpec[] hostSpecs,
                       String user,
                       String database,
-                      Properties info,
+                      RedshiftProperties info,
                       String url,
                       RedshiftLogger logger) throws SQLException {
   	
@@ -253,7 +253,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
                                       RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
                                       info);
       if(iamCredentialProvider != null
-          && iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")) {
+          && (iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider") ||
+      iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicNativeSAMLCredentialsProvider"))) {
         redshiftNativeAuth = true;
       }
 
@@ -265,7 +266,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   //        logger.log(LogLevel.DEBUG, "info after setIAMProperties" + info);
       	
       	// Set the user name and temporary password in the property
-      	Properties updatedInfo = new Properties();
+      	RedshiftProperties updatedInfo = new RedshiftProperties();
       	updatedInfo.putAll(info);
       	if(m_settings.m_username != null) {
       		updatedInfo.put(RedshiftProperty.USER.getName(), m_settings.m_username);
@@ -295,8 +296,9 @@ public class RedshiftConnectionImpl implements BaseConnection {
       String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
           RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
           info);
-      if(iamCredentialProvider != null
-          && iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")) {
+      if (iamCredentialProvider != null
+              && (iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")
+              || iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserOktaSAMLCredentialsProvider"))){
         redshiftNativeAuth = true;
         
         // Call OAuth2 Browser plugin and get the JWT token
@@ -2271,7 +2273,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
    * Helper function to break out AuthMech setting logic which is overly complicated in order to
    * remain backwards compatible with earlier releases, and add the "sslmode" feature.
    *
-   * @param Properties                Redshift settings used to authenticate if connection
+   * @param info                Redshift settings used to authenticate if connection
    *                                  should be granted.
    *
    * @throws RedshiftException        If an unspecified error occurs.

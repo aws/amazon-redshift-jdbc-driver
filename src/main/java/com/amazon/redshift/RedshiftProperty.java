@@ -5,7 +5,6 @@
 
 package com.amazon.redshift;
 
-import com.amazon.redshift.util.DriverInfo;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -21,14 +20,6 @@ import java.util.Properties;
  * datasource setters.
  */
 public enum RedshiftProperty {
-  /**
-   * Override Schema Pattern Type used in getTables()
-   * This is due to performance issues with svv_* redshift tables
-   */
-  OVERRIDE_SCHEMA_PATTERN_TYPE(
-    "OverrideSchemaPatternType",
-    null,
-    "Override the type of query used in getTables calls"),
 
   /**
    * When using the V3 protocol the driver monitors changes in certain server configuration
@@ -37,7 +28,7 @@ public enum RedshiftProperty {
    * connection.
    */
   ALLOW_ENCODING_CHANGES(
-    "allowEncodingChanges",
+    "allowencodingchanges",
     "true",
     "Allow for changes in client_encoding"),
 
@@ -45,7 +36,7 @@ public enum RedshiftProperty {
    * The application name.
    */
   APPLICATION_NAME(
-    "ApplicationName",
+    "applicationname",
     null,
     "Name of the Application"),
 
@@ -53,7 +44,7 @@ public enum RedshiftProperty {
    * Assume the server is at least that version.
    */
   ASSUME_MIN_SERVER_VERSION(
-    "assumeMinServerVersion",
+    "assumeminserverversion",
     null,
     "Assume the server is at least that version"),
 
@@ -61,7 +52,7 @@ public enum RedshiftProperty {
    * The authentication profile referring to connection props as JSON in the coral service.
    */
   AUTH_PROFILE(
-    "AuthProfile",
+    "authprofile",
     null,
     "Authentication profile having connection props as JSON"),
   
@@ -85,7 +76,7 @@ public enum RedshiftProperty {
    * Use binary format for sending and receiving data if possible.
    */
   BINARY_TRANSFER(
-    "binaryTransfer",
+    "binarytransfer",
     "true",
     "Use binary format for sending and receiving data if possible"),
 
@@ -94,7 +85,7 @@ public enum RedshiftProperty {
    * Overrides values in the driver default set and values set with binaryTransferEnable.
    */
   BINARY_TRANSFER_DISABLE(
-    "binaryTransferDisable",
+    "binarytransferdisable",
     "",
     "Comma separated list of types to disable binary transfer. Either OID numbers or names. Overrides values in the driver default set and values set with binaryTransferEnable."),
 
@@ -102,7 +93,7 @@ public enum RedshiftProperty {
    * Comma separated list of types to enable binary transfer. Either OID numbers or names
    */
   BINARY_TRANSFER_ENABLE(
-    "binaryTransferEnable",
+    "binarytransferenable",
     "",
     "Comma separated list of types to enable binary transfer. Either OID numbers or names"),
 
@@ -113,7 +104,7 @@ public enum RedshiftProperty {
    * The timeout is specified in seconds. Default value is 10 seconds.
    */
   CANCEL_SIGNAL_TIMEOUT(
-    "cancelSignalTimeout",
+    "cancelsignaltimeout",
     "10",
     "The timeout that is used for sending cancel command."),
 
@@ -121,7 +112,7 @@ public enum RedshiftProperty {
    * Determine whether SAVEPOINTS used in AUTOSAVE will be released per query or not
    */
   CLEANUP_SAVEPOINTS(
-    "cleanupSavepoints",
+    "cleanupsavepoints",
     "false",
     "Determine whether SAVEPOINTS used in AUTOSAVE will be released per query or not",
     false,
@@ -134,7 +125,7 @@ public enum RedshiftProperty {
    * <p>The timeout is specified in seconds and a value of zero means that it is disabled.</p>
    */
   CONNECT_TIMEOUT(
-    "connectTimeout",
+    "connecttimeout",
     "10",
     "The timeout value used for socket connect operations."),
 
@@ -143,7 +134,7 @@ public enum RedshiftProperty {
    * unqualified object names used in statements over this connection.
    */
   CURRENT_SCHEMA(
-    "currentSchema",
+    "currentschema",
     null,
     "Specify the schema (or several schema separated by commas) to be set in the search-path"),
 
@@ -151,7 +142,7 @@ public enum RedshiftProperty {
    * Specifies the maximum number of fields to be cached per connection. A value of {@code 0} disables the cache.
    */
   DATABASE_METADATA_CACHE_FIELDS(
-    "databaseMetadataCacheFields",
+    "databasemetadatacachefields",
     "65536",
     "Specifies the maximum number of fields to be cached per connection. A value of {@code 0} disables the cache."),
 
@@ -159,7 +150,7 @@ public enum RedshiftProperty {
    * Specifies the maximum size (in megabytes) of fields to be cached per connection. A value of {@code 0} disables the cache.
    */
   DATABASE_METADATA_CACHE_FIELDS_MIB(
-    "databaseMetadataCacheFieldsMiB",
+    "databasemetadatacachefieldsmib",
     "5",
     "Specifies the maximum size (in megabytes) of fields to be cached per connection. A value of {@code 0} disables the cache."),
 
@@ -171,7 +162,7 @@ public enum RedshiftProperty {
    *  databases. 
    */
   DATABASE_METADATA_CURRENT_DB_ONLY(
-    "databaseMetadataCurrentDbOnly",
+    "databasemetadatacurrentdbonly",
     "true",
     "Control the behavior of metadata API to return data from all accessible databases or only from connected database"),
   
@@ -180,7 +171,7 @@ public enum RedshiftProperty {
    * that need fetch all rows at once
    */
   DEFAULT_ROW_FETCH_SIZE(
-    "defaultRowFetchSize",
+    "defaultrowfetchsize",
     "0",
     "Positive number of rows that should be fetched from the database when more rows are needed for ResultSet by each fetch iteration"),
 
@@ -189,7 +180,7 @@ public enum RedshiftProperty {
    * 
    */
   BLOCKING_ROWS_MODE(
-    "BlockingRowsMode",
+    "blockingrowsmode",
     "0",
     "Positive number of rows that should be fetched from the database when more rows are needed for ResultSet by each fetch iteration"),
   
@@ -197,7 +188,7 @@ public enum RedshiftProperty {
    * Enable optimization that disables column name sanitiser.
    */
   DISABLE_COLUMN_SANITISER(
-    "disableColumnSanitiser",
+    "disablecolumnsanitiser",
     "false",
     "Enable optimization that disables column name sanitiser"),
 
@@ -218,7 +209,7 @@ public enum RedshiftProperty {
    * connection.
    */
   DISABLE_ISVALID_QUERY(
-    "DisableIsValidQuery",
+    "disableisvalidquery",
     "false",
     "Disable isValid query"),
   
@@ -226,7 +217,7 @@ public enum RedshiftProperty {
    * The Redshift fetch rows using a ring buffer on a separate thread.
    * 
    */
-  ENABLE_FETCH_RING_BUFFER("enableFetchRingBuffer",
+  ENABLE_FETCH_RING_BUFFER("enablefetchringbuffer",
   							"true",
   							"The Redshift fetch rows using a ring buffer on a separate thread"),
   
@@ -234,7 +225,7 @@ public enum RedshiftProperty {
    * Use generated statement name cursor for prepared statements. 
    * 
    */
-  ENABLE_GENERATED_NAME_FOR_PREPARED_STATEMENT("enableGeneratedName",
+  ENABLE_GENERATED_NAME_FOR_PREPARED_STATEMENT("enablegeneratedname",
   							"true",
   							"The Redshift uses generated statement name and portal name"),
   
@@ -244,7 +235,7 @@ public enum RedshiftProperty {
    * Default value is "true".
    */
   ENABLE_MULTI_SQL_SUPPORT(
-    "enableMultiSqlSupport",
+    "enablemultisqlsupport",
     "true",
     "Control the behavior of semicolon separated SQL commands in a Statement"),
   
@@ -252,7 +243,7 @@ public enum RedshiftProperty {
    * The statement cache enable/disable.
    * 
    */
-  ENABLE_STATEMENT_CACHE("enableStatementCache",
+  ENABLE_STATEMENT_CACHE("enablestatementcache",
   							"false",
   							"The Redshift statement cache using SQL as key"),
   
@@ -265,7 +256,7 @@ public enum RedshiftProperty {
    * In {@code escapeSyntaxCallMode=call} mode, the driver always uses a CALL statement (allowing procedure invocation only).
    */
   ESCAPE_SYNTAX_CALL_MODE(
-    "escapeSyntaxCallMode",
+    "escapesyntaxcallmode",
     "call",
     "Specifies how the driver transforms JDBC escape call syntax into underlying SQL, for invoking procedures or functions. (backend >= 11)"
       + "In escapeSyntaxCallMode=select mode (the default), the driver always uses a SELECT statement (allowing function invocation only)."
@@ -279,7 +270,7 @@ public enum RedshiftProperty {
    * percent of heap memory.
    */
   FETCH_RING_BUFFER_SIZE(
-    "fetchRingBufferSize",
+    "fetchringbuffersize",
     "1G",
     "Specifies size of ring buffer during fetching result set. Can be specified as specified size or percent of heap memory."),
   
@@ -303,19 +294,19 @@ public enum RedshiftProperty {
    * granted from appearing in the DatabaseMetaData returned by the driver.
    */
   HIDE_UNPRIVILEGED_OBJECTS(
-    "hideUnprivilegedObjects",
+    "hideunprivilegedobjects",
     "false",
     "Enable hiding of database objects for which the current user has no privileges granted from the DatabaseMetaData"),
 
   HOST_RECHECK_SECONDS(
-    "hostRecheckSeconds",
+    "hostrecheckseconds",
     "10",
     "Specifies period (seconds) after which the host status is checked again in case it has changed"),
 
   /**
    * The JDBC INI file name.
    */
-  INI_FILE("IniFile",
+  INI_FILE("inifile",
   					null,
   					"The JDBC INI file. Easy to configure connection properties."),
 
@@ -323,7 +314,7 @@ public enum RedshiftProperty {
    * The JDBC INI file section name.
    * Section name to use for connection configuration.
    */
-  INI_SECTION("IniSection",
+  INI_SECTION("inisection",
   					null,
   					"The JDBC INI file section name."),
   
@@ -331,7 +322,7 @@ public enum RedshiftProperty {
    * Specifies the name of the JAAS system or application login configuration.
    */
   JAAS_APPLICATION_NAME(
-    "jaasApplicationName",
+    "jaasapplicationname",
     null,
     "Specifies the name of the JAAS system or application login configuration."),
 
@@ -341,7 +332,7 @@ public enum RedshiftProperty {
    * or using native GSS with system property sun.security.jgss.native=true
    */
   JAAS_LOGIN(
-    "jaasLogin",
+    "jaaslogin",
     "true",
     "Login with JAAS before doing GSSAPI authentication"),
 
@@ -350,69 +341,35 @@ public enum RedshiftProperty {
    * PGKRBSRVNAME environment variable.
    */
   KERBEROS_SERVER_NAME(
-    "kerberosServerName",
+    "kerberosservername",
     null,
     "The Kerberos service name to use when authenticating with GSSAPI."),
 
   LOAD_BALANCE_HOSTS(
-    "loadBalanceHosts",
+    "loadbalancehosts",
     "false",
     "If disabled hosts are connected in the given order. If enabled hosts are chosen randomly from the set of suitable candidates"),
 
-  /**
-   * <p>File name output of the Logger, if set, the Logger will use a
-   * {@link java.util.logging.FileHandler} to write to a specified file. If the parameter is not set
-   * or the file can't be created the {@link java.util.logging.ConsoleHandler} will be used instead.</p>
-   *
-   * <p>Parameter should be use together with {@link RedshiftProperty#LOGGER_LEVEL}</p>
-   */
-  LOGGER_FILE(
-    "loggerFile",
-    null,
-    "File name output of the Logger"),
-
   LOG_PATH(
-      "LogPath",
+      "logpath",
       null,
       "File Path output of the Logger"),
 
   MAX_LOG_FILE_SIZE(
-      "MaxLogFileSize",
+      "maxlogfilesize",
       null,
       "Maximum single log file size"),
 
   MAX_LOG_FILE_COUNT(
-      "MaxLogFileCount",
+      "maxlogfilecount",
       null,
       "Maximum number of log files"),
   
   /**
-   * <p>Logger level of the driver. Allowed values: {@code OFF}, {@code DEBUG} or {@code TRACE}.</p>
-   *
-   * <p>This enable the {@link java.util.logging.Logger} of the driver based on the following mapping
-   * of levels:</p>
-   * <ul>
-   *     <li>FINE -&gt; DEBUG</li>
-   *     <li>FINEST -&gt; TRACE</li>
-   * </ul>
-   *
-   * <p><b>NOTE:</b> The recommended approach to enable java.util.logging is using a
-   * {@code logging.properties} configuration file with the property
-   * {@code -Djava.util.logging.config.file=myfile} or if your are using an application server
-   * you should use the appropriate logging subsystem.</p>
-   */
-  LOGGER_LEVEL(
-    "loggerLevel",
-    null,
-    "Logger level of the driver",
-    false,
-    new String[] {"OFF", "FATAL", "ERROR", "WARNING", "INFO", "FUNCTION", "DEBUG", "TRACE"}),
-
-  /**
    * Added for backward compatibility.
    */
   LOG_LEVEL(
-      "LogLevel",
+      "loglevel",
       null,
       "Log level of the driver",
       false,
@@ -422,7 +379,7 @@ public enum RedshiftProperty {
    * Added for backward compatibility.
    */
   DSI_LOG_LEVEL(
-      "DSILogLevel",
+      "dsiloglevel",
       null,
       "Log level of the driver",
       false,
@@ -433,7 +390,7 @@ public enum RedshiftProperty {
    * in seconds.
    */
   LOGIN_TIMEOUT(
-    "loginTimeout",
+    "logintimeout",
     "0",
     "Specify how long to wait for establishment of a database connection."),
 
@@ -441,7 +398,7 @@ public enum RedshiftProperty {
    * Whether to include full server error detail in exception messages.
    */
   LOG_SERVER_ERROR_DETAIL(
-    "logServerErrorDetail",
+    "logservererrordetail",
     "true",
     "Include full server error detail in exception messages. If disabled then only the error itself will be included."),
 
@@ -450,7 +407,7 @@ public enum RedshiftProperty {
    * the opening of the connection to trace the leak source.
    */
   LOG_UNCLOSED_CONNECTIONS(
-    "logUnclosedConnections",
+    "logunclosedconnections",
     "false",
     "When connections that are not explicitly closed are garbage collected, log the stacktrace from the opening of the connection to trace the leak source"),
 
@@ -459,7 +416,7 @@ public enum RedshiftProperty {
    * percent of heap memory.
    */
   MAX_RESULT_BUFFER(
-    "maxResultBuffer",
+    "maxresultbuffer",
     null,
     "Specifies size of buffer during fetching result set. Can be specified as specified size or percent of heap memory."),
 
@@ -471,6 +428,14 @@ public enum RedshiftProperty {
     "options",
     null,
     "Specify 'options' connection initialization parameter."),
+
+  /**
+   *    * Override Schema Pattern Type used in getTables()
+   */
+  OVERRIDE_SCHEMA_PATTERN_TYPE(
+          "overrideschemapatterntype",
+          null,
+          "Override the type of query used in getTables calls"),
 
   /**
    * Password to use when authenticating.
@@ -485,7 +450,7 @@ public enum RedshiftProperty {
    * Password to use when authenticating. It's an alias for the Password.
    */
   PWD(
-    "PWD",
+    "pwd",
     null,
     "Password to use when authenticating.",
     false),
@@ -494,7 +459,7 @@ public enum RedshiftProperty {
    * Set the query group on a connection.
    */
   QUERY_GROUP(
-    "queryGroup",
+    "querygroup",
     null,
     "Assign a query to a queue at runtime by assigning your query to the appropriate query group"),
   
@@ -502,7 +467,7 @@ public enum RedshiftProperty {
    * Database name to connect to (may be specified directly in the JDBC URL).
    */
   DBNAME(
-    "DBNAME",
+    "dbname",
     null,
     "Database name to connect to (may be specified directly in the JDBC URL)",
     true),
@@ -511,7 +476,7 @@ public enum RedshiftProperty {
    * Hostname of the Redshift server (may be specified directly in the JDBC URL).
    */
   HOST(
-    "HOST",
+    "host",
     null,
     "Hostname of the Redshift server (may be specified directly in the JDBC URL)",
     false),
@@ -520,7 +485,7 @@ public enum RedshiftProperty {
    * Port of the Redshift server (may be specified directly in the JDBC URL).
    */
   PORT(
-    "PORT",
+    "port",
     null,
     "Port of the Redshift server (may be specified directly in the JDBC URL)"),
 
@@ -532,7 +497,7 @@ public enum RedshiftProperty {
    * <p>This mode is meant for debugging purposes and/or for cases when extended protocol cannot be used (e.g. logical replication protocol)</p>
    */
   PREFER_QUERY_MODE(
-    "preferQueryMode",
+    "preferquerymode",
     "extended",
     "Specifies which mode is used to execute queries to database: simple means ('Q' execute, no parse, no bind, text mode only), "
         + "extended means always use bind/execute messages, extendedForPrepared means extended for prepared statements only, "
@@ -544,7 +509,7 @@ public enum RedshiftProperty {
    * disables the cache.
    */
   PREPARED_STATEMENT_CACHE_QUERIES(
-    "preparedStatementCacheQueries",
+    "preparedstatementcachequeries",
     "256",
     "Specifies the maximum number of entries in per-connection cache of prepared statements. A value of {@code 0} disables the cache."),
 
@@ -553,7 +518,7 @@ public enum RedshiftProperty {
    * disables the cache.
    */
   PREPARED_STATEMENT_CACHE_SIZE_MIB(
-    "preparedStatementCacheSizeMiB",
+    "preparedstatementcachesizemib",
     "5",
     "Specifies the maximum size (in megabytes) of a per-connection prepared statement cache. A value of {@code 0} disables the cache."),
 
@@ -562,7 +527,7 @@ public enum RedshiftProperty {
    * forceBinary
    */
   PREPARE_THRESHOLD(
-    "prepareThreshold",
+    "preparethreshold",
     "5",
     "Statement prepare threshold. A value of {@code -1} stands for forceBinary"),
 
@@ -571,7 +536,7 @@ public enum RedshiftProperty {
    * fallback.
    */
   PROTOCOL_VERSION(
-    "protocolVersion",
+    "protocolversion",
     null,
     "Force use of a particular protocol version when connecting, currently only version 3 is supported.",
     false,
@@ -581,7 +546,7 @@ public enum RedshiftProperty {
    * Certain database versions perform a silent rollback instead of commit in case the transaction was in a failed state.
    */
   RAISE_EXCEPTION_ON_SILENT_ROLLBACK(
-    "raiseExceptionOnSilentRollback",
+    "raiseexceptiononsilentrollback",
     "false",
     "Certain database versions perform a silent rollback instead of commit in case the transaction was in a failed state"),
 
@@ -589,7 +554,7 @@ public enum RedshiftProperty {
    * Puts this connection in read-only mode.
    */
   READ_ONLY(
-    "readOnly",
+    "readonly",
     "false",
     "Puts this connection in read-only mode"),
 
@@ -598,7 +563,7 @@ public enum RedshiftProperty {
    * {@link Connection#setReadOnly(boolean)} is set to {@code true}.
    */
   READ_ONLY_MODE(
-    "readOnlyMode",
+    "readonlymode",
     "always", // transaction
     "Controls the behavior when a connection is set to be read only, one of 'ignore', 'transaction', or 'always' "
       + "When 'ignore', setting readOnly has no effect. "
@@ -613,7 +578,7 @@ public enum RedshiftProperty {
    * default.
    */
   RECEIVE_BUFFER_SIZE(
-    "receiveBufferSize",
+    "receivebuffersize",
     "-1",
     "Socket read buffer size"),
 
@@ -644,7 +609,7 @@ public enum RedshiftProperty {
    * Configure optimization to enable batch insert re-writing.
    */
   REWRITE_BATCHED_INSERTS(
-    "reWriteBatchedInserts",
+    "rewritebatchedinserts",
     "false",
     "Enable optimization to rewrite and collapse compatible INSERT statements that are batched."),
 
@@ -653,7 +618,7 @@ public enum RedshiftProperty {
    * This must be power of 2.
    */
   REWRITE_BATCHED_INSERTS_SIZE(
-    "reWriteBatchedInsertsSize",
+    "rewritebatchedinsertssize",
     "128",
     "Enable optimization size to rewrite and collapse compatible INSERT statements that are batched. This must be power of 2"),
   
@@ -662,7 +627,7 @@ public enum RedshiftProperty {
    * default.
    */
   SEND_BUFFER_SIZE(
-    "sendBufferSize",
+    "sendbuffersize",
     "-1",
     "Socket write buffer size"),
 
@@ -670,7 +635,7 @@ public enum RedshiftProperty {
    * Socket factory used to create socket. A null value, which is the default, means system default.
    */
   SOCKET_FACTORY(
-    "socketFactory",
+    "socketfactory",
     null,
     "Specify a socket factory for socket creation"),
 
@@ -680,7 +645,7 @@ public enum RedshiftProperty {
    */
   @Deprecated
   SOCKET_FACTORY_ARG(
-    "socketFactoryArg",
+    "socketfactoryarg",
     null,
     "Argument forwarded to constructor of SocketFactory class."),
 
@@ -691,7 +656,7 @@ public enum RedshiftProperty {
    * value of zero means that it is disabled.
    */
   SOCKET_TIMEOUT(
-    "socketTimeout",
+    "sockettimeout",
     "0",
     "The timeout value used for socket read operations."),
 
@@ -765,7 +730,7 @@ public enum RedshiftProperty {
    * Added for backward compatibility.
    */
   AUTH_MECH(
-      "AuthMech",
+      "authmech",
       null,
       "Parameter governing the use of SSL. Alias for sslMode",
       false,
@@ -802,7 +767,7 @@ public enum RedshiftProperty {
    * The SSL Truststore path key.
    */
   SSL_TRUSTSTORE_PATH_KEY(
-    "SSLTrustStorePath",
+    "ssltruststorepath",
     null,
     "The SSL Truststore path key."),
   
@@ -811,7 +776,7 @@ public enum RedshiftProperty {
    * The SSL Truststore path key.
    */
   SSL_TRUSTSTORE_PWD_KEY(
-    "SSLTruststore ",
+    "ssltruststore ",
     null,
     "The SSL Truststore password key."),
   
@@ -820,7 +785,7 @@ public enum RedshiftProperty {
    * default, {@code REDSHIFT}, is almost always correct.
    */
   SSPI_SERVICE_CLASS(
-    "sspiServiceClass",
+    "sspiserviceclass",
     "REDSHIFT",
     "The Windows SSPI service class for SPN"),
 
@@ -836,7 +801,7 @@ public enum RedshiftProperty {
     new String[] {"unspecified", "varchar"}),
 
   TARGET_SERVER_TYPE(
-    "targetServerType",
+    "targetservertype",
     "any",
     "Specifies what kind of server to connect",
     false,
@@ -846,7 +811,7 @@ public enum RedshiftProperty {
    * Enable or disable TCP keep-alive. The default is {@code true}.
    */
   TCP_KEEP_ALIVE(
-    "tcpKeepAlive",
+    "tcpkeepalive",
     "true",
     "Enable or disable TCP keep-alive. The default is {@code true}."),
 
@@ -854,7 +819,7 @@ public enum RedshiftProperty {
    * Specifies the length to return for types of unknown length.
    */
   UNKNOWN_LENGTH(
-    "unknownLength",
+    "unknownlength",
     Integer.toString(Integer.MAX_VALUE),
     "Specifies the length to return for types of unknown length"),
 
@@ -880,7 +845,7 @@ public enum RedshiftProperty {
    * Use SPNEGO in SSPI authentication requests.
    */
   USE_SPNEGO(
-    "useSpnego",
+    "usespnego",
     "false",
     "Use SPNEGO in SSPI authentication requests"),
   
@@ -889,21 +854,21 @@ public enum RedshiftProperty {
    * The name of the Redshift cluster to connect to.
    * Used only by JDBC driver internally only.
    */
-  CLUSTER_IDENTIFIER("ClusterID",
+  CLUSTER_IDENTIFIER("clusterid",
   									null,
   									"The name of the Redshift cluster to connect to"),
   
   /**
    * The length of time (in seconds) until the temporary IAM credentials expire.
    */
-  IAM_DURATION("IAMDuration",
+  IAM_DURATION("iamduration",
   								null,
   							"The length of time (in seconds) until the temporary IAM credentials expire."),
   
   /**
    * The IAM access key id for the IAM user or role.
    */
-  IAM_ACCESS_KEY_ID("AccessKeyID",
+  IAM_ACCESS_KEY_ID("accesskeyid",
   									null,
   									"The IAM access key id for the IAM user or role"),
 
@@ -911,7 +876,7 @@ public enum RedshiftProperty {
    * Indicates whether use IAM authentication.
    * Used only by JDBC driver internally only.
    */
-  IAM_AUTH("IAMAuth",
+  IAM_AUTH("iamauth",
   				 "false",
   				 "Indicates whether use IAM authentication"),
 
@@ -920,7 +885,7 @@ public enum RedshiftProperty {
    * Enable cache gives protection against throttling API calls.
    * Default value is false.
    */
-  IAM_DISABLE_CACHE("IAMDisableCache",
+  IAM_DISABLE_CACHE("iamdisablecache",
   				 "false",
   				 "Indicates to disable credential cache. Enable cache gives protection against throttling API calls"),
   
@@ -928,7 +893,7 @@ public enum RedshiftProperty {
    * The AWS region where the cluster is located.
    * Used only by JDBC driver internally only.
    */
-  AWS_REGION("Region",
+  AWS_REGION("region",
   					 null,
   					 "The AWS region where the cluster is located"),
 
@@ -936,28 +901,28 @@ public enum RedshiftProperty {
    * The Redshift endpoint url.
    * Used only AWS internal team.
    */
-  ENDPOINT_URL("EndpointUrl",
+  ENDPOINT_URL("endpointurl",
   							null,
   							"The Redshift endpoint url"),
 
   /**
    * The STS endpoint url.
    */
-  STS_ENDPOINT_URL("StsEndpointUrl",
+  STS_ENDPOINT_URL("stsendpointurl",
   							null,
   							"The STS endpoint url"),
   
   /**
    * The AWS profile name for credentials.
    */
-  AWS_PROFILE("Profile",
+  AWS_PROFILE("profile",
   						null,
   						"The AWS profile name for credentials"),
 
   /**
    * The IAM secret key for the IAM user or role.
    */
-  IAM_SECRET_ACCESS_KEY("SecretAccessKey",
+  IAM_SECRET_ACCESS_KEY("secretaccesskey",
   											null,
   											"The IAM secret key for the IAM user or role"),
  
@@ -965,7 +930,7 @@ public enum RedshiftProperty {
   /**
    * The IAM security token for an IAM user or role.
    */
-  IAM_SESSION_TOKEN("SessionToken",
+  IAM_SESSION_TOKEN("sessiontoken",
   									null,
   									"The IAM security token for an IAM user or role"),
   
@@ -979,34 +944,34 @@ public enum RedshiftProperty {
   /**
    * Indicates whether the user should be created if not exists.
    */
-  USER_AUTOCREATE("AutoCreate",
+  USER_AUTOCREATE("autocreate",
   								null,
   								"Indicates whether the user should be created if not exists"),
   									
   /**
    * The database user name.
    */
-  DB_USER("DbUser",
+  DB_USER("dbuser",
   				null,
   				"The database user name"),
 
   /**
    * A comma delimited database group names.
    */
-  DB_GROUPS("DbGroups",
+  DB_GROUPS("dbgroups",
   					null,
   					"A comma delimited database group names"),
   /**
    * Regex for filtering out dbGroups.
    */
-  DB_GROUPS_FILTER("DbGroupsFilter",
+  DB_GROUPS_FILTER("dbgroupsfilter",
   					null,
   					"Regex for filtering out dbGroups from final result"),
   
   /**
    * Forces database group names to be lower case.
    */
-  FORCE_LOWERCASE("ForceLowercase",
+  FORCE_LOWERCASE("forcelowercase",
   					null,
   					"Forces database group names to be lower case"),
   
@@ -1017,14 +982,14 @@ public enum RedshiftProperty {
    * STS API and GetClusterCredentials for user federation and explictily
    * specifying DbGroups in connection.
    */
-  GROUP_FEDERATION("groupFederation",
+  GROUP_FEDERATION("groupfederation",
   					"false",
   					"Use the IDP Groups in the Redshift"),
   
   /**
    * The Oauth access token for an idp connection.
    */
-  WEB_IDENTITY_TOKEN("webIdentityToken",
+  WEB_IDENTITY_TOKEN("webidentitytoken",
            null,
            "The Oauth access token for an idp connection"),
   
@@ -1032,7 +997,7 @@ public enum RedshiftProperty {
   /**
    * The name of the Redshift Native Auth Provider.
    */
-  PROVIDER_NAME("providerName",
+  PROVIDER_NAME("providername",
            null,
            "The name of the Redshift Native Auth Provider"),
   
@@ -1042,7 +1007,7 @@ public enum RedshiftProperty {
    * For NLB, it won't so user can set explicitly.
    * Default value is false.
    */
-  IS_SERVERLESS("isServerless",
+  IS_SERVERLESS("isserverless",
                     "false",
                     "Redshift end-point is serverless or provisional."),
   
@@ -1053,7 +1018,7 @@ public enum RedshiftProperty {
    * Default value is null.
    * 
    */
-  SERVERLESS_ACCT_ID("serverlessAcctId",
+  SERVERLESS_ACCT_ID("serverlessacctid",
            null,
            "The account ID of the serverless"),
   
@@ -1064,7 +1029,7 @@ public enum RedshiftProperty {
    * Default value is null.
    * 
    */
-  SERVERLESS_WORK_GROUP("serverlessWorkGroup",
+  SERVERLESS_WORK_GROUP("serverlessworkgroup",
            null,
            "The work group of the serverless"),
   

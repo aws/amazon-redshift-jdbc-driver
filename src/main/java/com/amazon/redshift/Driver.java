@@ -17,17 +17,11 @@ import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.SharedTimer;
 import com.amazon.redshift.util.URLCoder;
-
+import com.amazon.redshift.util.RedshiftProperties;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -122,7 +116,7 @@ public class Driver implements java.sql.Driver {
   }
 
   private Properties loadDefaultProperties() throws IOException {
-    Properties merged = new Properties();
+    Properties merged = new RedshiftProperties();
 
     try {
       RedshiftProperty.USER.set(merged, System.getProperty("user.name"));
@@ -221,7 +215,7 @@ public class Driver implements java.sql.Driver {
    */
   @Override
   public Connection connect(String url, Properties info) throws SQLException {
-    
+
   	if (url == null) {
       throw new SQLException("url is null");
     }
@@ -239,22 +233,8 @@ public class Driver implements java.sql.Driver {
     }
 
     // override defaults with provided properties
-    Properties props = new Properties(defaults);
-    
-    if (info != null) {
-      Set<String> e = info.stringPropertyNames();
-      for (String propName : e) {
-        String propValue = info.getProperty(propName);
-        if (propValue == null) {
-          throw new RedshiftException(
-              GT.tr("Properties for the driver contains a non-string value for the key ")
-                  + propName,
-              RedshiftState.UNEXPECTED_ERROR);
-        }
-        props.setProperty(propName, propValue);
-      }
-    }
-    
+    RedshiftProperties props = new RedshiftProperties(info, defaults);
+
     // parse URL and add more properties
     if ((props = parseURL(url, props)) == null) {
       return null;
@@ -358,8 +338,6 @@ public class Driver implements java.sql.Driver {
   /**
    * <p>Setup java.util.logging.Logger using connection properties.</p>
    *
-   * <p>See {@link RedshiftProperty#LOGGER_FILE} and {@link RedshiftProperty#LOGGER_FILE}</p>
-   *
    * @param props Connection Properties
    */
   private RedshiftLogger getLogger(final Properties props) {
@@ -391,7 +369,7 @@ public class Driver implements java.sql.Driver {
    * while enforcing a login timeout.
    */
   private static class ConnectThread implements Runnable {
-    ConnectThread(String url, Properties props, RedshiftLogger connLogger) {
+    ConnectThread(String url, RedshiftProperties props, RedshiftLogger connLogger) {
       this.url = url;
       this.props = props;
       this.connLogger = connLogger;
@@ -476,7 +454,7 @@ public class Driver implements java.sql.Driver {
     }
 
     private final String url;
-    private final Properties props;
+    private final RedshiftProperties props;
     private Connection result;
     private Throwable resultException;
     private boolean abandoned;
@@ -492,7 +470,7 @@ public class Driver implements java.sql.Driver {
    * @return a new connection
    * @throws SQLException if the connection could not be made
    */
-  private static Connection makeConnection(String url, Properties props, RedshiftLogger logger) throws SQLException {
+  private static Connection makeConnection(String url, RedshiftProperties props, RedshiftLogger logger) throws SQLException {
     return new RedshiftConnectionImpl(hostSpecs(props), user(props), database(props), props, url, logger);
   }
 
@@ -525,8 +503,8 @@ public class Driver implements java.sql.Driver {
    */
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
-    Properties copy = new Properties(info);
-    Properties parse = parseURL(url, copy);
+    RedshiftProperties copy = new RedshiftProperties(info);
+    RedshiftProperties parse = parseURL(url, copy);
     if (parse != null) {
       copy = parse;
     }
@@ -587,8 +565,8 @@ public class Driver implements java.sql.Driver {
    * @param defaults Default properties
    * @return Properties with elements added from the url
    */
-  public static Properties parseURL(String url, Properties defaults) {
-    Properties urlProps = defaults == null ? new Properties() : defaults;
+  public static RedshiftProperties parseURL(String url, RedshiftProperties defaults) {
+    RedshiftProperties urlProps = defaults == null ? new RedshiftProperties() : defaults;
 
     String urlServer = url;
     String urlArgs = "";
@@ -694,7 +672,7 @@ public class Driver implements java.sql.Driver {
 	      if (slash == -1) {
 	        return null;
 	      }
-	      urlProps.setProperty("DBNAME", URLCoder.decode(urlServer.substring(slash + 1)));
+	      urlProps.setProperty(RedshiftProperty.DBNAME.getName(), URLCoder.decode(urlServer.substring(slash + 1)));
 	
 	      String[] addresses = urlServer.substring(0, slash).split(",");
 	      StringBuilder hosts = new StringBuilder();
@@ -722,21 +700,21 @@ public class Driver implements java.sql.Driver {
 	      }
 	      ports.setLength(ports.length() - 1);
 	      hosts.setLength(hosts.length() - 1);
-	      urlProps.setProperty("PORT", ports.toString());
-	      urlProps.setProperty("HOST", hosts.toString());
+	      urlProps.setProperty(RedshiftProperty.PORT.getName(), ports.toString());
+	      urlProps.setProperty(RedshiftProperty.HOST.getName(), hosts.toString());
 	    } else {
 	      /*
 	       if there are no defaults set or any one of PORT, HOST, DBNAME not set
 	       then set it to default
 	      */
-	      if (defaults == null || !defaults.containsKey("PORT")) {
-	        urlProps.setProperty("PORT", DEFAULT_PORT);
+	      if (defaults == null || !defaults.containsKey(RedshiftProperty.PORT.getName())) {
+	        urlProps.setProperty(RedshiftProperty.PORT.getName(), DEFAULT_PORT);
 	      }
-	      if (defaults == null || !defaults.containsKey("HOST")) {
-	        urlProps.setProperty("HOST", "localhost");
+	      if (defaults == null || !defaults.containsKey(RedshiftProperty.HOST.getName())) {
+	        urlProps.setProperty(RedshiftProperty.HOST.getName(), "localhost");
 	      }
-	      if (defaults == null || !defaults.containsKey("DBNAME")) {
-	        urlProps.setProperty("DBNAME", URLCoder.decode(urlServer));
+	      if (defaults == null || !defaults.containsKey(RedshiftProperty.DBNAME.getName())) {
+	        urlProps.setProperty(RedshiftProperty.DBNAME.getName(), URLCoder.decode(urlServer));
 	      }
 	    }
     }
@@ -766,8 +744,8 @@ public class Driver implements java.sql.Driver {
   public static HostSpec[] hostSpecs(Properties props) {
   	HostSpec[] hostSpecs = null;
   	
-  	String hostProp = props.getProperty("HOST");
-  	String portProp = props.getProperty("PORT");
+  	String hostProp = props.getProperty(RedshiftProperty.HOST.getName());
+  	String portProp = props.getProperty(RedshiftProperty.PORT.getName());
   	
   	if (hostProp != null && portProp != null) {
 	    String[] hosts = hostProp.split(",");
@@ -784,9 +762,9 @@ public class Driver implements java.sql.Driver {
    * @return the username of the URL
    */
   private static String user(Properties props) {
-	String user = props.getProperty("user");
+	String user = props.getProperty(RedshiftProperty.USER.getName());
 	if(user == null)
-	  user = props.getProperty("UID", "");
+	  user = props.getProperty(RedshiftProperty.UID.getName(), "");
     return user;
   }
 
@@ -794,7 +772,7 @@ public class Driver implements java.sql.Driver {
    * @return the database name of the URL
    */
   private static String database(Properties props) {
-    return props.getProperty("DBNAME", "");
+    return props.getProperty(RedshiftProperty.DBNAME.getName(), "");
   }
 
   /**
@@ -994,7 +972,7 @@ public class Driver implements java.sql.Driver {
    * @return
    * @throws RedshiftException 
    */
-  private Properties readJdbcIniFile(String fileName, Properties props) throws RedshiftException {
+  private RedshiftProperties readJdbcIniFile(String fileName, RedshiftProperties props) throws RedshiftException {
   	String connectionSectionName = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.INI_SECTION.getName(), props);;
   	String driverSectionName = DEFAULT_DRIVER_SECTION;
   	try {
@@ -1030,7 +1008,7 @@ public class Driver implements java.sql.Driver {
 					|| connectionSectionProps != null) {
 				
 				// Get default properties from original props
-				Properties iniProps = new Properties(props);
+				RedshiftProperties iniProps = new RedshiftProperties(props);
 				
 				// Add driver section props
 				if (driverSectionProps != null) {

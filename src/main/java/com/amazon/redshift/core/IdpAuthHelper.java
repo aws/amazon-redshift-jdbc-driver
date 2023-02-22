@@ -14,6 +14,7 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftProperties;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentials;
@@ -38,7 +39,7 @@ public class IdpAuthHelper {
   protected IdpAuthHelper() {
   }
   
-  protected static Properties setAuthProperties(Properties info, RedshiftJDBCSettings settings, RedshiftLogger log)
+  protected static RedshiftProperties setAuthProperties(RedshiftProperties info, RedshiftJDBCSettings settings, RedshiftLogger log)
       throws RedshiftException {
     try {
       // Plugin requires an SSL connection to work. Make sure that m_authMech is
@@ -61,7 +62,7 @@ public class IdpAuthHelper {
 
       if (!StringUtils.isNullOrEmpty(authProfile)) {
         if (!StringUtils.isNullOrEmpty(iamAccessKey)) {
-          Properties authProfileProps = readAuthProfile(authProfile, iamAccessKey, iamSecretKey, iamSessionToken, log,
+          RedshiftProperties authProfileProps = readAuthProfile(authProfile, iamAccessKey, iamSecretKey, iamSessionToken, log,
               info);
           if (authProfileProps != null) {
             // Merge auth profile props with user props.
@@ -117,7 +118,6 @@ public class IdpAuthHelper {
         // The given properties are String pairs, so this should be OK.
         String key = enums.nextElement();
         String value = info.getProperty(key);
-        key = key.toLowerCase(Locale.getDefault());
         if (!"*".equals(value)) {
           settings.m_pluginArgs.put(key, value);
         }
@@ -140,9 +140,9 @@ public class IdpAuthHelper {
    * " \\\"databaseMetadataCurrentDbOnly\\\": \\\"true\\\" " + " }\" " + " }" +
    * "] " + "   } ";
    */
-  private static Properties readAuthProfile(String authProfile, String iamAccessKeyID, String iamSecretKey,
-      String iamSessionToken, RedshiftLogger log, Properties info) throws RedshiftException {
-    Properties authProfileProps = null;
+  private static RedshiftProperties readAuthProfile(String authProfile, String iamAccessKeyID, String iamSecretKey,
+      String iamSessionToken, RedshiftLogger log, RedshiftProperties info) throws RedshiftException {
+    RedshiftProperties authProfileProps = null;
 
     AWSCredentials credentials;
     String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), info);
@@ -181,7 +181,7 @@ public class IdpAuthHelper {
 
     String profileContent = result.getAuthenticationProfiles().get(0).getAuthenticationProfileContent();
 
-    authProfileProps = new Properties(info);
+    authProfileProps = new RedshiftProperties(info);
     JsonNode profileJson = Jackson.jsonNodeOf(profileContent);
 
     if (profileJson != null) {

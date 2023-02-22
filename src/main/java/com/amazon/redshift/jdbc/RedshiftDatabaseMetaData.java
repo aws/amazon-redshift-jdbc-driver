@@ -1573,8 +1573,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
-    
-    
+
     int schemaPatternType = Optional.ofNullable(connection.getOverrideSchemaPatternType()).orElse(getExtSchemaPatternMatch(schemaPattern));
 
     if (RedshiftLogger.isEnable())

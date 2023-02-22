@@ -8,6 +8,7 @@ package com.amazon.redshift.replication.fluent.logical;
 import com.amazon.redshift.replication.LogSequenceNumber;
 import com.amazon.redshift.replication.RedshiftReplicationStream;
 import com.amazon.redshift.replication.fluent.AbstractStreamBuilder;
+import com.amazon.redshift.util.RedshiftProperties;
 
 import java.sql.SQLException;
 import java.util.Properties;

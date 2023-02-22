@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.util.RedshiftProperties;
 
 /**
  * Logger for each connection or at driver.
@@ -217,7 +218,7 @@ public class RedshiftLogger {
 				RedshiftProperty.IAM_SESSION_TOKEN.getName()
 				};
 		
-		Properties temp = new Properties();
+		Properties temp = new RedshiftProperties();
 		temp.putAll(info);
 		for(String propName : propNames) {
 			Object oldVal = replaceIgnoreCase(temp, propName, "***");
