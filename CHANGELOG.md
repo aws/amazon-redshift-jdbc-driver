@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.1.0.12 (2023-02-24)
+----------------------
+- Allow connection parameters to be case-insensitive [Bhavik Shah]
+- Upgrade AWS Java SDK from 1.12.251 to 1.12.408 [Bhavik Shah]
+- Upgrade Jackson version from 2.12.6.1 to 2.14.2 [Bhavik Shah]
+- Bump httpclient from 4.5.13 to 4.5.14 [Bhavik Shah]
+
 v2.1.0.11 (2023-02-03)
 ----------------------
 - Fix views when CAST NULL [PR#75](https://github.com/aws/amazon-redshift-jdbc-driver/pull/75) [Bhavik Shah]
