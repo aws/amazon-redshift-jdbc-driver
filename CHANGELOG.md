@@ -7,6 +7,7 @@ v2.1.0.12 (2023-02-24)
 - Upgrade AWS Java SDK from 1.12.251 to 1.12.408 [Bhavik Shah]
 - Upgrade Jackson version from 2.12.6.1 to 2.14.2 [Bhavik Shah]
 - Bump httpclient from 4.5.13 to 4.5.14 [Bhavik Shah]
+- Update pom.xml [Bhavik Shah]
 
 v2.1.0.11 (2023-02-03)
 ----------------------
