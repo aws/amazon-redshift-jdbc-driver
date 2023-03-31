@@ -383,9 +383,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     paramList.add(new String[]{"database", database});
     paramList.add(new String[]{"client_encoding", "UTF8"});
     paramList.add(new String[]{"DateStyle", "ISO"});
-    // TimeZone parameter causes different output then previous driver.
-    // Previous driver is not sending this parameter.
-    paramList.add(new String[]{"TimeZone", createRedshiftTimeZone()});
 
     Version assumeVersion = ServerVersion.from(RedshiftProperty.ASSUME_MIN_SERVER_VERSION.get(info));
 
