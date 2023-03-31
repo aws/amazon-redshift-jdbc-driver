@@ -152,6 +152,8 @@ public class RedshiftSQLXML implements SQLXML {
         return (T) new StreamSource(new StringReader(data));
       } else if (StAXSource.class.equals(sourceClass)) {
         XMLInputFactory xif = XMLInputFactory.newInstance();
+        xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+        xif.setProperty("javax.xml.stream.isSupportingExternalEntities", false);
         XMLStreamReader xsr = xif.createXMLStreamReader(new StringReader(data));
         return (T) new StAXSource(xsr);
       }
