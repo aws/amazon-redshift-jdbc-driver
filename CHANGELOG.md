@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.13 (2023-03-31)
+----------------------
+- Remove setting of session-level timezone to JVM timezone at start of session. This change defaults session-level timezone to server side timezone, typically UTC unless set to otherwise [Bhavik Shah]
+- Upgrade commons-codec from 1.11 to 1.15 [Bhavik Shah]
+- Improve XML parsing [Bhavik Shah]
+
 v2.1.0.12 (2023-02-24)
 ----------------------
 - Allow connection parameters to be case-insensitive [Bhavik Shah]
