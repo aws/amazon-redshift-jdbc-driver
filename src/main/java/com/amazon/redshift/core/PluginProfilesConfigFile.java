@@ -86,6 +86,9 @@ public class PluginProfilesConfigFile extends ProfilesConfigFile
         if (profile.isRoleBasedProfile())
         {
             String srcProfile = profile.getRoleSourceProfile();
+            if (StringUtils.isNullOrEmpty(srcProfile)) {
+                throw new SdkClientException("Unable to load credentials from role based profile [" + profileName + "]: Source profile name is not specified");
+            }
             CredentialsHolder srcCred = getCredentials(srcProfile);
             AWSCredentialsProvider provider = new AWSStaticCredentialsProvider(srcCred);
             credentials = assumeRole(profile, provider);
