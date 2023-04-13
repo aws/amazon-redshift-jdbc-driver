@@ -729,10 +729,13 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
    * {@inheritDoc}
    */
   public final void close() throws SQLException {
-    if(connection.getQueryExecutor().isRingBufferThreadRunning())
+    if(connection.getQueryExecutor().isRingBufferThreadRunning() &&
+            (!connection.getAutoCommit() || getMaxRows() == 0))
     {
       // Wait for current ring buffer thread to finish, if any.
       // Shouldn't call from synchronized method, which can cause dead-lock.
+      // We don't want to wait for ring buffer to fetch all rows if setMaxRows() is set,
+      // or if autoCommit is set to true
       connection.getQueryExecutor().waitForRingBufferThreadToFinish(false, false, true, null, null);
     }
 
