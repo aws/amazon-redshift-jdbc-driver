@@ -3,7 +3,7 @@ Changelog
 
 v2.1.0.14 (2023-04-13)
 ----------------------
-- Fix null pointer exception when role based profile has no source_profile defined [ISSUE#83](https://github.com/aws/amazon-redshift-jdbc-driver/issues/83) [PR#84](https://github.com/aws/amazon-redshift-jdbc-driver/pull/84) [Jérôme Mainaud]
+- Fix null pointer exception when role based profile has no source_profile defined [issue#83](https://github.com/aws/amazon-redshift-jdbc-driver/issues/83) [PR#84](https://github.com/aws/amazon-redshift-jdbc-driver/pull/84) [Jérôme Mainaud]
 - Improvements to logging [Bhavik Shah]
 - Fix for ringbuffer to respect statement.setMaxRows() [Bhavik Shah]
 
