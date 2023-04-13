@@ -14,6 +14,8 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.Locale;
 
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.util.RedshiftProperties;
@@ -39,7 +41,7 @@ public class RedshiftLogger {
   
   private static AtomicInteger  connectionId = new AtomicInteger();
 
-  public RedshiftLogger(String fileName, 
+  public RedshiftLogger(String fileName,
   											String logLevel, 
   											boolean driver,
   											String maxLogFileSize,
@@ -163,14 +165,27 @@ public class RedshiftLogger {
     return Thread.currentThread().getStackTrace()[3];
   }
   
-  public static String maskSecureInfoInUrl(String url) {  
-		String[] tokens = {
-				RedshiftProperty.PWD.getName(),
-				RedshiftProperty.PASSWORD.getName(),
-				RedshiftProperty.IAM_ACCESS_KEY_ID.getName(),
-				RedshiftProperty.IAM_SECRET_ACCESS_KEY.getName(),
-				RedshiftProperty.IAM_SESSION_TOKEN.getName()
-				};
+  public static String maskSecureInfoInUrl(String url)
+  {
+	  String[] tokens = {
+			  RedshiftProperty.PWD.getName(),
+			  RedshiftProperty.PASSWORD.getName(),
+			  RedshiftProperty.IAM_ACCESS_KEY_ID.getName(),
+			  RedshiftProperty.IAM_SECRET_ACCESS_KEY.getName(),
+			  RedshiftProperty.IAM_SESSION_TOKEN.getName(),
+			  RedshiftProperty.AUTH_PROFILE.getName(),
+			  RedshiftProperty.SSL_KEY.getName(),
+			  RedshiftProperty.SSL_PASSWORD.getName(),
+			  RedshiftProperty.WEB_IDENTITY_TOKEN.getName(),
+			  "Client_ID",
+			  "Client_Secret",
+			  "IdP_Tenant",
+			  "Partner_SPID",
+			  "Preferred_Role",
+			  "Profile",
+			  "roleArn",
+	  };
+
 		String temp = maskSecureInfo(url, tokens, "[\\?;&]");
 		
 		return temp;
@@ -207,28 +222,61 @@ public class RedshiftLogger {
 
   public static Properties maskSecureInfoInProps(Properties info) {
   	
-  	if(info == null) return info;
-  	boolean secureInfoFound = false;
-  	
+  	if(info == null) return null;
+
 		String[] propNames = {
 				RedshiftProperty.PWD.getName(),
 				RedshiftProperty.PASSWORD.getName(),
 				RedshiftProperty.IAM_ACCESS_KEY_ID.getName(),
 				RedshiftProperty.IAM_SECRET_ACCESS_KEY.getName(),
-				RedshiftProperty.IAM_SESSION_TOKEN.getName()
-				};
+				RedshiftProperty.IAM_SESSION_TOKEN.getName(),
+				RedshiftProperty.AUTH_PROFILE.getName(),
+				RedshiftProperty.SSL_KEY.getName(),
+				RedshiftProperty.SSL_PASSWORD.getName(),
+				RedshiftProperty.WEB_IDENTITY_TOKEN.getName(),
+				"Client_ID",
+				"Client_Secret",
+				"IdP_Tenant",
+				"Partner_SPID",
+				"Preferred_Role",
+				"Profile",
+				"roleArn",
+		};
 		
-		Properties temp = new RedshiftProperties();
-		temp.putAll(info);
-		for(String propName : propNames) {
-			Object oldVal = replaceIgnoreCase(temp, propName, "***");
-			if(oldVal != null)
-				secureInfoFound = true;
+		Properties loggedProperties = new RedshiftProperties();
+	  	loggedProperties.putAll(info);
+	  	removeUnrecognizedPropertiesFromLogging(loggedProperties);
+
+		for(String propName : propNames)
+		{
+			replaceIgnoreCase(loggedProperties, propName, "***");
 		}
 		
-		return (secureInfoFound) ? temp : info;
+		return loggedProperties;
   }
-  
+
+	/**
+	 * fetches set of properties defined in the RedshiftProperty enum class and properties defined in public docs
+	 * compares against given properties and removes unrecognized properties from logs
+	 */
+  public static void removeUnrecognizedPropertiesFromLogging(Properties loggedProperties)
+  {
+	  Set<String> enumProperties = Arrays.stream(RedshiftProperty.values()).map(x -> x.getName().toLowerCase(Locale.US)).collect(Collectors.toSet());
+	  Set<String> publicProperties = RedshiftProperty.getPublicProperties().stream().map(x -> x.toLowerCase(Locale.US)).collect(Collectors.toSet());
+
+	  Set<String> allProperties = enumProperties.stream().collect(Collectors.toSet());
+	  allProperties.addAll(publicProperties);
+
+	  for (String givenProperty : loggedProperties.stringPropertyNames())
+	  {
+		  if (!allProperties.contains(givenProperty))
+		  {
+			  loggedProperties.remove(givenProperty);
+		  }
+	  }
+  }
+
+
   public static String replaceIgnoreCase(Properties info, String key, String newVal) {
     String value = info.getProperty(key);
     if (null != value) {

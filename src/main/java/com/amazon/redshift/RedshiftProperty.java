@@ -14,6 +14,10 @@ import java.sql.DriverPropertyInfo;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Arrays;
 
 /**
  * All connection parameters that can be either set in JDBC URL, in Driver properties or in
@@ -1043,6 +1047,87 @@ public enum RedshiftProperty {
   private final String[] choices;
   private final boolean deprecated;
 
+  private static final Set<String> publicProperties = Collections.unmodifiableSet( new HashSet<>(Arrays.asList
+          (
+                   "AccessKeyID"
+                  ,"AllowDBUserOverride"
+                  ,"App_ID"
+                  ,"App_Name"
+                  ,"ApplicationName"
+                  ,"AuthProfile"
+                  ,"AutoCreate"
+                  ,"Client_ID"
+                  ,"Client_Secret"
+                  ,"client_protocol_version"
+                  ,"ClusterID"
+                  ,"connectTimeout"
+                  ,"databaseMetadataCurrentDbOnly"
+                  ,"DbUser"
+                  ,"DbGroups"
+                  ,"DBNAME"
+                  ,"defaultRowFetchSize"
+                  ,"DisableIsValidQuery"
+                  ,"enableFetchReadAndProcessBuffers"
+                  ,"enableFetchRingBuffer"
+                  ,"enableMultiSqlSupport"
+                  ,"endpointUrl"
+                  ,"fetchRingBufferSize"
+                  ,"ForceLowercase"
+                  ,"groupFederation"
+                  ,"HOST"
+                  ,"IAMDisableCache"
+                  ,"IAMDuration"
+                  ,"IdP_Host"
+                  ,"IdP_Port"
+                  ,"IdP_Tenant"
+                  ,"IdP_Response_Timeout"
+                  ,"IniFile"
+                  ,"IniSection"
+                  ,"isServerless"
+                  ,"Login_URL"
+                  ,"loginTimeout"
+                  ,"loginToRp"
+                  ,"LogLevel"
+                  ,"LogPath"
+                  ,"OverrideSchemaPatternType"
+                  ,"Partner_SPID"
+                  ,"Password"
+                  ,"Plugin_Name"
+                  ,"PORT"
+                  ,"Preferred_Role"
+                  ,"Profile"
+                  ,"PWD"
+                  ,"queryGroup"
+                  ,"readOnly"
+                  ,"Region"
+                  ,"reWriteBatchedInserts"
+                  ,"reWriteBatchedInsertsSize"
+                  ,"roleArn"
+                  ,"roleSessionName"
+                  ,"scope"
+                  ,"SecretAccessKey"
+                  ,"SessionToken"
+                  ,"serverlessAcctId"
+                  ,"serverlessWorkGroup"
+                  ,"socketFactory"
+                  ,"socketTimeout"
+                  ,"SSL"
+                  ,"SSL_Insecure"
+                  ,"SSLCert"
+                  ,"SSLFactory"
+                  ,"SSLKey"
+                  ,"SSLMode"
+                  ,"SSLPassword"
+                  ,"SSLRootCert"
+                  ,"StsEndpointUrl"
+                  ,"tcpKeepAlive"
+                  ,"UID"
+                  ,"User"
+                  ,"Username"
+                  ,"webIdentityToken"
+          )
+  ));
+
   RedshiftProperty(String name, String defaultValue, String description) {
     this(name, defaultValue, description, false);
   }
@@ -1276,4 +1361,15 @@ public enum RedshiftProperty {
     }
     return null;
   }
+
+  /**
+   * Return the public property
+   *
+   * @return the value of a set property
+   */
+  public static Set<String> getPublicProperties()
+  {
+    return publicProperties;
+  }
 }
+

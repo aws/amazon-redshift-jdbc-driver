@@ -258,7 +258,7 @@ public class Driver implements java.sql.Driver {
       	logger.log(LogLevel.DEBUG, "===================================");
       	logger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
       	connLogger.log(LogLevel.DEBUG, "===================================");
-      	connLogger.logFunction(true, temp, RedshiftLogger.maskSecureInfoInProps(info));
+      	connLogger.logFunction(true, temp, RedshiftLogger.maskSecureInfoInProps(props));
       	
       	connLogger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
       	if(iniFileName != null) {
