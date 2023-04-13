@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.14 (2023-04-13)
+----------------------
+- Fix null pointer exception when role based profile has no source_profile defined [Jérôme Mainaud]
+- Improvements to logging [Bhavik Shah]
+- Fix for ringbuffer to respect statement.setMaxRows() [Bhavik Shah]
+
 v2.1.0.13 (2023-03-31)
 ----------------------
 - Remove setting of session-level timezone to JVM timezone at start of session. This change defaults session-level timezone to server side timezone, typically UTC unless set to otherwise [Bhavik Shah]
