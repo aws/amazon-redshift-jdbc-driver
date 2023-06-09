@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.16 (2023-06-09)
+----------------------
+- Improve connection validation logic [Bhavik Shah]
+- Improvements to logging [Bhavik Shah]
+- Fixed a bug where portal was being closed incorrectly [Bhavik Shah]
+
 v2.1.0.14 (2023-04-13)
 ----------------------
 - Fix null pointer exception when role based profile has no source_profile defined [issue#83](https://github.com/aws/amazon-redshift-jdbc-driver/issues/83) [PR#84](https://github.com/aws/amazon-redshift-jdbc-driver/pull/84) [Jérôme Mainaud]
