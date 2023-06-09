@@ -1574,14 +1574,15 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         );
     boolean noBinaryTransfer = (flags & QUERY_NO_BINARY_TRANSFER) != 0;
     boolean forceDescribePortal = (flags & QUERY_FORCE_DESCRIBE_PORTAL) != 0;
+    boolean autoCommit = (flags & QueryExecutor.QUERY_SUPPRESS_BEGIN) != 0;
 
     // Work out how many rows to fetch in this pass.
 
     int rows;
     if (noResults) {
       rows = 1; // We're discarding any results anyway, so limit data transfer to a minimum
-    } else if (!usePortal) {
-      rows = maxRows; // Not using a portal -- fetchSize is irrelevant
+    } else if (!usePortal || autoCommit) {
+      rows = maxRows; // Not using a portal or auto-committing -- fetchSize is irrelevant
     } else if (maxRows != 0 && (enableFetchRingBuffer || fetchSize > maxRows)) {
       // fetchSize > maxRows, use maxRows (nb: fetchSize cannot be 0 if usePortal == true)
       rows = maxRows;
@@ -1589,6 +1590,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
       rows = (enableFetchRingBuffer) 
       					? maxRows // Disable server cursor, when client cursor is enabled.
       					: fetchSize; // maxRows > fetchSize
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      logger.log(LogLevel.DEBUG, " FE=> OneQuery(rows=\"{0}\")", rows);
     }
 
     sendParse(query, params, oneShot);
