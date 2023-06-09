@@ -165,7 +165,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   // Only instantiated if a task is actually scheduled.
   private volatile Timer cancelTimer = null;
 
-  private PreparedStatement checkConnectionQuery;
   /**
    * Replication protocol in current version postgresql(10devel) supports a limited number of
    * commands.
@@ -1744,28 +1743,38 @@ public class RedshiftConnectionImpl implements BaseConnection {
       return false;
     }
     try {
-    	if (!disableIsValidQuery) {    	
-	      int savedNetworkTimeOut = getNetworkTimeout();
-	      try {
-	        setNetworkTimeout(null, timeout * 1000);
-	        if (replicationConnection) {
-	          Statement statement = createStatement();
-	          statement.execute("IDENTIFY_SYSTEM");
-	          statement.close();
-	        } else {
-	          if (checkConnectionQuery == null) {
-	            checkConnectionQuery = prepareStatement("");
-	          }
-	          checkConnectionQuery.setQueryTimeout(timeout);
-	          checkConnectionQuery.executeUpdate();
-	        }
-	        return true;
-	      } finally {
-	        setNetworkTimeout(null, savedNetworkTimeOut);
-	      }
-    	}
-    	else
-    		return true;
+        if (!disableIsValidQuery)
+        {
+          int savedNetworkTimeOut = getNetworkTimeout();
+          try
+          {
+            setNetworkTimeout(null, timeout * 1000);
+            if (replicationConnection)
+            {
+              Statement statement = createStatement();
+              statement.execute("IDENTIFY_SYSTEM");
+              statement.close();
+            }
+            else
+            {
+              PreparedStatement checkConnectionQuery;
+              synchronized (this)
+              {
+                checkConnectionQuery = prepareStatement("");
+              }
+              checkConnectionQuery.setQueryTimeout(timeout);
+              checkConnectionQuery.executeUpdate();
+              checkConnectionQuery.close();
+            }
+            return true;
+          }
+          finally
+          {
+            setNetworkTimeout(null, savedNetworkTimeOut);
+          }
+        }
+        else
+            return true;
     } catch (SQLException e) {
       if (RedshiftState.IN_FAILED_SQL_TRANSACTION.getState().equals(e.getSQLState())) {
         // "current transaction aborted", assume the connection is up and running
@@ -1773,7 +1782,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       }
       
       if(RedshiftLogger.isEnable())    
-      	logger.log(LogLevel.DEBUG, GT.tr("Validating connection."), e);
+          logger.log(LogLevel.DEBUG, GT.tr("Validating connection."), e);
     }
     return false;
   }
