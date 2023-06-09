@@ -40,14 +40,16 @@ import com.amazon.redshift.jdbc.FieldMetadata;
 import com.amazon.redshift.jdbc.TimestampUtils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
+
+import com.amazon.redshift.util.QuerySanitizer;
 import com.amazon.redshift.util.ByteStreamWriter;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftPropertyMaxResultBufferParser;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.RedshiftWarning;
-import com.amazon.redshift.util.ServerErrorMessage;
 
+import com.amazon.redshift.util.ServerErrorMessage;
 import java.io.IOException;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
@@ -1212,7 +1214,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     if (RedshiftLogger.isEnable()) {
       StringBuilder sbuf = new StringBuilder(" FE=> Parse(stmt=" + statementName + ",query=\"");
-      sbuf.append(nativeSql);
+      sbuf.append(QuerySanitizer.filterCredentials(nativeSql));
       sbuf.append("\",oids={");
       for (int i = 1; i <= params.getParameterCount(); ++i) {
         if (i != 1) {
@@ -1661,7 +1663,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     String nativeSql = query.toString(params);
 
   	if(RedshiftLogger.isEnable())    	
-  		logger.log(LogLevel.DEBUG, " FE=> SimpleQuery(query=\"{0}\")", nativeSql);
+  		logger.log(LogLevel.DEBUG, " FE=> SimpleQuery(query=\"{0}\")", QuerySanitizer.filterCredentials(nativeSql));
     Encoding encoding = pgStream.getEncoding();
 
     byte[] encoded = encoding.encode(nativeSql);
@@ -2382,13 +2384,13 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           while (!pendingDescribeStatementQueue.isEmpty()) {
             DescribeRequest request = pendingDescribeStatementQueue.removeFirst();
           	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " FE marking setStatementDescribed(false) for query {0}", request.query);
+          		logger.log(LogLevel.DEBUG, " FE marking setStatementDescribed(false) for query {0}", QuerySanitizer.filterCredentials(request.query.toString()));
             request.query.setStatementDescribed(false);
           }
           while (!pendingDescribePortalQueue.isEmpty()) {
             SimpleQuery describePortalQuery = pendingDescribePortalQueue.removeFirst();
           	if(RedshiftLogger.isEnable())    	
-          		logger.log(LogLevel.DEBUG, " FE marking setPortalDescribed(false) for query {0}", describePortalQuery);
+          		logger.log(LogLevel.DEBUG, " FE marking setPortalDescribed(false) for query {0}", QuerySanitizer.filterCredentials(describePortalQuery.toString()));
             describePortalQuery.setPortalDescribed(false);
           }
           pendingBindQueue.clear(); // No more BindComplete messages expected.

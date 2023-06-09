@@ -37,6 +37,8 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.replication.RedshiftReplicationConnection;
 import com.amazon.redshift.replication.RedshiftReplicationConnectionImpl;
 import com.amazon.redshift.ssl.NonValidatingFactory;
+
+import com.amazon.redshift.util.QuerySanitizer;
 import com.amazon.redshift.util.ByteConverter;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
@@ -47,6 +49,7 @@ import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftInterval;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.RedshiftProperties;
+
 import java.io.IOException;
 import java.sql.Array;
 import java.sql.Blob;
@@ -540,12 +543,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public PreparedStatement prepareStatement(String sql) throws SQLException {
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql);
-  	
+    {
+      logger.logFunction(true, QuerySanitizer.filterCredentials(sql));
+    }
+
     PreparedStatement pstmt = prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 
     if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, pstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
     
     return pstmt;
   }
@@ -554,12 +559,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public CallableStatement prepareCall(String sql) throws SQLException {
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql));
     
     CallableStatement cstmt = prepareCall(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 
     if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, cstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
     
     return cstmt;
   }
@@ -1570,7 +1575,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       int resultSetHoldability) throws SQLException {
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency, resultSetHoldability);
   	
     checkClosed();
     
@@ -1578,7 +1583,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
         resultSetHoldability);
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, pstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
     
     return pstmt;
   }
@@ -1588,7 +1593,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       int resultSetHoldability) throws SQLException {
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, resultSetType, resultSetConcurrency, resultSetHoldability);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency, resultSetHoldability);
   	
     checkClosed();
     
@@ -1596,7 +1601,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
         resultSetHoldability);
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, cstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
     
     return cstmt;
   }
@@ -2102,13 +2107,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
       throws SQLException {
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, resultSetType, resultSetConcurrency);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency);
   	
     checkClosed();
     PreparedStatement pstmt = prepareStatement(sql, resultSetType, resultSetConcurrency, getHoldability());
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, pstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
     
     return pstmt;
   }
@@ -2118,13 +2123,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
       throws SQLException {
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, resultSetType, resultSetConcurrency);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency);
   	
     checkClosed();
     CallableStatement cstmt = prepareCall(sql, resultSetType, resultSetConcurrency, getHoldability());
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, cstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
     
     return cstmt;
   }
@@ -2135,7 +2140,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   	PreparedStatement pstmt;
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, autoGeneratedKeys);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), autoGeneratedKeys);
   	
     if (autoGeneratedKeys != Statement.RETURN_GENERATED_KEYS) {
     	pstmt = prepareStatement(sql);
@@ -2146,7 +2151,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, pstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
     
     return pstmt;
   }
@@ -2155,7 +2160,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, columnIndexes);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), columnIndexes);
   	
     if (columnIndexes == null
     		|| columnIndexes.length == 0) {
@@ -2177,7 +2182,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   	PreparedStatement pstmt;
   	
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(true, sql, columnNames);
+    	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), columnNames);
   	
     if (columnNames == null
     		 || columnNames.length == 0) {
@@ -2204,7 +2209,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
   	if (RedshiftLogger.isEnable())
-    	logger.logFunction(false, pstmt);
+    	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
     
     return pstmt;
   }
