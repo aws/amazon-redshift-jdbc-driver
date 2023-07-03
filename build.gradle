@@ -32,9 +32,9 @@ dependencies {
     }
     def withoutslf4jSupport = { exclude group: 'org.slf4j', module: 'slf4j-api' }
     
-    implementation 'com.amazonaws:aws-java-sdk-redshift:1.12.408', withoutjmespathSupport
-    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.408', withoutjmespathSupport
-    implementation 'com.amazonaws:aws-java-sdk-redshiftserverless:1.12.408', withoutjmespathSupport
+    implementation 'com.amazonaws:aws-java-sdk-redshift:1.12.493', withoutjmespathSupport
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.493', withoutjmespathSupport
+    implementation 'com.amazonaws:aws-java-sdk-redshiftserverless:1.12.493', withoutjmespathSupport
     implementation 'org.apache.httpcomponents:httpclient:4.5.14'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.15.0'

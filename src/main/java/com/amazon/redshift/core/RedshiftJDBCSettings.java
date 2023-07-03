@@ -259,8 +259,8 @@ public class RedshiftJDBCSettings
     
     /**
      * Use the same IDP Groups in the Redshift.
-     * false means use v1 version of GetClusterCrdentials
-     * true means use v2 version of GetClusterCrdentialsV2
+     * false means use v1 version of GetClusterCredentials
+     * true means use v2 version of GetClusterCredentialsV2
      */
     public Boolean m_groupFederation;
     
@@ -307,4 +307,9 @@ public class RedshiftJDBCSettings
      * The work group of the Redshift serverless.
      */
     public String m_workGroup;
+
+    /**
+     * Is there a custom cluster name?
+     */
+    public boolean m_isCname;
 }

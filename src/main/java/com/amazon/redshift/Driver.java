@@ -18,9 +18,16 @@ import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.SharedTimer;
 import com.amazon.redshift.util.URLCoder;
 import com.amazon.redshift.util.RedshiftProperties;
+
+import javax.naming.Context;
+import javax.naming.NamingException;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.InitialDirContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
@@ -484,7 +491,8 @@ public class Driver implements java.sql.Driver {
    * @see java.sql.Driver#acceptsURL
    */
   @Override
-  public boolean acceptsURL(String url) {
+  public boolean acceptsURL(String url) throws RedshiftException
+  {
     return parseURL(url, null) != null;
   }
 
@@ -502,7 +510,8 @@ public class Driver implements java.sql.Driver {
    * @see java.sql.Driver#getPropertyInfo
    */
   @Override
-  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
+  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws RedshiftException
+  {
     RedshiftProperties copy = new RedshiftProperties(info);
     RedshiftProperties parse = parseURL(url, copy);
     if (parse != null) {
@@ -565,7 +574,7 @@ public class Driver implements java.sql.Driver {
    * @param defaults Default properties
    * @return Properties with elements added from the url
    */
-  public static RedshiftProperties parseURL(String url, RedshiftProperties defaults) {
+  public static RedshiftProperties parseURL(String url, RedshiftProperties defaults) throws RedshiftException {
     RedshiftProperties urlProps = defaults == null ? new RedshiftProperties() : defaults;
 
     String urlServer = url;
@@ -622,37 +631,7 @@ public class Driver implements java.sql.Driver {
             port = DEFAULT_PORT;
         }
         urlProps.setProperty(RedshiftProperty.PORT.getName(), port);
-
-        // Try first provision cluster endpoint host format.
-        // Trying to infer clusterID and region,
-        // ClusterID and region can be override by parameters.
-        Matcher m = HOST_PATTERN.matcher(host);
-        if (m.matches())
-        {
-        	urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
-        	urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), m.group(3));
-        }
-        else
-        {
-          Matcher m2;
-          
-          // Try serverless endpoint host format with WorkGroup
-          m2 = SERVERLESS_WORKGROUP_HOST_PATTERN.matcher(host);
-          if (m2.matches())
-          {
-            String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), urlProps);
-            String workGroup = m2.group(1);
-            String acctId = m2.group(2);
-            String region = m2.group(3);
-//                urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
-            if(awsRegion == null || awsRegion.length() == 0)
-              urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
-
-            urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
-            urlProps.setProperty(RedshiftProperty.SERVERLESS_ACCT_ID.getName(),acctId);
-            urlProps.setProperty(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(),workGroup);
-          } // with workgroup
-        } // Serverless
+        urlProps = parseHostName(urlProps, host);
       }
       
       if (null != schema)
@@ -733,7 +712,74 @@ public class Driver implements java.sql.Driver {
       }
     }
 
+    if(null == urlProps.getProperty(RedshiftProperty.AWS_REGION.getName()))
+    {
+      //fetch region using jndi-dns from cname endpoint
+      try
+      {
+        String cnameHost = urlProps.getProperty(RedshiftProperty.HOST.getName());
+
+        Properties env = new Properties();
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.dns.DnsContextFactory");
+        InitialDirContext idc = new InitialDirContext(env);
+        Attributes attrs = idc.getAttributes(cnameHost);
+        Attribute attr = attrs.get("CNAME");
+        String fqdn = attr.get().toString();
+
+        urlProps = parseHostName(urlProps, fqdn);
+      }
+      catch (Exception ex)
+      {
+        if(RedshiftLogger.isEnable())
+        {
+          logger.logInfo("No CNAME detected for URL");
+        }
+      }
+    }
+
     return urlProps;
+  }
+
+  /**
+   * Parses the hostname to get connection properties
+   * @param urlProps the redshift properties collection
+   * @param host the hostname to parse.
+   * @return the filled in redshift properties collection
+   */
+  public static RedshiftProperties parseHostName(RedshiftProperties urlProps, String host)
+  {
+    // Try first provision cluster endpoint host format.
+    // Trying to infer clusterID and region,
+    // ClusterID and region can be overridden by parameters.
+    Matcher m = HOST_PATTERN.matcher(host);
+    if (m.matches())
+    {
+      urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
+      urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), m.group(3));
+    }
+    else
+    {
+      Matcher m2;
+
+      // Try serverless endpoint host format with WorkGroup
+      m2 = SERVERLESS_WORKGROUP_HOST_PATTERN.matcher(host);
+      if (m2.matches())
+      {
+        String awsRegion = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AWS_REGION.getName(), urlProps);
+        String workGroup = m2.group(1);
+        String acctId = m2.group(2);
+        String region = m2.group(3);
+//                urlProps.setProperty(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), m.group(1));
+        if(awsRegion == null || awsRegion.length() == 0)
+          urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
+
+        urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
+        urlProps.setProperty(RedshiftProperty.SERVERLESS_ACCT_ID.getName(),acctId);
+        urlProps.setProperty(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(),workGroup);
+      } // with workgroup
+    }
+
+    return  urlProps;
   }
 
   /**

@@ -1263,7 +1263,7 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
    *
    * @param url properties to set
    */
-  public void setUrl(String url) {
+  public void setUrl(String url) throws RedshiftException {
 
     Properties p = com.amazon.redshift.Driver.parseURL(url, null);
 
@@ -1283,7 +1283,8 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
    *
    * @param url properties to set
    */
-  public void setURL(String url) {
+  public void setURL(String url) throws RedshiftException
+  {
     setUrl(url);
   }
 

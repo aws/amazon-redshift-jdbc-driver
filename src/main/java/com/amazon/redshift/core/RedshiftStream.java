@@ -80,10 +80,23 @@ public class RedshiftStream implements Closeable, Flushable {
       // When using a SOCKS proxy, the host might not be resolvable locally,
       // thus we defer resolution until the traffic reaches the proxy. If there
       // is no proxy, we must resolve the host to an IP to connect the socket.
+
+      if(RedshiftLogger.isEnable())
+        logger.log(LogLevel.INFO, "hostspec host: " + hostSpec.getHost());
+        logger.log(LogLevel.INFO, "hostspec port: " + hostSpec.getPort());
+
       InetSocketAddress address = hostSpec.shouldResolve()
           ? new InetSocketAddress(hostSpec.getHost(), hostSpec.getPort())
           : InetSocketAddress.createUnresolved(hostSpec.getHost(), hostSpec.getPort());
       socket.connect(address, timeout);
+
+      if(RedshiftLogger.isEnable())
+        logger.log(LogLevel.INFO, "address: " + address.getAddress());
+        logger.log(LogLevel.INFO, "port: " + address.getPort());
+        logger.log(LogLevel.INFO, "hostname: " + address.getHostName());
+        logger.log(LogLevel.INFO, "hoststring: " + address.getHostString());
+
+
     }
     changeSocket(socket);
     setEncoding(Encoding.getJVMEncoding("UTF-8", logger));

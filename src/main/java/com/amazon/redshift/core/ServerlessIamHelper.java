@@ -48,7 +48,6 @@ public final class ServerlessIamHelper {
       else
       {
         throw new AmazonClientException("Serverless workgroup is not set.");
-        
       }
 	  
 	  com.amazonaws.services.redshiftserverless.model.GetWorkgroupResult   resp = client.getWorkgroup(req);
