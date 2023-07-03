@@ -168,6 +168,7 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   		// This will unblock the row reader, if row produce
   		// goes away before end of result.
 			addEndOfRowsIndicator();
+			closeSuspendedPortal();
 		} catch (InterruptedException e) {
 			// Ignore
 		}
@@ -210,6 +211,12 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
 
   public boolean isSuspendedPortal() {
   	return  (currentSuspendedPortal != null);
+  }
+
+  public void closeSuspendedPortal() {
+    if (currentSuspendedPortal != null) {
+      currentSuspendedPortal.close();
+    }
   }
   
   /**
