@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.1.0.17 (2023-07-05)
+----------------------
+- Support for Custom Cluster Names [Bhavik Shah]
+- Fix to close suspended portal when ringbuffer queue is closed [Bhavik Shah]
+- Bump Jackson dependencies from 2.14.2 to 2.15.0 [issue#91](https://github.com/aws/amazon-redshift-jdbc-driver/issues/91) [Bhavik Shah]
+- Bump AWS Java SDK dependencies from 1.12.408 to 1.12.493 [Bhavik Shah]
+  
 v2.1.0.16 (2023-06-09)
 ----------------------
 - Improve connection validation logic [Bhavik Shah]
