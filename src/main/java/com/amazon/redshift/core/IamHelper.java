@@ -1151,53 +1151,21 @@ public final class IamHelper extends IdpAuthHelper {
         return GET_CLUSTER_CREDENTIALS_V1_API;
       else
       {
-/*        if (providerType == CredentialProviderType.PROFILE) {
-          // profile may have role based and it's not supported in V2 API
-          throw new AmazonClientException("Authentication with profile is not supported for group federation");
-        } 
-        else 
-*/        
-        if (providerType != CredentialProviderType.PLUGIN)
-        {
-            return GET_CLUSTER_CREDENTIALS_IAM_V2_API;
-        }
-
-        else {
-          throw new AmazonClientException("Authentication with plugin is not supported for group federation");
-          /*
-           * IPlugin plugin = (IPlugin)provider; if(plugin.getSubType() ==
-           * SAML_PLUGIN) return GET_CLUSTER_CREDENTIALS_SAML_V2_API; else
-           * if(plugin.getSubType() == JWT_PLUGIN) return
-           * GET_CLUSTER_CREDENTIALS_JWT_V2_API; else throw new
-           * AmazonClientException("Invalid plugin sub type:" +
-           * plugin.getSubType());
-           */
-        }
+          return GET_CLUSTER_CREDENTIALS_IAM_V2_API;
       }
     } else {
       // Serverless
       if (!settings.m_groupFederation)
         return GET_SERVERLESS_CREDENTIALS_V1_API;
-      else {
-/*        if (providerType == CredentialProviderType.PROFILE) {
-          // profile may have role based and it's not supported in V2 API
-          throw new AmazonClientException("Authentication with profile is not supported for group federation");
-        } else
-*/
-        if (providerType != CredentialProviderType.PLUGIN)
+      else
+      {
+        if (settings.m_isCname)
         {
-          if (settings.m_isCname)
-          {
-            throw new AmazonClientException("Custom cluster names are not supported for Redshift Serverless");
-          }
-          else
-          {
-            return GET_CLUSTER_CREDENTIALS_IAM_V2_API; // Fallback to Provision API support in serverless
-          }
+          throw new AmazonClientException("Custom cluster names are not supported for Redshift Serverless");
         }
         else
         {
-          throw new AmazonClientException("Authentication with plugin is not supported for group federation");
+          return GET_CLUSTER_CREDENTIALS_IAM_V2_API; // Fallback to Provision API support in serverless
         }
       }
     } // Serverless
