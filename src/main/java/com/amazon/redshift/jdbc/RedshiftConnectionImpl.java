@@ -182,8 +182,9 @@ public class RedshiftConnectionImpl implements BaseConnection {
   
   private boolean databaseMetadataCurrentDbOnly;
   
-  public static String NON_VALIDATING_SSL_FACTORY = "org.postgresql.ssl.NonValidatingFactory"; 
-  
+  public static String NON_VALIDATING_SSL_FACTORY = "org.postgresql.ssl.NonValidatingFactory";
+
+  public static final boolean IS_64_BIT_JVM = checkIs64bitJVM();
 
   final CachedQuery borrowQuery(String sql) throws SQLException {
     return queryExecutor.borrowQuery(sql);
@@ -226,9 +227,11 @@ public class RedshiftConnectionImpl implements BaseConnection {
                       RedshiftLogger logger) throws SQLException {
   	
   	this.logger = logger;
-    // Print out the driver version number
-  	if(RedshiftLogger.isEnable())
-  		logger.log(LogLevel.DEBUG, com.amazon.redshift.util.DriverInfo.DRIVER_FULL_NAME);
+    // Print out the driver version number and whether its 32-bit or 64-bit JVM
+  	if(RedshiftLogger.isEnable()) {
+      logger.log(LogLevel.DEBUG, com.amazon.redshift.util.DriverInfo.DRIVER_FULL_NAME);
+      logger.log(LogLevel.DEBUG, "JVM architecture is " + (RedshiftConnectionImpl.IS_64_BIT_JVM ? "64-bit" : "32-bit"));
+    }
 
     m_settings = new RedshiftJDBCSettings();
     
@@ -2409,6 +2412,22 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
       return result;
   }
-  
-  
+
+  /**
+   * Tries to find whether the JVM is 64bit or not.
+   * If it returns true, the JVM can be assumed to be 64-bit.
+   * If it returns false, the JVM can be assumed to be 32-bit.
+   * Returns true (i.e. 64-bit) by default, if it is not able to find the bitness of the JVM.
+   *
+   * @return true if it is 64-bit JVM, false if it is 32-bit JVM
+   */
+  private static boolean checkIs64bitJVM() {
+    String bitness = System.getProperty("sun.arch.data.model");
+    if (bitness != null && bitness.contains("32")) {
+      return false;
+    }
+    // in other cases we can't conclude if its 32-bit JVM, hence assume 64-bit
+    return true;
+  }
+
 }

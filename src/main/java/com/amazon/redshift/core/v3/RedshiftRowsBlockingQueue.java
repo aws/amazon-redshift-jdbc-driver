@@ -9,6 +9,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.amazon.redshift.core.Tuple;
+import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 
@@ -35,7 +36,9 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   // This can be null for default constructor.
   private RedshiftLogger logger;  
   
-  private Portal currentSuspendedPortal;  
+  private Portal currentSuspendedPortal;
+
+  private final double MEMORY_ESTIMATE_SCALING_FACTOR = 1.2;
 	
   public RedshiftRowsBlockingQueue(int capacity) {
 		super(capacity);
@@ -101,7 +104,7 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
 	          
 	    	  	super.put(e);
 			  			
-	    	  	currentBufSize = totalFetchRingBufferSize.addAndGet(row.length());
+	    	  	currentBufSize = totalFetchRingBufferSize.addAndGet(getNodeSize(row));
 	          
 	          if (currentBufSize < fetchRingBufferSizeCapacity)
 	            notFull.signal();
@@ -111,7 +114,7 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
         }
         else {
     	  	super.put(e);
-    	  	totalFetchRingBufferSize.addAndGet(((Tuple)e).length());    	  	
+    	  	totalFetchRingBufferSize.addAndGet(getNodeSize((Tuple)e));
         }
   		}
   	} // By size
@@ -128,7 +131,7 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
   		Tuple row = (Tuple)e;
   		long currentBufSize;
   		boolean bufWasFull = (totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity);  		
-  		currentBufSize = totalFetchRingBufferSize.addAndGet(-row.length());
+  		currentBufSize = totalFetchRingBufferSize.addAndGet(-getNodeSize(row));
   		
   		// Signal the waiters
   		if (bufWasFull) {
@@ -230,5 +233,19 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
       } finally {
           putLock.unlock();
       }
+  }
+
+  /**
+   * Returns the size in bytes of an individual node of Ring buffer queue/linked list
+   */
+  private int getNodeSize(Tuple row) {
+	  /**
+	   * Node overheads are 32 bytes for 64-bit JVM and 16 bytes for 32-bit JVM
+	   * For 64-bit JVM: (8 + 8 + 16) => 8 byte reference for Tuple object + 8 byte reference for next
+	   *                 + 16 byte Node object header overhead
+	   * Each of these are reduced to half in case of 32-bit JVM.
+	   */
+	  int estimatedNodeSize = row.getTupleSize() + (RedshiftConnectionImpl.IS_64_BIT_JVM ? 32 : 16);
+	  return (int) (estimatedNodeSize * MEMORY_ESTIMATE_SCALING_FACTOR); // using a scaling factor for avoiding OOM errors
   }
 }

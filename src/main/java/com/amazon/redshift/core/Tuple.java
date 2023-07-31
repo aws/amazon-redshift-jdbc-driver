@@ -5,6 +5,8 @@
 
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
+
 /**
  * Class representing a row in a {@link java.sql.ResultSet}.
  */
@@ -67,6 +69,35 @@ public class Tuple {
 	    }
 	    return length;
   	}
+  }
+
+  /**
+   * Total size in bytes (including overheads) of this Tuple instance on the heap (estimated)
+   * @return the estimated number of bytes of heap memory used by this tuple.
+   */
+  public int getTupleSize() {
+    int rawSize = 0;
+    int nullFieldCount = 0;
+
+    for (byte[] field : data) {
+      if (field != null) {
+        rawSize += field.length; // Adding raw data size
+      } else {
+        nullFieldCount++; // Count of null fields
+      }
+    }
+
+    int refSize = RedshiftConnectionImpl.IS_64_BIT_JVM ? 8 : 4;
+    int arrayHeaderSize = RedshiftConnectionImpl.IS_64_BIT_JVM ? 24 : 16;
+
+    int overhead = (RedshiftConnectionImpl.IS_64_BIT_JVM ? 16 : 8) // Tuple object header overhead
+            + refSize // Reference to the data array
+            + refSize * data.length // Reference to each byte[] array
+            + arrayHeaderSize * (data.length - nullFieldCount) // Overhead for each non-null byte[] array header
+            + arrayHeaderSize // Overhead for the data array header
+            + 5; // (4 + 1) => 4 byte for rowSize (int) and 1 byte for forUpdate (boolean)
+
+    return rawSize + overhead;
   }
 
   /**
