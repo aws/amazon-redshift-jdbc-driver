@@ -712,30 +712,7 @@ public class Driver implements java.sql.Driver {
       }
     }
 
-    if(null == urlProps.getProperty(RedshiftProperty.AWS_REGION.getName()))
-    {
-      //fetch region using jndi-dns from cname endpoint
-      try
-      {
-        String cnameHost = urlProps.getProperty(RedshiftProperty.HOST.getName());
-
-        Properties env = new Properties();
-        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.dns.DnsContextFactory");
-        InitialDirContext idc = new InitialDirContext(env);
-        Attributes attrs = idc.getAttributes(cnameHost);
-        Attribute attr = attrs.get("CNAME");
-        String fqdn = attr.get().toString();
-
-        urlProps = parseHostName(urlProps, fqdn);
-      }
-      catch (Exception ex)
-      {
-        if(RedshiftLogger.isEnable())
-        {
-          logger.logInfo("No CNAME detected for URL");
-        }
-      }
-    }
+    urlProps = detectRegionAutomatically(urlProps);
 
     return urlProps;
   }
@@ -780,6 +757,43 @@ public class Driver implements java.sql.Driver {
     }
 
     return  urlProps;
+  }
+
+  /**
+   * Determines the region automatically if not provided by user as part of jdbc url or additional properties
+   * We do not need to do this for non-IAM url as driver does not use the region parameter for non-IAM endpoints
+   * @param urlProps the redshift properties collection
+   * @return the redshift properties collection with region if it was missing earlier and connection is iam auth
+   */
+  private static RedshiftProperties detectRegionAutomatically(RedshiftProperties urlProps)
+  {
+    if(null == urlProps.getProperty(RedshiftProperty.AWS_REGION.getName())
+            && urlProps.getProperty(RedshiftProperty.IAM_AUTH.getName()).equalsIgnoreCase("true"))
+    {
+      //fetch region using jndi-dns from cname endpoint
+      try
+      {
+        String cnameHost = urlProps.getProperty(RedshiftProperty.HOST.getName());
+
+        Properties env = new Properties();
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.dns.DnsContextFactory");
+        InitialDirContext idc = new InitialDirContext(env);
+        Attributes attrs = idc.getAttributes(cnameHost);
+        Attribute attr = attrs.get("CNAME");
+        String fqdn = attr.get().toString();
+
+        urlProps = parseHostName(urlProps, fqdn);
+      }
+      catch (Exception ex)
+      {
+        if(RedshiftLogger.isEnable())
+        {
+          logger.logInfo("No CNAME detected for URL");
+        }
+      }
+    }
+
+    return urlProps;
   }
 
   /**
