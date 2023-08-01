@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.1.0.18 (2023-08-01)
+----------------------
+- Added feature to detect region automatically for IAM connections if not provided by user [Bhavik Shah]
+- Fixed a bug where ring buffer was growing beyond expected limits [issue#88](https://github.com/aws/amazon-redshift-jdbc-driver/issues/88) [Bhavik Shah]
+- Fixed NULLABLE and IS_NULLABLE definition in metadata for external datasharing objects [Bhavik Shah]
+- Removed a restriction that was preventing calls to the getClusterCredentialsWithIAM API in the AWS SDK. This allows the user to authenticate with IAM group federation on clusters [Bhavik Shah]
+
 v2.1.0.17 (2023-07-05)
 ----------------------
 - Support for Custom Cluster Names [Bhavik Shah]
