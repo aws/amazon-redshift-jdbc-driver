@@ -31,9 +31,11 @@ import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
 import com.amazon.redshift.util.MD5Digest;
 import com.amazon.redshift.util.ExtensibleDigest;
+import com.amazon.redshift.util.RedshiftConstants;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.ServerErrorMessage;
+import com.amazonaws.util.StringUtils;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -83,6 +85,12 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   public static int BINARY_PROTOCOL_VERSION = 2;
   public static int EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 3; // Case sensitivity via COLLATION_INFORMATION
   public static int DEFAULT_SERVER_PROTOCOL_VERSION = EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION;
+
+  private static final String IDP_TYPE_AWS_IDC = "AwsIdc";
+  private static final String IDP_TYPE_OKTA = "Okta";
+  private static final String IDP_TYPE_AZUREAD = "AzureAD";
+
+  private static final String TOKEN_TYPE_ACCESS_TOKEN = "ACCESS_TOKEN";
   
   private ISSPIClient createSSPI(RedshiftStream pgStream,
       String spnServiceClass,
@@ -351,26 +359,41 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     List<String[]> paramList = new ArrayList<String[]>();
     boolean redshiftNativeAuth = false;
     String idpType = "";
+    String tokenType = "";
+    String identityNamepsace = "";
+    String idcClientDisplayName = "";
     
     String pluginName = RedshiftProperty.CREDENTIALS_PROVIDER.get(info);
-    if(pluginName != null
-        && 
-        (pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider")
-         || pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")
-        )
-       ) {
-      idpType = "AzureAD";
-      redshiftNativeAuth = true;
-      if(RedshiftLogger.isEnable())
-          logger.log(LogLevel.INFO, "using azure plugin idptype");
-    }
-
-    else if ((pluginName != null) && (pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserOktaSAMLCredentialsProvider")||
-            pluginName.equalsIgnoreCase("com.amazon.redshift.plugin.BasicNativeSamlCredentialsProvider"))) {
-      idpType = "Okta";
-      redshiftNativeAuth = true;
-      if(RedshiftLogger.isEnable())
-          logger.log(LogLevel.INFO, "using okta plugin idptype");
+    if(RedshiftLogger.isEnable())
+      logger.log(LogLevel.INFO, "using plugin: " + pluginName);
+    if(pluginName != null)
+    {
+      if(pluginName.equalsIgnoreCase(RedshiftConstants.BASIC_JWT_PLUGIN)
+              || pluginName.equalsIgnoreCase(RedshiftConstants.NATIVE_IDP_AZUREAD_BROWSER_PLUGIN))
+      {
+        idpType = IDP_TYPE_AZUREAD;
+        redshiftNativeAuth = true;
+      }
+      else if(pluginName.equalsIgnoreCase(RedshiftConstants.NATIVE_IDP_OKTA_BROWSER_PLUGIN)||
+              pluginName.equalsIgnoreCase(RedshiftConstants.NATIVE_IDP_OKTA_NON_BROWSER_PLUGIN))
+      {
+        idpType = IDP_TYPE_OKTA;
+        redshiftNativeAuth = true;
+      }
+      else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDC_BROWSER_PLUGIN))
+      {
+        idpType = IDP_TYPE_AWS_IDC;
+        tokenType = TOKEN_TYPE_ACCESS_TOKEN;
+        identityNamepsace = RedshiftProperty.IDC_IDENTITY_NAMESPACE.get(info);
+        idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.get(info);
+        redshiftNativeAuth = true;
+      } else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN))
+      {
+        idpType = IDP_TYPE_AWS_IDC;
+        identityNamepsace = RedshiftProperty.IDC_IDENTITY_NAMESPACE.get(info);
+        tokenType = RedshiftProperty.TOKEN_TYPE.get(info);
+        redshiftNativeAuth = true;
+      }
     }
     
     if(!redshiftNativeAuth)
@@ -430,12 +453,36 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     
     // Redshift Native Auth values
     if(redshiftNativeAuth) {
-      paramList.add(new String[]{"idp_type",idpType});
+      if(!StringUtils.isNullOrEmpty(idpType)) {
+        paramList.add(new String[]{"idp_type",idpType});
+      }
+      if(RedshiftLogger.isEnable())
+        logger.logDebug("Using idp_type=" + idpType);
       
       String providerName = RedshiftProperty.PROVIDER_NAME.get(info);
-      if (providerName != null && providerName.length() != 0) {
+      if (!StringUtils.isNullOrEmpty(providerName)) {
         paramList.add(new String[]{"provider_name",providerName});
       }
+      if(RedshiftLogger.isEnable())
+        logger.logDebug("Using provider_name=" + providerName);
+
+      if(!StringUtils.isNullOrEmpty(tokenType)) {
+        paramList.add(new String[]{"token_type",tokenType});
+      }
+      if(RedshiftLogger.isEnable())
+        logger.logDebug("Using token_type=" + tokenType);
+
+      if(!StringUtils.isNullOrEmpty(identityNamepsace)) {
+        paramList.add(new String[]{"identity_namespace",identityNamepsace});
+      }
+      if(RedshiftLogger.isEnable())
+        logger.logDebug("Using identity_namespace=" + identityNamepsace);
+
+      if(!StringUtils.isNullOrEmpty(idcClientDisplayName)) {
+        paramList.add(new String[]{"idc_client_display_name", idcClientDisplayName});
+      }
+      if(RedshiftLogger.isEnable())
+        logger.logDebug("Using idc_client_display_name=" + idcClientDisplayName);
     }
     
     

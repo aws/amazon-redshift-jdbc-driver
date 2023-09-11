@@ -35,6 +35,7 @@ public class IdpAuthHelper {
   // Subtype of plugin
   public static final int SAML_PLUGIN = 1;
   public static final int JWT_PLUGIN = 2;
+  public static final int IDC_PLUGIN = 3;
 
   protected IdpAuthHelper() {
   }

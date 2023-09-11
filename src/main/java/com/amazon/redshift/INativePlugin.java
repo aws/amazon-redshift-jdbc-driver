@@ -10,7 +10,6 @@ public interface INativePlugin
     String getPluginSpecificCacheKey();
     String getIdpToken() throws RedshiftException;
     String getCacheKey();
-    int getSubType();
     
     NativeTokenHolder getCredentials() throws RedshiftException;  
     void refresh() throws RedshiftException;

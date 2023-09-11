@@ -115,12 +115,6 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
     {
         m_log = log;
     }
-    
-    @Override
-    public int getSubType()
-    {
-        return IamHelper.JWT_PLUGIN;
-    }
 
     @Override
     public NativeTokenHolder getCredentials() throws RedshiftException

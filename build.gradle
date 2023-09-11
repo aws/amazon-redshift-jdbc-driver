@@ -41,7 +41,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.0'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.0'
     implementation 'commons-codec:commons-codec:1.15'
-
+    implementation 'com.amazonaws:aws-java-sdk-ssooidc:1.12.493', withoutjmespathSupport
 
 
     compileOnly 'com.ongres.scram:client:2.1'
@@ -54,6 +54,8 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.6.2'
     testImplementation 'se.jiderhamn:classloader-leak-test-framework:1.1.1'
     testImplementation 'org.hamcrest:hamcrest-library:1.3'
+    testImplementation 'com.amazonaws:aws-java-sdk-ssooidc:1.12.493', withoutjmespathSupport
+    testImplementation 'org.mockito:mockito-core:5.4.0'
 }
 
 
@@ -122,7 +124,8 @@ javadoc {
     // Exclude internal public interfaces/classes
     exclude 'com/amazon/redshift/CredentialsHolder*'
     exclude 'com/amazon/redshift/IPlugin*'
-		exclude 'com/amazon/redshift/jdbc/AbstractBlobClob*'    
+    exclude 'com/amazon/redshift/INativePlugin*'
+		exclude 'com/amazon/redshift/jdbc/AbstractBlobClob*'
 		exclude 'com/amazon/redshift/jdbc/BatchResultHandler*'    
 		exclude 'com/amazon/redshift/jdbc/EscapedFunctions*'    
 		exclude 'com/amazon/redshift/jdbc/EscapedFunctions2*'    

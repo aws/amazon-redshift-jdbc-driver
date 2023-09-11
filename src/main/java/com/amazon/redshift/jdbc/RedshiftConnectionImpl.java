@@ -44,6 +44,7 @@ import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
 import com.amazon.redshift.util.LruCache;
 import com.amazon.redshift.util.RedshiftBinaryObject;
+import com.amazon.redshift.util.RedshiftConstants;
 import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftInterval;
@@ -71,9 +72,11 @@ import java.sql.Statement;
 import java.sql.Struct;
 // import java.sql.Types;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -186,6 +189,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   public static final boolean IS_64_BIT_JVM = checkIs64bitJVM();
 
+  public static final List<String> NON_IAM_PLUGINS_LIST = Collections.unmodifiableList(Arrays.asList(
+          RedshiftConstants.NATIVE_IDP_AZUREAD_BROWSER_PLUGIN,
+          RedshiftConstants.NATIVE_IDP_OKTA_BROWSER_PLUGIN,
+          RedshiftConstants.IDC_BROWSER_PLUGIN,
+          RedshiftConstants.IDP_TOKEN_PLUGIN));
+
   final CachedQuery borrowQuery(String sql) throws SQLException {
     return queryExecutor.borrowQuery(sql);
   }
@@ -245,6 +254,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
     m_settings.m_iamAuth = (iamAuth == null) ? false : Boolean.parseBoolean(iamAuth);
     if (m_settings.m_iamAuth)
     {
+        String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
+            RedshiftProperty.CREDENTIALS_PROVIDER.getName(), info);
+        if(iamCredentialProvider != null && (iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDC_BROWSER_PLUGIN)
+            || iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN))) {
+            throw new RedshiftException(GT.tr("You can not use this authentication plugin with IAM enabled."),
+                     RedshiftState.UNEXPECTED_ERROR);
+        }
+
     	if (sslExplicitlyDisabled) {
 	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
 	      			RedshiftState.UNEXPECTED_ERROR);
@@ -254,9 +271,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
         logger.log(LogLevel.DEBUG, "Start IAM authentication");
       
       // Check for JWT and convert into Redshift Native Auth
-      String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
-                                      RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
-                                      info);
       if(iamCredentialProvider != null
           && (iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider") ||
       iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicNativeSAMLCredentialsProvider"))) {
@@ -297,16 +311,20 @@ public class RedshiftConnectionImpl implements BaseConnection {
     } // IAM auth
     else
     {
-      // Check for Browser based OAuth Native authentication
-      String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
+      // Check for non IAM authentication plugins
+      String nonIamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
           RedshiftProperty.CREDENTIALS_PROVIDER.getName(),
           info);
-      if (iamCredentialProvider != null
-              && (iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserAzureOAuth2CredentialsProvider")
-              || iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BrowserOktaSAMLCredentialsProvider"))){
+
+      if (nonIamCredentialProvider != null
+              && NON_IAM_PLUGINS_LIST.stream().anyMatch(nonIamCredentialProvider::equalsIgnoreCase)) {
         redshiftNativeAuth = true;
-        
-        // Call OAuth2 Browser plugin and get the JWT token
+        if (sslExplicitlyDisabled) {
+          throw new RedshiftException(GT.tr("Authentication must use an SSL connection."),
+                  RedshiftState.UNEXPECTED_ERROR);
+        }
+
+        // Call OAuth2 plugin and get the access token
         info = NativeAuthPluginHelper.setNativeAuthPluginProperties(info, m_settings, logger);
       }
     }

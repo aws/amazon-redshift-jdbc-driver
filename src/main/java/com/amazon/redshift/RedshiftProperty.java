@@ -892,6 +892,29 @@ public enum RedshiftProperty {
   IAM_DISABLE_CACHE("iamdisablecache",
   				 "false",
   				 "Indicates to disable credential cache. Enable cache gives protection against throttling API calls"),
+
+  /**
+   * Indicates the identity namespace to be used for connection.
+   * It is used by Redshift server to decide which IdC instance to use.
+   */
+  IDC_IDENTITY_NAMESPACE("identity_namespace",
+          null,
+          "Indicates the identity namespace which helps to decide which IdC instance to use in Redshift server"),
+
+  /**
+   * Indicates the token type to be used for connection.
+   * It is an optional param used in the CommonCredentialsProvider plugin to allow the client to set token type
+   */
+  TOKEN_TYPE("token_type",
+          null,
+          "Indicates the optional token type to be used for connection"),
+
+  /**
+   * Indicates the display name to be used for the client that is using IdC browser auth plugin.
+   */
+  IDC_CLIENT_DISPLAY_NAME("idc_client_display_name",
+          "Amazon Redshift JDBC driver",
+          "Indicates the display name to be used for the client that is using IdC browser auth plugin"),
   
   /**
    * The AWS region where the cluster is located.

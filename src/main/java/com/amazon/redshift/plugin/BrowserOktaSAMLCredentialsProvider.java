@@ -205,11 +205,6 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
     }
 
     @Override
-    public int getSubType() {
-        return IamHelper.SAML_PLUGIN;
-    }
-
-    @Override
     public NativeTokenHolder getCredentials() throws RedshiftException {
         NativeTokenHolder credentials = null;
 
