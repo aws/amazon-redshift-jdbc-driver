@@ -174,7 +174,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     this.enableFetchRingBuffer = RedshiftProperty.ENABLE_FETCH_RING_BUFFER.getBoolean(info);
     String fetchRingBufferSizeStr = RedshiftProperty.FETCH_RING_BUFFER_SIZE.get(info);
     this.fetchRingBufferSize = (fetchRingBufferSizeStr != null ) 
-    															? RedshiftPropertyMaxResultBufferParser.parseProperty(fetchRingBufferSizeStr)
+    															? RedshiftPropertyMaxResultBufferParser.parseProperty(fetchRingBufferSizeStr, RedshiftProperty.FETCH_RING_BUFFER_SIZE.getName())
     															: 0;
 
     this.enableStatementCache = RedshiftProperty.ENABLE_STATEMENT_CACHE.getBoolean(info);

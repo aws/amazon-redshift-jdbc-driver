@@ -28,12 +28,12 @@ public class RedshiftPropertyMaxResultBufferParser {
    * @return value of max result buffer size.
    * @throws RedshiftException Exception when given value can't be parsed.
    */
-  public static long parseProperty(String value) throws RedshiftException {
+  public static long parseProperty(String value, String propertyName) throws RedshiftException {
     long result = -1;
     if (checkIfValueContainsPercent(value)) {
-      result = parseBytePercentValue(value);
+      result = parseBytePercentValue(value, propertyName);
     } else if (checkIfValueExistsToBeParsed(value)) {
-      result = parseByteValue(value);
+      result = parseByteValue(value, propertyName);
     }
     result = adjustResultSize(result);
     return result;
@@ -57,7 +57,7 @@ public class RedshiftPropertyMaxResultBufferParser {
    * @return percent value of max result buffer size.
    * @throws RedshiftException Exception when given value can't be parsed.
    */
-  private static long parseBytePercentValue(String value) throws RedshiftException {
+  private static long parseBytePercentValue(String value, String propertyName) throws RedshiftException {
     long result = -1;
     int length;
 
@@ -66,8 +66,7 @@ public class RedshiftPropertyMaxResultBufferParser {
 
       if (length == -1) {
         throwExceptionAboutParsingError(
-            "Received MaxResultBuffer parameter can't be parsed. Value received to parse: {0}",
-            value);
+                String.format("Received parameter '%s' can't be parsed. Value received to parse is '%s'", propertyName, value));
       }
 
       result = calculatePercentOfMemory(value, length);
@@ -146,7 +145,7 @@ public class RedshiftPropertyMaxResultBufferParser {
    * @return Size based on given string.
    * @throws RedshiftException Exception when given value can't be parsed.
    */
-  private static long parseByteValue(String value) throws RedshiftException {
+  private static long parseByteValue(String value, String propertyName) throws RedshiftException {
     long result = -1;
     long multiplier = 1;
     long mul = 1000;
@@ -181,9 +180,7 @@ public class RedshiftPropertyMaxResultBufferParser {
         if (sign >= '0' && sign <= '9') {
           result = Long.parseLong(value);
         } else {
-          throwExceptionAboutParsingError(
-              "Received MaxResultBuffer parameter can't be parsed. Value received to parse: {0}",
-              value);
+          throwExceptionAboutParsingError( String.format("Received parameter '%s' can't be parsed. Value received to parse is '%s'", propertyName, value));
         }
         break;
     }

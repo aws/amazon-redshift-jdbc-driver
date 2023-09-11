@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.ByteStreamWriter;
@@ -669,7 +670,7 @@ public class RedshiftStream implements Closeable, Flushable {
    * @throws RedshiftException exception returned when occurred parsing problem.
    */
   public void setMaxResultBuffer(String value) throws RedshiftException {
-    maxResultBuffer = RedshiftPropertyMaxResultBufferParser.parseProperty(value);
+    maxResultBuffer = RedshiftPropertyMaxResultBufferParser.parseProperty(value, RedshiftProperty.MAX_RESULT_BUFFER.getName());
   }
 
   /**
