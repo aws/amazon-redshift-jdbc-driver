@@ -208,6 +208,7 @@ public class RedshiftSQLXML implements SQLXML {
         transformerFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         transformerFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         transformerFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        transformerFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd",false);
         
         TransformerHandler transformerHandler = transformerFactory.newTransformerHandler();
         stringWriter = new StringWriter();
