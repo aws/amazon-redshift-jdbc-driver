@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v2.1.0.18 (2023-08-01)
+v2.1.0.19 (2023-09-11)
 ----------------------
 - Added Identity Center authentication support with new plugins [Bhavik Shah]
 - Increased HTTP server backlog size to 2 to account for Google Chrome's preloading causing HTTP requests to fail occasionally when logging in using BrowserSamlCredentialsProvider [PR#95](https://github.com/aws/amazon-redshift-jdbc-driver/pull/95) [
