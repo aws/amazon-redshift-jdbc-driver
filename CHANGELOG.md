@@ -3,6 +3,15 @@ Changelog
 
 v2.1.0.18 (2023-08-01)
 ----------------------
+- Added Identity Center authentication support with new plugins [Bhavik Shah]
+- Increased HTTP server backlog size to 2 to account for Google Chrome's preloading causing HTTP requests to fail occasionally when logging in using BrowserSamlCredentialsProvider [PR#95](https://github.com/aws/amazon-redshift-jdbc-driver/pull/95) [
+Jimmy Do]
+- Fix error message shown when value provided for maxResultBuffer property cannot be parsed [Bhavik Shah]
+- Improvements for logging [Bhavik Shah]
+- Improvements for XML parsing [Bhavik Shah]
+  
+v2.1.0.18 (2023-08-01)
+----------------------
 - Added feature to detect region automatically for IAM connections if not provided by user [Bhavik Shah]
 - Fixed a bug where ring buffer was growing beyond expected limits [issue#88](https://github.com/aws/amazon-redshift-jdbc-driver/issues/88) [Bhavik Shah]
 - Fixed NULLABLE and IS_NULLABLE definition in metadata for external datasharing objects [Bhavik Shah]
