@@ -94,6 +94,9 @@ abstract class IdpCredentialsProvider {
       throw new IOException(error + " " + e.getMessage(), e);
     } 
   }
-  
-  
+
+  protected static String getRegexForJsonKey(String keyName) {
+      return "(\"" + keyName + "\"\\s*:\\s*\")[^\"]*\"";
+  }
+
 }

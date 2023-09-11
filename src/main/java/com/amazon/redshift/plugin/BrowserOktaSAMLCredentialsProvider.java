@@ -178,8 +178,7 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
             saml = getSamlAssertion();
 
             if (RedshiftLogger.isEnable())
-                m_log.logDebug(
-                        String.format("SAML : %s", saml));
+                m_log.logDebug("BrowserOktaSAMLCredentialsProvider: got SAML token");
         }
         catch (Exception e)
         {
@@ -260,7 +259,7 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
             String saml = getSamlAssertion();
 
             if (RedshiftLogger.isEnable())
-                m_log.logDebug(String.format("saml : %s", saml));
+                m_log.logDebug("BrowserOktaSAMLCredentialsProvider: refreshed SAML assertion token");
 
             // Default expiration until server sends actual expirations
             Date expiration = new Date(System.currentTimeMillis() + EXPIRY_TIME * 60 * 1000);
@@ -322,8 +321,15 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
                     @Override
                     public Object apply(List<NameValuePair> nameValuePairs)
                     {
-                        if (RedshiftLogger.isEnable())
-                            m_log.logDebug("nameValuePairs: {0}", nameValuePairs);
+                        if (RedshiftLogger.isEnable()) {
+                            for (NameValuePair pair : nameValuePairs) {
+                                if (pair.getName().equals(SAML_RESPONSE_PARAM_NAME)) {
+                                    m_log.logDebug("nameValuePair:name= {0}", SAML_RESPONSE_PARAM_NAME);
+                                } else {
+                                    m_log.logDebug("nameValuePair: {0}", pair);
+                                }
+                            }
+                        }
 
                         return findParameter(SAML_RESPONSE_PARAM_NAME, nameValuePairs);
                     }
@@ -353,19 +359,21 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
 
         Object result = requestHandler.getResult();
 
-        if (RedshiftLogger.isEnable())
-            m_log.logDebug("result: {0}", result);
-
         if (result instanceof InternalPluginException)
         {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("Error occurred while fetching SAML assertion: {0}", result);
             throw (InternalPluginException) result;
         }
         if (result instanceof String)
         {
             if(RedshiftLogger.isEnable())
-                m_log.log(LogLevel.DEBUG, "Got SAML assertion");
+                m_log.log(LogLevel.DEBUG, "Got SAML assertion of length={0}", ((String) result).length());
             return (String) result;
         }
+
+        if (RedshiftLogger.isEnable())
+            m_log.logDebug("result: {0}", result);
         throw new InternalPluginException("Fail to login during timeout.");
     }
 

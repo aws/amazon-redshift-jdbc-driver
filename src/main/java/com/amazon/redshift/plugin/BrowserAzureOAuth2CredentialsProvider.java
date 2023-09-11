@@ -323,19 +323,21 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
         
         Object result = requestHandler.getResult();
         
-      	if (RedshiftLogger.isEnable())
-      		m_log.logDebug("result: {0}", result);
-        
         if (result instanceof InternalPluginException)
         {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("Error occurred while fetching JWT assertion: {0}", result);
             throw (InternalPluginException) result;
         }
         if (result instanceof String)
         {
         	if(RedshiftLogger.isEnable())
-        		m_log.log(LogLevel.DEBUG, "Got JWT assertion");
+        		m_log.log(LogLevel.DEBUG, "Got authorization token of length={0}", ((String) result).length());
           return (String) result;
         }
+
+        if (RedshiftLogger.isEnable())
+            m_log.logDebug("result: {0}", result);
         throw new InternalPluginException("Fail to login during timeout.");
     }
 
@@ -354,9 +356,12 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
             CloseableHttpResponse resp = client.execute(post))
         {
         	String content = EntityUtils.toString(resp.getEntity());
-        	
-        	if(RedshiftLogger.isEnable())
-        		m_log.log(LogLevel.DEBUG, "fetchJwtResponse https response:" + content);
+
+            if(RedshiftLogger.isEnable()) {
+                String maskedContent = content.replaceAll(getRegexForJsonKey("access_token"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("id_token"), "$1***masked***\"");
+                m_log.log(LogLevel.DEBUG, "fetchJwtResponse https response:" + maskedContent);
+            }
         	
           checkAndThrowsWithMessage(
               resp.getStatusLine().getStatusCode() != 200,
@@ -382,8 +387,6 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
     private String extractJwtAssertion(String content)
     {
         String encodedJwtAssertion;
-      	if(RedshiftLogger.isEnable())
-      		m_log.logDebug("content: {0}", content);
         
         JsonNode accessTokenField = Jackson.jsonNodeOf(content).findValue("access_token");
         checkAndThrowsWithMessage(accessTokenField == null, "Failed to find access_token");
@@ -441,9 +444,8 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
       	if(RedshiftLogger.isEnable())
       		m_log.log(LogLevel.DEBUG,
             String.format(
-                "Request token URI: \n%s\nRequest parameters:\n%s",
-                tokenRequestUrl,
-                Arrays.toString(parameters.toArray()))
+                "Request token URI: \n%s\nredirectUri:%s",
+                tokenRequestUrl, redirectUri)
             );
       	
         return post;

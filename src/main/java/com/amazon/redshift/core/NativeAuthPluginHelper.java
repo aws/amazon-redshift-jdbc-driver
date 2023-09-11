@@ -52,6 +52,8 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
       info = setAuthProperties(info, settings, log);
 
       String idpToken = getNativeAuthPluginCredentials(settings, log, authProfile);
+      if (RedshiftLogger.isEnable())
+        log.logInfo("NativeAuthPluginHelper: Obtained idp token of length={0}", idpToken != null ? idpToken.length() : -1);
       info.put(RedshiftProperty.WEB_IDENTITY_TOKEN.getName(), idpToken);
       
       return info;

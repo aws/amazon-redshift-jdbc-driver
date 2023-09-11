@@ -301,19 +301,21 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
         
         Object result = requestHandler.getResult();
         
-      	if (RedshiftLogger.isEnable())
-      		m_log.logDebug("result: {0}", result);
-        
         if (result instanceof InternalPluginException)
         {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("Error occurred while fetching SAML assertion: {0}", result);
             throw (InternalPluginException) result;
         }
         if (result instanceof String)
         {
         	if(RedshiftLogger.isEnable())
-        		m_log.log(LogLevel.DEBUG, "Got SAML assertion");
+        		m_log.log(LogLevel.DEBUG, "Got authorization token of length={0}", ((String) result).length());
           return (String) result;
         }
+
+        if (RedshiftLogger.isEnable())
+            m_log.logDebug("result: {0}", result);
         throw new InternalPluginException("Fail to login during timeout.");
     }
 
@@ -347,9 +349,13 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             CloseableHttpResponse resp = client.execute(post))
         {
         	String content = EntityUtils.toString(resp.getEntity());
-        	
-        	if(RedshiftLogger.isEnable())
-        		m_log.log(LogLevel.DEBUG, "fetchSamlResponse https response:" + content);
+
+            if(RedshiftLogger.isEnable()) {
+                String maskedContent = content.replaceAll(getRegexForJsonKey("access_token"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("refresh_token"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("id_token"), "$1***masked***\"");
+                m_log.log(LogLevel.DEBUG, "fetchSamlResponse https response:" + maskedContent);
+            }
         	
           checkAndThrowsWithMessage(
               resp.getStatusLine().getStatusCode() != 200,
@@ -375,9 +381,6 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     private String extractSamlAssertion(String content)
     {
         String encodedSamlAssertion;
-      	if(RedshiftLogger.isEnable())
-      		m_log.logDebug("content: {0}", content);
-        
         JsonNode accessTokenField = Jackson.jsonNodeOf(content).findValue("access_token");
         checkAndThrowsWithMessage(accessTokenField == null, "Failed to find access_token");
         encodedSamlAssertion = accessTokenField.textValue();
@@ -386,7 +389,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
             "Invalid access_token value.");
         
       	if(RedshiftLogger.isEnable())
-      		m_log.log(LogLevel.DEBUG, "Successfully got SAML assertion");
+      		m_log.log(LogLevel.DEBUG, "Successfully got SAML assertion of length={0}", encodedSamlAssertion.length());
       	
         return newStringUtf8(Base64.decodeBase64(encodedSamlAssertion));
     }
@@ -430,9 +433,8 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
       	if(RedshiftLogger.isEnable())
       		m_log.log(LogLevel.DEBUG,
             String.format(
-                "Request token URI: \n%s\nRequest parameters:\n%s",
-                tokenRequestUrl,
-                Arrays.toString(parameters.toArray()))
+                "Request token URI: \n%s\nredirectUri:%s",
+                tokenRequestUrl, redirectUri)
             );
       	
         return post;

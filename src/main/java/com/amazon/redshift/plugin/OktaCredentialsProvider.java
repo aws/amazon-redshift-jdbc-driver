@@ -20,6 +20,9 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 public class OktaCredentialsProvider extends SamlCredentialsProvider
 {
@@ -112,8 +115,12 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             responseAuthenticate = httpClient.execute(httpost);
             String content = EntityUtils.toString(responseAuthenticate.getEntity());
 
-          	if(RedshiftLogger.isEnable())
-          		m_log.log(LogLevel.DEBUG, "oktaAuthentication https response:" + content);
+          	if(RedshiftLogger.isEnable()) {
+                String maskedContent = content.replaceAll(getRegexForJsonKey("sessionToken"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("id"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("passwordChanged"), "$1***masked***\"");
+                m_log.log(LogLevel.DEBUG, "oktaAuthentication https response:" + maskedContent);
+            }
             
             StatusLine statusLine = responseAuthenticate.getStatusLine();
             int requestStatus = statusLine.getStatusCode();
@@ -173,7 +180,7 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
         String body = EntityUtils.toString(responseSAML.getEntity());
         
         if (RedshiftLogger.isEnable())
-      		m_log.logDebug("body: {0}", body);
+      		m_log.logDebug("body: {0}", sanitizeResponseBody(body));
         
         for (String inputTags : getInputTagsfromHTML(body)) {
             String name = getValueByKey(inputTags, "name");
@@ -188,5 +195,17 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
             }
         }
         throw new IOException("Failed to retrieve SAMLAssertion.");
+    }
+
+    private String sanitizeResponseBody(String response) {
+        Document document = Jsoup.parse(response);
+        // find input tag with name as SAMLResponse
+        Element samlElement = document.selectFirst("input[name=SAMLResponse]");
+
+        if(samlElement != null) {
+            samlElement.val("***masked***"); // mask the value attribute for this element
+            return document.toString();
+        }
+        return response;
     }
 }

@@ -289,8 +289,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
             String samlAssertion = getSamlAssertion();
 
             if (RedshiftLogger.isEnable())
-            		m_log.logDebug(
-                    String.format("SAML assertion: %s", samlAssertion));
+            		m_log.logDebug("SamlCredentialsProvider: Received SAML assertion of length={0}", samlAssertion != null ? samlAssertion.length() : -1);
                     
             final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:saml-provider/\\S+");
             final Pattern ROLE_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:role/\\S+");
@@ -449,8 +448,8 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
           samlAssertion = getSamlAssertion();
 
           if (RedshiftLogger.isEnable())
-          		m_log.logDebug(
-                  String.format("SAML assertion: %s", samlAssertion));
+              m_log.logDebug("SamlCredentialsProvider: Got SAML assertion of " +
+                      "length={0}", samlAssertion != null ? samlAssertion.length() : -1);
       }
       catch (IOException e)
       {

@@ -176,8 +176,7 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
             String jwt = getJwtAssertion();
 
             if (RedshiftLogger.isEnable())
-          		m_log.logDebug(
-                  String.format("JWT : %s", jwt));
+          		m_log.logDebug("JwtCredentialsProvider: refreshed JWT assertion of length={0}", jwt != null ? jwt.length() : -1);
 
             // Default expiration until server sends actual expirations
             Date expiration = new Date(System.currentTimeMillis() + 15 * 60 * 1000);            
@@ -223,8 +222,7 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
         jwt = getJwtAssertion();
 
         if (RedshiftLogger.isEnable())
-      		m_log.logDebug(
-              String.format("JWT : %s", jwt));
+      		m_log.logDebug("JwtCredentialsProvider: got JWT asssertion of length={0}", jwt != null ? jwt.length() : -1);
       }
       catch (Exception e)
       {

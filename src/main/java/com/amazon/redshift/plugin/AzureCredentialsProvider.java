@@ -219,9 +219,12 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
                 }
                 throw new IOException(errorMessage);
             }
-            
-            if (RedshiftLogger.isEnable())
-          		m_log.logDebug("content: {0}", content);
+
+            if(RedshiftLogger.isEnable()) {
+                String maskedContent = content.replaceAll(getRegexForJsonKey("access_token"), "$1***masked***\"");
+                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("refresh_token"), "$1***masked***\"");
+                m_log.log(LogLevel.DEBUG, "content:" + maskedContent);
+            }
             
             // parse the JSON response to grab access_token field which contains Base64 encoded SAML
             // Assertion and decode it

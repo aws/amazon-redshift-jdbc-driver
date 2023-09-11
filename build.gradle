@@ -42,6 +42,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.0'
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'com.amazonaws:aws-java-sdk-ssooidc:1.12.493', withoutjmespathSupport
+    implementation 'org.jsoup:jsoup:1.16.1'
+
 
 
     compileOnly 'com.ongres.scram:client:2.1'

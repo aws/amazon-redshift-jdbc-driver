@@ -152,9 +152,16 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
                 @Override
                 public Object apply(List<NameValuePair> nameValuePairs)
                 {
-                	if (RedshiftLogger.isEnable())
-                		m_log.logDebug("nameValuePairs: {0}", nameValuePairs);
-                	
+                    if (RedshiftLogger.isEnable()) {
+                        for (NameValuePair pair : nameValuePairs) {
+                            if (pair.getName().equals(SAML_RESPONSE_PARAM_NAME)) {
+                                m_log.logDebug("nameValuePair:name= {0}", SAML_RESPONSE_PARAM_NAME);
+                            } else {
+                                m_log.logDebug("nameValuePair: {0}", pair);
+                            }
+                        }
+                    }
+
                     return findParameter(SAML_RESPONSE_PARAM_NAME, nameValuePairs);
                 }
             });
@@ -182,19 +189,21 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
 
         Object result = requestHandler.getResult();
         
-      	if (RedshiftLogger.isEnable())
-      		m_log.logDebug("result: {0}", result);
-        
         if (result instanceof InternalPluginException)
         {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("Error occurred while fetching SAML assertion: {0}", result);
             throw (InternalPluginException) result;
         }
         if (result instanceof String)
         {
         	if(RedshiftLogger.isEnable())
-        		m_log.log(LogLevel.DEBUG, "Got SAML assertion");
-          return (String) result;
+        		m_log.log(LogLevel.DEBUG, "Got SAML assertion of length={0}", ((String) result).length());
+            return (String) result;
         }
+
+        if (RedshiftLogger.isEnable())
+            m_log.logDebug("result: {0}", result);
         throw new InternalPluginException("Fail to login during timeout.");
     }
 
