@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.1.0.20 (2023-10-16)
+----------------------
+- Added support for lz4 compression over wire protocol communication between Redshift server and the client/driver. Compression is turned on by default and can be set using new connection parameter compression=off or compression=lz4 [Bhavik Shah]
+- Fixed a bug where closing a statement with partially read results could lead to errors in subsequent statements on the same connection [Bhavik Shah]
+- Improved driver performance when closing statements with partially read results [Bhavik Shah]
+- Fixed a bug where the cancellation of a query could lead to an unexpected connection close by the server [Bhavik Shah]
+
 v2.1.0.19 (2023-09-11)
 ----------------------
 - Added Identity Center authentication support with new plugins [Bhavik Shah]
