@@ -90,9 +90,6 @@ public class Server
         this.m_ipAddress = InetAddress.getLoopbackAddress();
         this.m_socketFactory = ServerSocketFactory.getDefault();
         this.m_defaultSocketConfig = SocketConfig.custom()
-            // The backlog size needs to be at least 2 to avoid random `ERR_SOCKET_NOT_CONNECTED`
-            // errors in Google Chrome on macOS. It's caused by Chrome's "Preload pages" feature,
-            // which is enabled by default (located here: `chrome://settings/preloading`).
             .setBacklogSize(2)
             .setSoKeepAlive(false)
             .setSoTimeout((int) waitTime.toMillis())

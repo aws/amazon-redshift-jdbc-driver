@@ -2913,7 +2913,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 				// Wait for full read of any executing command
 				if(m_ringBufferThread != null)
 				{
-					long joinWaitTime = 120*1000; // 2 min
 					try
 					{
 						if(calledFromConnectionClose)
@@ -2932,7 +2931,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 							
 							// Wait for thread associated with result to terminate.
 							if (ringBufferThread != null) {
-								ringBufferThread.join(joinWaitTime);
+								ringBufferThread.join();
 							}
 							
 							if (queueRows != null)
@@ -2940,8 +2939,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 						}
                         else if(calledFromStatementClose)
                         {
-                            // Wait for thread associated with result to terminate.
-                            m_ringBufferThread.join(joinWaitTime);
+                            // Drain results from the socket
+                            if (queueRows != null)
+                                queueRows.setSkipRows();
+
+                            m_ringBufferThread.join();
                         }
 						else {
 							// Application is trying to execute another SQL on same connection.
@@ -3042,7 +3044,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	/**
   	 * Constructor
   	 * 
-  	 * @param messageLoopState
+  	 * @param msgLoopState
   	 */
   	public RingBufferThread(ResultHandler handler, 
   					int flags, int fetchSize, 

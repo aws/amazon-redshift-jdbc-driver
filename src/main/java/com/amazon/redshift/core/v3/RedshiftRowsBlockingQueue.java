@@ -67,60 +67,64 @@ public class RedshiftRowsBlockingQueue<E> extends LinkedBlockingQueue<E> {
     															limitByBufSize, totalFetchRingBufferSize.get(), fetchRingBufferSizeCapacity, fetchSize);
     }
   }
-  
-  @Override
-  public void put(E e) throws InterruptedException {
-  	if (skipRows) return;
-  	if (limitByBufSize) {
-  		if (e != null) {
-  			
-/*  	    if (RedshiftLogger.isEnable() 
+
+	@Override
+	public void put(E e) throws InterruptedException {
+		if (skipRows) return;
+		if (limitByBufSize) {
+			if (e != null) {
+
+/*  	    if (RedshiftLogger.isEnable()
   	  			&& logger != null) {
-  	    	logger.log(LogLevel.DEBUG, "put(): limitByBufSize={0} , totalFetchRingBufferSize={1}, fetchRingBufferSizeCapacity = {2}, fetchSize = {3}", 
+  	    	logger.log(LogLevel.DEBUG, "put(): limitByBufSize={0} , totalFetchRingBufferSize={1}, fetchRingBufferSizeCapacity = {2}, fetchSize = {3}",
   	    															limitByBufSize, totalFetchRingBufferSize.get(), fetchRingBufferSizeCapacity, fetchSize);
   	    } */
-  			
-  			// Is buffer at full capacity?
-        if(totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
-    			final ReentrantLock putLock = this.putLock;
-          
-	        putLock.lockInterruptibly();
-	        try {
-			  		Tuple row = (Tuple)e;
-			  		long currentBufSize;
-			  		
-		        if (RedshiftLogger.isEnable() 
-		        			&& logger != null) {
-		          logger.log(LogLevel.DEBUG, "put(): Buffer full. Waiting for application to read rows and make space");
-		        }
-			  		
-		  			// Wait buffer at capacity
-	          while (totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
-	            notFull.await(1, TimeUnit.SECONDS);
-	          }
-	            
-		        if (RedshiftLogger.isEnable() && logger != null)
-		          logger.log(LogLevel.DEBUG, "put(): Buffer state change from full to having some space. Now adding a new row."); 
-	          
-	    	  	super.put(e);
-			  			
-	    	  	currentBufSize = totalFetchRingBufferSize.addAndGet(getNodeSize(row));
-	          
-	          if (currentBufSize < fetchRingBufferSizeCapacity)
-	            notFull.signal();
-	        } finally {
-	          putLock.unlock();
-	        }
-        }
-        else {
-    	  	super.put(e);
-    	  	totalFetchRingBufferSize.addAndGet(getNodeSize((Tuple)e));
-        }
-  		}
-  	} // By size
-  	else
-  		super.put(e);
-  }
+
+				// Is buffer at full capacity?
+				if(totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
+
+					final ReentrantLock putLock = this.putLock;
+
+					putLock.lockInterruptibly();
+					try {
+						Tuple row = (Tuple)e;
+						long currentBufSize;
+
+						if (RedshiftLogger.isEnable()
+								&& logger != null) {
+							logger.log(LogLevel.DEBUG, "put(): Buffer full. Waiting for application to read rows and make space");
+						}
+
+						// Wait buffer at capacity
+						while (totalFetchRingBufferSize.get() >= fetchRingBufferSizeCapacity) {
+							if(skipRows) {
+								return;
+							}
+							notFull.await(1, TimeUnit.SECONDS);
+						}
+
+						if (RedshiftLogger.isEnable() && logger != null)
+							logger.log(LogLevel.DEBUG, "put(): Buffer state change from full to having some space. Now adding a new row.");
+
+						super.put(e);
+
+						currentBufSize = totalFetchRingBufferSize.addAndGet(getNodeSize(row));
+
+						if (currentBufSize < fetchRingBufferSizeCapacity)
+							notFull.signal();
+					} finally {
+						putLock.unlock();
+					}
+				}
+				else {
+					super.put(e);
+					totalFetchRingBufferSize.addAndGet(getNodeSize((Tuple)e));
+				}
+			}
+		} // By size
+		else
+			super.put(e);
+	}
   
   @Override
   public E take() throws InterruptedException {

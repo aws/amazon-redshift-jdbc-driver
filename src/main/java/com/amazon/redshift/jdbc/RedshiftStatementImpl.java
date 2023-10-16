@@ -729,31 +729,30 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
    *
    * {@inheritDoc}
    */
-  public final void close() throws SQLException {
-    if(connection.getQueryExecutor().isRingBufferThreadRunning() &&
-            (!connection.getAutoCommit() || getMaxRows() == 0))
-    {
-      // Wait for current ring buffer thread to finish, if any.
-      // Shouldn't call from synchronized method, which can cause dead-lock.
-      // We don't want to wait for ring buffer to fetch all rows if setMaxRows() is set,
-      // or if autoCommit is set to true
-      connection.getQueryExecutor().waitForRingBufferThreadToFinish(false, false, true, null, null);
-    }
+  public final void close() throws SQLException
+  {
+    if (RedshiftLogger.isEnable())
+      connection.getLogger().logFunction(true);
 
-    if (RedshiftLogger.isEnable()) 
-    	connection.getLogger().logFunction(true);
-  	
     // closing an already closed Statement is a no-op.
     synchronized (this) {
       if (isClosed) {
-      	
-        if (RedshiftLogger.isEnable()) 
-        	connection.getLogger().logFunction(false);
-      	
+
+        if (RedshiftLogger.isEnable())
+          connection.getLogger().logFunction(false);
+
         return;
       }
       isClosed = true;
     }
+
+    // The user has closed the statement and does not want to read any more results. We send a cancellation request to
+    // the server. It is possible to have a situation where if the driver's ring buffer is not
+    // reading from the stream and the server's send buffer is full. The server treats this as a client side hang and
+    // closes the connection. To avoid this, we start reading from the stream again, but we throw away the rows we read
+    // because the user no longer needs them. Note, this is a temporary fix until a permanent server-side fix can be
+    // provided.
+    resumeReadAndDiscardResults();
 
     cancel();
 
@@ -1580,4 +1579,25 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   protected void transformQueriesAndParameters() throws SQLException {
   }
 
+  private void resumeReadAndDiscardResults()
+  {
+    RedshiftResultSet rs = null;
+    if(firstUnclosedResult != null)
+    {
+      rs = (RedshiftResultSet) firstUnclosedResult.getResultSet();
+    }
+    if(rs != null && rs.queueRows != null)
+    {
+      rs.queueRows.setSkipRows();
+    }
+
+    // We sleep here for 2 seconds to give the ring buffer adequate time to start reading results again once it wakes up,
+    // and the server adequate time to detect that send buffer is no longer full
+    try
+    {
+      Thread.sleep(2000);
+    }
+    catch (InterruptedException e) {
+    }
+  }
 }
