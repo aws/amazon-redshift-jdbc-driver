@@ -5327,8 +5327,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   }
   
   private boolean isSingleDatabaseMetaData() {
-  	return (isDatabaseMetadataCurrentDbOnly()
-  						|| !isMultiDatabasesCatalogEnableInServer());
+    return (isDatabaseMetadataCurrentDbOnly()
+            || !isMultiDatabasesCatalogEnableInServer());
   }
   private boolean isDatabaseMetadataCurrentDbOnly() {
   	return connection.isDatabaseMetadataCurrentDbOnly();

@@ -47,7 +47,7 @@ public class MakeSSL extends ObjectFactory {
       verifyPeerName(stream, info, newConnection);
     }
 
-    stream.changeSocket(newConnection);
+    stream.changeSocket(newConnection, false, info);
   }
 
   private static void verifyPeerName(RedshiftStream stream, Properties info, SSLSocket newConnection)

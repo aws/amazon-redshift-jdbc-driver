@@ -195,7 +195,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
   
   public java.net.URL getURL(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getURL columnIndex: {0}", columnIndex);
     checkClosed();
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "getURL(int)");
@@ -2249,7 +2249,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   
   @Override
   public String getString(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getString columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2366,7 +2366,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    */
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getBoolean columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2407,7 +2407,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public byte getByte(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getByte columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2458,7 +2458,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public short getShort(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getShort columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2480,7 +2480,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public int getInt(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getInt columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2509,7 +2509,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public long getLong(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getLong columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2724,7 +2724,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public float getFloat(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getFloat columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2746,7 +2746,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public double getDouble(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getDouble columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2767,7 +2767,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getBigDecimal columnIndex: {0}", columnIndex);
     
     return (BigDecimal) getNumeric(columnIndex, scale, false);
@@ -2850,7 +2850,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    */
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getBytes columnIndex: {0}", columnIndex);
     
     checkResultSet(columnIndex);
@@ -2879,19 +2879,19 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public java.sql.Date getDate(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getDate columnIndex: {0}", columnIndex);
     return getDate(columnIndex, null);
   }
 
   public Time getTime(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getTime columnIndex: {0}", columnIndex);
     return getTime(columnIndex, null);
   }
 
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getTimestamp columnIndex: {0}", columnIndex);
     return getTimestamp(columnIndex, null);
   }
@@ -2919,7 +2919,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public InputStream getUnicodeStream(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getUnicodeStream columnIndex: {0}", columnIndex);
     checkResultSet(columnIndex);
     if (wasNullFlag) {
@@ -2941,7 +2941,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public InputStream getBinaryStream(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getBinaryStream columnIndex: {0}", columnIndex);
     checkResultSet(columnIndex);
     if (wasNullFlag) {
@@ -3052,7 +3052,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   @Override
   public Object getObject(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getObject columnIndex: {0}", columnIndex);
     Field field;
 
@@ -4083,7 +4083,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public NClob getNClob(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getNClob columnIndex: {0}", columnIndex);
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "getNClob(int)");
   }
@@ -4128,7 +4128,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public SQLXML getSQLXML(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getSQLXML columnIndex: {0}", columnIndex);
     String data = getString(columnIndex);
     if (data == null) {
@@ -4151,7 +4151,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public String getNString(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getNString columnIndex: {0}", columnIndex);
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "getNString(int)");
   }
@@ -4161,7 +4161,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   public Reader getNCharacterStream(int columnIndex) throws SQLException {
-    if (RedshiftLogger.isEnable()) 
+    if (RedshiftLogger.isEnable())
     	connection.getLogger().log(LogLevel.DEBUG, "  getNCharacterStream columnIndex: {0}", columnIndex);
     throw com.amazon.redshift.Driver.notImplemented(this.getClass(), "getNCharacterStream(int)");
   }

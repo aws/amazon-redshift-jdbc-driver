@@ -56,6 +56,12 @@ public class VisibleBufferedInputStream extends InputStream {
   private boolean timeoutRequested = false;
 
   /**
+   * number of bytes read from stream
+   */
+  private long bytesReadFromStream = 0;
+
+
+  /**
    * Creates a new buffer around the given stream.
    *
    * @param in The stream to buffer.
@@ -159,6 +165,10 @@ public class VisibleBufferedInputStream extends InputStream {
     int read = 0;
     try {
       read = wrapped.read(buffer, endIndex, canFit);
+      if(read > 0)
+      {
+        bytesReadFromStream += read;
+      }
       if (!block && read == 0) {
         return false;
       }
@@ -246,6 +256,10 @@ public class VisibleBufferedInputStream extends InputStream {
       int r;
       try {
         r = wrapped.read(to, off, len);
+        if(r > 0)
+        {
+          bytesReadFromStream += r;
+        }
       } catch (SocketTimeoutException e) {
         if (read == 0 && timeoutRequested) {
           throw e;
@@ -310,6 +324,14 @@ public class VisibleBufferedInputStream extends InputStream {
    */
   public int getIndex() {
     return index;
+  }
+
+  /**
+   * Returns the number of bytes read by the stream
+   */
+  public long getBytesReadFromStream()
+  {
+    return bytesReadFromStream;
   }
 
   /**

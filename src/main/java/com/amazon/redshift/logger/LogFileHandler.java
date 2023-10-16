@@ -18,7 +18,7 @@ public class LogFileHandler implements LogHandler {
 
   private static final int FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 	
-  private static final int FILE_COUNT = 10; 
+  private static final int FILE_COUNT = 10;
   
   private static final String FILE_EXTENSION = ".log";
   

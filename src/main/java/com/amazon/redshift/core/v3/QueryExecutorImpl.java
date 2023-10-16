@@ -156,7 +156,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   private Object m_ringBufferThreadLock = new Object();
   
   // Query or some execution on a socket in process
-  private final Lock m_executingLock = new ReentrantLock();  
+  private final Lock m_executingLock = new ReentrantLock();
 
   /**
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
@@ -186,6 +186,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   @Override
   public int getProtocolVersion() {
     return 3;
+  }
+
+  public long getBytesReadFromStream()
+  {
+      return pgStream.getBytesFromStream();
   }
 
   /**
@@ -2264,7 +2269,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
             }
           	logger.log(LogLevel.DEBUG, " <=BE DataRow(len={0})", length);
           	if (skipRow) {
-          		logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}" 
+          		logger.log(LogLevel.DEBUG, " skipRow={0}, rowCount = {1},  maxRows = {2}"
           					, skipRow, (rowCount!= null) ? rowCount[0] : 0, maxRows);
           	}
           }

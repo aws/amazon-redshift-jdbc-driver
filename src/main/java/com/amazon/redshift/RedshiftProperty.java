@@ -123,6 +123,14 @@ public enum RedshiftProperty {
     new String[] {"true", "false"}),
 
   /**
+   * <p>The compression method used.</p>
+   */
+  COMPRESSION(
+          "compression",
+          "lz4:1",
+          "The compression method used for wire protocol communication between Redshift server and the client/driver"),
+
+  /**
    * <p>The timeout value used for socket connect operations. If connecting to the server takes longer
    * than this value, the connection is broken.</p>
    *

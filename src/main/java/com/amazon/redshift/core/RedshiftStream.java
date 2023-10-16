@@ -28,8 +28,11 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import javax.net.SocketFactory;
+
+import static com.amazon.redshift.jdbc.RedshiftConnectionImpl.getOptionalSetting;
 
 /**
  * <p>Wrapper around the raw connection to the server that implements some basic primitives
@@ -47,6 +50,8 @@ public class RedshiftStream implements Closeable, Flushable {
 
   private Socket connection;
   private VisibleBufferedInputStream pgInput;
+
+  private CompressedInputStream pgCompressedInput;
   private OutputStream pgOutput;
   private byte[] streamBuffer;
 
@@ -71,7 +76,7 @@ public class RedshiftStream implements Closeable, Flushable {
    * @param logger the logger to log the entry for debugging.       
    * @throws IOException if an IOException occurs below it.
    */
-  public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, int timeout, RedshiftLogger logger) throws IOException {
+  public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, int timeout, RedshiftLogger logger, boolean disableCompressionForSSL, Properties info) throws IOException {
   	this.logger = logger;
     this.socketFactory = socketFactory;
     this.hostSpec = hostSpec;
@@ -96,10 +101,9 @@ public class RedshiftStream implements Closeable, Flushable {
         logger.log(LogLevel.INFO, "port: " + address.getPort());
         logger.log(LogLevel.INFO, "hostname: " + address.getHostName());
         logger.log(LogLevel.INFO, "hoststring: " + address.getHostString());
-
-
     }
-    changeSocket(socket);
+
+    changeSocket(socket, disableCompressionForSSL, info);
     setEncoding(Encoding.getJVMEncoding("UTF-8", logger));
 
     int2Buf = new byte[2];
@@ -116,11 +120,11 @@ public class RedshiftStream implements Closeable, Flushable {
    * @param hostSpec the host and port to connect to
    * @param logger the logger to log the entry for debugging.       
    * @throws IOException if an IOException occurs below it.
-   * @deprecated use {@link #RedshiftStream(SocketFactory, com.amazon.redshift.util.HostSpec, int, RedshiftLogger)}
+   * @deprecated use {@link #RedshiftStream(SocketFactory, com.amazon.redshift.util.HostSpec, int, RedshiftLogger, boolean, Properties)}
    */
   @Deprecated
-  public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, RedshiftLogger logger) throws IOException {
-    this(socketFactory, hostSpec, 0, logger);
+  public RedshiftStream(SocketFactory socketFactory, HostSpec hostSpec, RedshiftLogger logger, Properties info) throws IOException {
+    this(socketFactory, hostSpec, 0, logger, true, info);
   }
   
   public RedshiftLogger getLogger() {
@@ -197,21 +201,60 @@ public class RedshiftStream implements Closeable, Flushable {
    * @param socket the new socket to change to
    * @throws IOException if something goes wrong
    */
-  public void changeSocket(Socket socket) throws IOException {
+  public void changeSocket(Socket socket, Boolean disableCompressionForSSL, Properties info) throws IOException {
     this.connection = socket;
+    changeStream(disableCompressionForSSL, info);
+  }
 
+  public void changeStream(Boolean disableCompressionForSSL, Properties info) throws IOException {
     // Submitted by Jason Venner <jason@idiom.com>. Disable Nagle
     // as we are selective about flushing output only when we
     // really need to.
     connection.setTcpNoDelay(true);
 
     // Buffer sizes submitted by Sverre H Huseby <sverrehu@online.no>
-    pgInput = new VisibleBufferedInputStream(connection.getInputStream(), 8192);
+    InputStream connectionStream = connection.getInputStream();
+
+    String compressionMode = getOptionalSetting(RedshiftProperty.COMPRESSION.getName(), info);
+    compressionMode = null == compressionMode ? RedshiftProperty.COMPRESSION.getDefaultValue() : compressionMode;
+
+    // If doing SSL handshake or if compression is set to off by user, use regular input stream
+    if(disableCompressionForSSL || compressionMode.equalsIgnoreCase("off"))
+    {
+      if(RedshiftLogger.isEnable())
+      {
+        logger.logInfo("Compression is disabled. Creating regular input stream.");
+      }
+
+      pgInput = new VisibleBufferedInputStream(connectionStream, 8192);
+    }
+    else
+    {
+      // Use a compressed input stream
+      if(RedshiftLogger.isEnable())
+      {
+        logger.logInfo("Compression is enabled. Creating compressed input stream.");
+      }
+
+      pgCompressedInput = new CompressedInputStream(connectionStream, logger);
+      pgInput = new VisibleBufferedInputStream(pgCompressedInput, 8192);
+    }
+
     pgOutput = new BufferedOutputStream(connection.getOutputStream(), 8192);
 
     if (encoding != null) {
       setEncoding(encoding);
     }
+  }
+
+  public long getBytesFromStream()
+  {
+    if(null != pgCompressedInput)
+    {
+      return pgCompressedInput.getBytesReadFromStream();
+    }
+
+    return pgInput.getBytesReadFromStream();
   }
 
   public Encoding getEncoding() {

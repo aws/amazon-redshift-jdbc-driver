@@ -115,67 +115,74 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 
     RedshiftStream newStream = null;
 
-    try {
-      newStream = new RedshiftStream(socketFactory, hostSpec, connectTimeout, logger);
-    	
-	    // Set the socket timeout if the "socketTimeout" property has been set.
-	    int socketTimeout = RedshiftProperty.SOCKET_TIMEOUT.getInt(info);
-	    if (socketTimeout > 0) {
-	      newStream.getSocket().setSoTimeout(socketTimeout * 1000);
-	    }
-	
-	    String maxResultBuffer = RedshiftProperty.MAX_RESULT_BUFFER.get(info);
-	    newStream.setMaxResultBuffer(maxResultBuffer);
-	
-	    // Enable TCP keep-alive probe if required.
-	    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
-	    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
-	
-	    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
-	    // If receiveBufferSize and send_buffer_size are set to a value greater
-	    // than 0, adjust. -1 means use the system default, 0 is ignored since not
-	    // supported.
-	
-	    // Set SO_RECVBUF read buffer size
-	    int receiveBufferSize = RedshiftProperty.RECEIVE_BUFFER_SIZE.getInt(info);
-	    if (receiveBufferSize > -1) {
-	      // value of 0 not a valid buffer size value
-	      if (receiveBufferSize > 0) {
-	        newStream.getSocket().setReceiveBufferSize(receiveBufferSize);
-	      } else {
-	      	if(RedshiftLogger.isEnable())
-	      		logger.log(LogLevel.INFO, "Ignore invalid value for receiveBufferSize: {0}", receiveBufferSize);
-	      }
-	    }
-	
-	    // Set SO_SNDBUF write buffer size
-	    int sendBufferSize = RedshiftProperty.SEND_BUFFER_SIZE.getInt(info);
-	    if (sendBufferSize > -1) {
-	      if (sendBufferSize > 0) {
-	        newStream.getSocket().setSendBufferSize(sendBufferSize);
-	      } else {
-	      	if(RedshiftLogger.isEnable())
-	      		logger.log(LogLevel.INFO, "Ignore invalid value for sendBufferSize: {0}", sendBufferSize);
-	      }
-	    }
-	
-	  	if(RedshiftLogger.isEnable()) {
-	      logger.log(LogLevel.DEBUG, "Receive Buffer Size is {0}", newStream.getSocket().getReceiveBufferSize());
-	      logger.log(LogLevel.DEBUG, "Send Buffer Size is {0}", newStream.getSocket().getSendBufferSize());
-	    }
-	
+    try
+    {
+        newStream = constructNewStream(socketFactory, hostSpec, connectTimeout, logger, true, info);
+
 	    // Construct and send an ssl startup packet if requested.
 	    newStream = enableSSL(newStream, sslMode, info, connectTimeout);
-	
 	    List<String[]> paramList = getParametersForStartup(user, database, info, true);
 	    sendStartupPacket(newStream, paramList);
-	
+        newStream.changeStream(false, info);
 	    // Do authentication (until AuthenticationOk).
 	    doAuthentication(newStream, hostSpec.getHost(), user, info);
     }
     catch(Exception ex) {
       closeStream(newStream);
       throw ex;
+    }
+
+    return newStream;
+  }
+
+  public RedshiftStream constructNewStream(SocketFactory socketFactory, HostSpec hostSpec, int connectTimeout, RedshiftLogger logger, Boolean disableCompressionForSSL, Properties info) throws SQLException, IOException
+  {
+    RedshiftStream newStream = new RedshiftStream(socketFactory, hostSpec, connectTimeout, logger, disableCompressionForSSL, info);
+
+    // Set the socket timeout if the "socketTimeout" property has been set.
+    int socketTimeout = RedshiftProperty.SOCKET_TIMEOUT.getInt(info);
+    if (socketTimeout > 0) {
+      newStream.getSocket().setSoTimeout(socketTimeout * 1000);
+    }
+
+    String maxResultBuffer = RedshiftProperty.MAX_RESULT_BUFFER.get(info);
+    newStream.setMaxResultBuffer(maxResultBuffer);
+
+    // Enable TCP keep-alive probe if required.
+    boolean requireTCPKeepAlive = RedshiftProperty.TCP_KEEP_ALIVE.getBoolean(info);
+    newStream.getSocket().setKeepAlive(requireTCPKeepAlive);
+
+    // Try to set SO_SNDBUF and SO_RECVBUF socket options, if requested.
+    // If receiveBufferSize and send_buffer_size are set to a value greater
+    // than 0, adjust. -1 means use the system default, 0 is ignored since not
+    // supported.
+
+    // Set SO_RECVBUF read buffer size
+    int receiveBufferSize = RedshiftProperty.RECEIVE_BUFFER_SIZE.getInt(info);
+    if (receiveBufferSize > -1) {
+      // value of 0 not a valid buffer size value
+      if (receiveBufferSize > 0) {
+        newStream.getSocket().setReceiveBufferSize(receiveBufferSize);
+      } else {
+        if(RedshiftLogger.isEnable())
+          logger.log(LogLevel.INFO, "Ignore invalid value for receiveBufferSize: {0}", receiveBufferSize);
+      }
+    }
+
+    // Set SO_SNDBUF write buffer size
+    int sendBufferSize = RedshiftProperty.SEND_BUFFER_SIZE.getInt(info);
+    if (sendBufferSize > -1) {
+      if (sendBufferSize > 0) {
+        newStream.getSocket().setSendBufferSize(sendBufferSize);
+      } else {
+        if(RedshiftLogger.isEnable())
+          logger.log(LogLevel.INFO, "Ignore invalid value for sendBufferSize: {0}", sendBufferSize);
+      }
+    }
+
+    if(RedshiftLogger.isEnable()) {
+      logger.log(LogLevel.DEBUG, "Receive Buffer Size is {0}", newStream.getSocket().getReceiveBufferSize());
+      logger.log(LogLevel.DEBUG, "Send Buffer Size is {0}", newStream.getSocket().getSendBufferSize());
     }
 
     return newStream;
@@ -406,6 +413,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     paramList.add(new String[]{"database", database});
     paramList.add(new String[]{"client_encoding", "UTF8"});
     paramList.add(new String[]{"DateStyle", "ISO"});
+    paramList.add(new String[]{"_pq_.compression", info.getProperty("compression", RedshiftProperty.COMPRESSION.get(info))});
 
     Version assumeVersion = ServerVersion.from(RedshiftProperty.ASSUME_MIN_SERVER_VERSION.get(info));
 
@@ -580,7 +588,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 
         // We have to reconnect to continue.
         pgStream.close();
-        return new RedshiftStream(pgStream.getSocketFactory(), pgStream.getHostSpec(), connectTimeout, logger);
+        return new RedshiftStream(pgStream.getSocketFactory(), pgStream.getHostSpec(), connectTimeout, logger, true, info);
 
       case 'N':
         if(RedshiftLogger.isEnable())

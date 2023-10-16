@@ -68,7 +68,9 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   protected int serverProtocolVersion;
   protected boolean datashareEnabled;
   protected boolean enableMultiSqlSupport;
-  
+  protected Properties properties;
+
+
   protected QueryExecutorBase(RedshiftStream pgStream, String user,
       String database, int cancelSignalTimeout, Properties info,
       RedshiftLogger logger) throws SQLException {
@@ -76,6 +78,7 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     this.pgStream = pgStream;
     this.user = user;
     this.database = database;
+    this.properties = info;
     this.cancelSignalTimeout = cancelSignalTimeout;
     this.reWriteBatchedInserts = RedshiftProperty.REWRITE_BATCHED_INSERTS.getBoolean(info);
     this.columnSanitiserDisabled = RedshiftProperty.DISABLE_COLUMN_SANITISER.getBoolean(info);
@@ -191,7 +194,7 @@ public abstract class QueryExecutorBase implements QueryExecutor {
       }
 
       cancelStream =
-          new RedshiftStream(pgStream.getSocketFactory(), pgStream.getHostSpec(), cancelSignalTimeout, logger);
+          new RedshiftStream(pgStream.getSocketFactory(), pgStream.getHostSpec(), cancelSignalTimeout, logger, false, this.properties);
       if (cancelSignalTimeout > 0) {
         cancelStream.setNetworkTimeout(cancelSignalTimeout);
       }

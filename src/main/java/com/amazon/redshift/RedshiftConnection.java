@@ -52,6 +52,8 @@ public interface RedshiftConnection {
    */
   RedshiftNotification[] getNotifications() throws SQLException;
 
+  Long getBytesReadFromStream();
+
   /**
    * This method returns any notifications that have been received since the last call to this
    * method. Returns null if there have been no notifications. A timeout can be specified so the

@@ -1,5 +1,7 @@
 package com.amazon.redshift.util;
 
+import com.amazon.redshift.RedshiftProperty;
+
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Enumeration;
@@ -70,5 +72,18 @@ public class RedshiftProperties extends Properties {
     public synchronized Object setProperty(String key, String value)
     {
         return super.setProperty(key.toLowerCase(Locale.ENGLISH), value);
+    }
+
+    public static void evaluateProperties(RedshiftProperties properties) throws RedshiftException
+    {
+        //evaluate compression algo
+        String compressionAlgo = RedshiftProperty.COMPRESSION.get(properties);
+
+        if(!(compressionAlgo.equalsIgnoreCase("lz4:1") ||
+                compressionAlgo.equalsIgnoreCase("lz4") ||
+                compressionAlgo.equalsIgnoreCase("off")))
+        {
+            throw new RedshiftException("Unsupported compression algorithm specified : " + compressionAlgo);
+        }
     }
 }

@@ -37,7 +37,7 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.replication.RedshiftReplicationConnection;
 import com.amazon.redshift.replication.RedshiftReplicationConnectionImpl;
 import com.amazon.redshift.ssl.NonValidatingFactory;
-
+import com.amazon.redshift.core.v3.QueryExecutorImpl;
 import com.amazon.redshift.util.QuerySanitizer;
 import com.amazon.redshift.util.ByteConverter;
 import com.amazon.redshift.util.GT;
@@ -241,6 +241,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
       logger.log(LogLevel.DEBUG, com.amazon.redshift.util.DriverInfo.DRIVER_FULL_NAME);
       logger.log(LogLevel.DEBUG, "JVM architecture is " + (RedshiftConnectionImpl.IS_64_BIT_JVM ? "64-bit" : "32-bit"));
     }
+
+    RedshiftProperties.evaluateProperties(info);
 
     m_settings = new RedshiftJDBCSettings();
     
@@ -624,6 +626,20 @@ public class RedshiftConnectionImpl implements BaseConnection {
   }
 
   @Override
+  public Long getBytesReadFromStream()
+  {
+    RedshiftConnectionImpl redshiftConnectionImpl = this;
+    if(null != redshiftConnectionImpl && null != redshiftConnectionImpl.getQueryExecutor())
+    {
+      QueryExecutorImpl queryExecutorImpl = (QueryExecutorImpl) redshiftConnectionImpl.getQueryExecutor();
+      long bytes = queryExecutorImpl.getBytesReadFromStream();
+      return bytes;
+    }
+
+    return 0L;
+  }
+
+  @Override
   public ResultSet execSQLQuery(String s, int resultSetType, int resultSetConcurrency)
       throws SQLException {
     BaseStatement stat = (BaseStatement) createStatement(resultSetType, resultSetConcurrency);
@@ -926,8 +942,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public void close() throws SQLException {
   	
     if (RedshiftLogger.isEnable())
-    	logger.logFunction(true);
-  	
+      logger.logFunction(true);
+
     if (queryExecutor == null) {
       // This might happen in case constructor throws an exception (e.g. host being not available).
       // When that happens the connection is still registered in the finalizer queue, so it gets finalized
