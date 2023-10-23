@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v2.1.0.21 (2023-10-23)
+----------------------
+- Fixed a bug where the check for token/credentials expiration time was incorrect [Bhavik Shah]
+  
 v2.1.0.20 (2023-10-16)
 ----------------------
 - Added support for lz4 compression over wire protocol communication between Redshift server and the client/driver. Compression is turned on by default and can be set using new connection parameter compression=off or compression=lz4 [Bhavik Shah]
