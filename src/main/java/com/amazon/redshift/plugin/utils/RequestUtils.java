@@ -8,6 +8,7 @@ import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 
 import java.net.URL;
+import java.util.Date;
 
 /**
  * Http Request utils.
@@ -112,4 +113,16 @@ public class RequestUtils
       	
       return isCustomStsEndPoint;
     }
+
+	/*
+	 * Checks expiry for credential.
+	 * Note that this method returns true (i.e. credential is "expired") 1 minute before actual expiry time - This
+	 * arbitrary buffer has been added to accommodate corner cases and allow enough time for retries if implemented.
+	 *
+	 * Returns true (i.e. credential is "expired") if expiry time is null.
+	 */
+	public static boolean isCredentialExpired(Date expiryTime) {
+		// We preemptively conclude the credential as expired 1 minute before actual expiry.
+		return expiryTime==null || expiryTime.before(new Date(System.currentTimeMillis() + 1000 * 60));
+	}
 }

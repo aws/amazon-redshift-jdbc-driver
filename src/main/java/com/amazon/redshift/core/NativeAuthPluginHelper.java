@@ -1,5 +1,6 @@
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.util.RedshiftProperties;
 import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.INativePlugin;
@@ -142,12 +143,7 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
     // here.
     NativeTokenHolder credentials = provider.getCredentials();
 
-    if (credentials == null
-        || 
-        (credentials.getExpiration() != null 
-            && credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5))
-         )
-        ) {
+    if (credentials == null || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
         // If not found or expired
         // Get IDP token
         IPlugin plugin = (IPlugin) provider;

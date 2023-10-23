@@ -26,6 +26,7 @@ import java.io.Writer;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
@@ -205,11 +206,10 @@ public class RedshiftSQLXML implements SQLXML {
             (SAXTransformerFactory) SAXTransformerFactory.newInstance();
         
         // https://www.aristotle.a2z.com/implementations/255
-        transformerFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        transformerFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        transformerFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        transformerFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd",false);
-        
+
+        transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+
         TransformerHandler transformerHandler = transformerFactory.newTransformerHandler();
         stringWriter = new StringWriter();
         transformerHandler.setResult(new StreamResult(stringWriter));
@@ -293,10 +293,10 @@ public class RedshiftSQLXML implements SQLXML {
         
         // Disable External Entities (XXE) parsing for Java
         // https://www.aristotle.a2z.com/implementations/255
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        
+
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+
         Transformer transformer = factory.newTransformer();
         DOMSource domSource = new DOMSource(domResult.getNode());
         StringWriter stringWriter = new StringWriter();

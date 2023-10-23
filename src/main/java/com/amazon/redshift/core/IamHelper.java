@@ -574,7 +574,7 @@ public final class IamHelper extends IdpAuthHelper {
       }
 
       if (credentials == null
-          || credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5))) {
+          || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
         // If not found or expired
         // Get IDP token
         if (providerType == CredentialProviderType.PLUGIN) {
@@ -806,7 +806,7 @@ public final class IamHelper extends IdpAuthHelper {
     }
 
     if (credentials == null || (providerType == CredentialProviderType.PLUGIN && idpCredentialsRefresh)
-        || credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5))) {
+        || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
       if (RedshiftLogger.isEnable())
         log.logInfo("GetClusterCredentials NOT from cache");
 
@@ -940,7 +940,7 @@ public final class IamHelper extends IdpAuthHelper {
     }
 
     if (credentials == null || (providerType == CredentialProviderType.PLUGIN && settings.m_idpToken != null)
-        || credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+        || RequestUtils.isCredentialExpired(credentials.getExpiration()))
     {
       if (RedshiftLogger.isEnable())
         log.logInfo("GetClusterCredentialsV2 NOT from cache");

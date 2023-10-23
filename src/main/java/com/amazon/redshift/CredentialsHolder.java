@@ -2,6 +2,7 @@ package com.amazon.redshift;
 
 import java.util.Date;
 
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSSessionCredentials;
 
@@ -70,7 +71,7 @@ public class CredentialsHolder implements AWSCredentials
 
     public boolean isExpired()
     {
-        return m_expiration != null && m_expiration.before(new Date(System.currentTimeMillis() - 60 * 1000 * 5));
+        return RequestUtils.isCredentialExpired(m_expiration);
     }
 
     public Date getExpiration()

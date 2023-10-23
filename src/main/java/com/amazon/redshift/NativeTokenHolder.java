@@ -1,5 +1,7 @@
 package com.amazon.redshift;
 
+import com.amazon.redshift.plugin.utils.RequestUtils;
+
 import java.util.Date;
 
 
@@ -31,8 +33,7 @@ public class NativeTokenHolder {
   
   public boolean isExpired()
   {
-      return (m_expiration == null)
-              || (m_expiration != null && m_expiration.before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)));
+      return RequestUtils.isCredentialExpired(m_expiration);
   }
 
   public String getAccessToken()

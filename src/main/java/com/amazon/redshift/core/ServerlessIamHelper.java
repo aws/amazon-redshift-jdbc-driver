@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.amazon.redshift.core.IamHelper.CredentialProviderType;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.redshiftserverless.AWSRedshiftServerlessClient;
@@ -78,7 +79,7 @@ public final class ServerlessIamHelper {
     if (credentials == null
     			|| (providerType == CredentialProviderType.PLUGIN
     						&& idpCredentialsRefresh)
-    			|| credentials.getExpiration().before(new Date(System.currentTimeMillis() - 60 * 1000 * 5)))
+    			|| RequestUtils.isCredentialExpired(credentials.getExpiration()))
     {
         if (RedshiftLogger.isEnable())
           log.logInfo("GetCredentials NOT from cache");
