@@ -98,14 +98,16 @@ public final class ServerlessIamHelper {
           // Set workgroup in the request
           request.setWorkgroupName(settings.m_workGroup);
         }
-//        request.setDbUser(settings.m_dbUser == null ? settings.m_username : settings.m_dbUser);
-//        request.setAutoCreate(settings.m_autocreate);
-//        request.setDbGroups(settings.m_dbGroups);
+        else
+        {
+            if(settings.m_isCname)
+            {
+                request.setCustomDomainName(settings.m_host);
+            }
+        }
 
         if (RedshiftLogger.isEnable()) {
             log.logInfo(request.toString());
-//            log.logInfo(" settings.m_dbUser=" + settings.m_dbUser
-//                + " settings.m_username=" + settings.m_username);  
         }
 
         for (int i = 0; i < IamHelper.MAX_AMAZONCLIENT_RETRY; ++i)
@@ -118,7 +120,6 @@ public final class ServerlessIamHelper {
             catch (AmazonClientException ace)
             {
     					IamHelper.checkForApiCallRateExceedError(ace, i, "getCredentialsResult", log);
-              continue;
             }
         }
 

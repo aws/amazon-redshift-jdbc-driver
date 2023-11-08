@@ -750,7 +750,7 @@ public class Driver implements java.sql.Driver {
         if(awsRegion == null || awsRegion.length() == 0)
           urlProps.setProperty(RedshiftProperty.AWS_REGION.getName(), region);
 
-        urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
+        //urlProps.setProperty(RedshiftProperty.IS_SERVERLESS.getName(),"true");
         urlProps.setProperty(RedshiftProperty.SERVERLESS_ACCT_ID.getName(),acctId);
         urlProps.setProperty(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(),workGroup);
       } // with workgroup

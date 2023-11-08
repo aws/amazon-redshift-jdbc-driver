@@ -121,15 +121,11 @@ public final class IamHelper extends IdpAuthHelper {
       
       String authProfile = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.AUTH_PROFILE.getName(), info);
 
-      String isServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IS_SERVERLESS.getName(), info);
-      settings.m_isServerless = isServerless == null ? false : Boolean.valueOf(isServerless);
-
-      String acctId = (settings.m_isServerless)
-                      ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_ACCT_ID.getName(), info) : null;
-      String workGroup = (settings.m_isServerless)
-                         ? RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(), info) : null;
-
       String host = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.HOST.getName(), info);
+      String userSetServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IS_SERVERLESS.getName(), info);
+      Boolean hasUserSetServerless = userSetServerless.equalsIgnoreCase("true");
+      String acctId = null;
+      String workGroup = null;
 
       Matcher mProvisioned = null;
       Matcher mServerless = null;
@@ -155,13 +151,24 @@ public final class IamHelper extends IdpAuthHelper {
         // do nothing, regular serverless logic flow
         if (RedshiftLogger.isEnable())
           log.logInfo("Code flow for regular serverless cluster");
+
+//        String isServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IS_SERVERLESS.getName(), info);
+//        settings.m_isServerless = isServerless == null ? false : Boolean.valueOf(isServerless);
+
+        settings.m_isServerless = true;
+        acctId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_ACCT_ID.getName(), info);
+        workGroup = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(), info);
       }
-      else if (settings.m_isServerless)
+      else if (hasUserSetServerless)
       {
         // hostname doesn't match serverless regex but serverless set to true explicitly by user
         // when ready for implementation, remove setting of the isServerless property automatically in parseUrl(),
         // set it here instead
         // currently do nothing as server does not support cname for serverless
+
+        settings.m_isServerless = true;
+        workGroup = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_WORK_GROUP.getName(), info);
+        acctId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.SERVERLESS_ACCT_ID.getName(), info);
 
         if(workGroup != null)
         {
@@ -757,11 +764,6 @@ public final class IamHelper extends IdpAuthHelper {
       catch (Exception ex)
       {
         log.logInfo("No cluster identifier received from Redshift CNAME lookup");
-
-        if (null == settings.m_clusterIdentifier || settings.m_clusterIdentifier.isEmpty())
-        {
-          throw new RedshiftException("No cluster identifier was found");
-        }
       }
     }
   }
@@ -784,11 +786,6 @@ public final class IamHelper extends IdpAuthHelper {
       catch (Exception ex)
       {
         log.logInfo("No cluster identifier received from Redshift CNAME lookup");
-
-        if (null == settings.m_clusterIdentifier || settings.m_clusterIdentifier.isEmpty())
-        {
-          throw new RedshiftException("No cluster identifier was found");
-        }
       }
     }
   }
