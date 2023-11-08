@@ -5,6 +5,7 @@ import com.amazon.redshift.RedshiftProperty;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Enumeration;
+import java.util.Collections;
 
 public class RedshiftProperties extends Properties {
 
@@ -38,7 +39,7 @@ public class RedshiftProperties extends Properties {
         if(info!=null)
         {
             // Properties from user come in as a Properties object. Below code block converts them to a RedshiftProperties object and also converting their keys to lowercase.
-            Enumeration en = info.propertyNames();
+            Enumeration en = Collections.enumeration(info.stringPropertyNames());
 
             while (en.hasMoreElements())
             {
