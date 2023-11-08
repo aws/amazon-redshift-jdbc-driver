@@ -400,6 +400,28 @@ public class TimestampUtils {
     }
 
     ParsedTimestamp ts = parseBackendTimestamp(s);
+
+    if(ts.month < 1 || ts.month > 12)
+    {
+      throw new SQLException("Invalid value for month in timestamp : " + ts.month);
+    }
+    if(ts.day < 1 || ts.day > 31)
+    {
+      throw new SQLException("Invalid value for day of month in timestamp : " + ts.day);
+    }
+    if(ts.hour < 0 || ts.hour > 24)
+    {
+      throw new SQLException("Invalid value for hour of month in timestamp : " + ts.hour);
+    }
+    if(ts.minute < 0 || ts.minute > 60)
+    {
+      throw new SQLException("Invalid value for minute in timestamp : " + ts.minute);
+    }
+    if(ts.second < 0 || ts.second > 60)
+    {
+      throw new SQLException("Invalid value for second in timestamp : " + ts.second);
+    }
+
     Calendar useCal = ts.tz != null ? ts.tz : setupCalendar(cal);
     useCal.set(Calendar.ERA, ts.era);
     useCal.set(Calendar.YEAR, ts.year);
