@@ -1092,6 +1092,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+            + " WHEN 'intervaly2m' THEN 1111 "
+            + " WHEN 'intervald2s' THEN 1111 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
@@ -1130,6 +1132,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
             + " WHEN 'geography' THEN NULL "
+            + " WHEN 'intervaly2m' THEN 32 "
+            + " WHEN 'intervald2s' THEN 64 "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE pg_catalog.format_type(p.prorettype, NULL) "
@@ -1167,6 +1171,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
             + " WHEN 'geography' THEN NULL "
+            + " WHEN 'intervaly2m' THEN 4 "
+            + " WHEN 'intervald2s' THEN 8 "
             + " END AS LENGTH, "
             + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
             + " WHEN 'smallint' THEN 0 "
@@ -1190,6 +1196,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'timestamp without time zone' THEN 6 "
             + " WHEN 'timestamptz' THEN 6 "
             + " WHEN 'timestamp with time zone' THEN 6 "
+            + " WHEN 'intervaly2m' THEN 0 "
+            + " WHEN 'intervald2s' THEN 6 "
             + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
             + " 10 AS NUM_PREC_RADIX, "
             + " CAST(2 AS SMALLINT) AS NULLABLE, "
@@ -1239,6 +1247,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+            + " WHEN 'intervaly2m' THEN 1111 "
+            + " WHEN 'intervald2s' THEN 1111 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -1323,6 +1333,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+            + " WHEN 'intervaly2m' THEN 1111 "
+            + " WHEN 'intervald2s' THEN 1111 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " TYPE_NAME, "
@@ -1362,6 +1374,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
             + " WHEN 'geography' THEN NULL "
+            + " WHEN 'intervaly2m' THEN 32 "
+            + " WHEN 'intervald2s' THEN 64 "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE LENGTH "
@@ -1399,6 +1413,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN 4194304 "
             + " WHEN 'varbyte' THEN NULL "
             + " WHEN 'geography' THEN NULL "
+            + " WHEN 'intervaly2m' THEN 4 "
+            + " WHEN 'intervald2s' THEN 8 "
             + " END AS LENGTH, "
             + " CAST(CASE DECIMAL_DIGITS "
             + " WHEN 'smallint' THEN 0 "
@@ -1423,6 +1439,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'timestamp without time zone' THEN 6 "
             + " WHEN 'timestamptz' THEN 6 "
             + " WHEN 'timestamp with time zone' THEN 6 "
+            + " WHEN 'intervaly2m' THEN 0 "
+            + " WHEN 'intervald2s' THEN 6 "
             + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
             + " 10 AS NUM_PREC_RADIX, "
             + " CAST(2 AS SMALLINT) AS NULLABLE, "
@@ -1472,6 +1490,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN -16 "
             + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+            + " WHEN 'intervaly2m' THEN 1111 "
+            + " WHEN 'intervald2s' THEN 1111 "
             + " END AS SMALLINT) AS SQL_DATA_TYPE, "
             + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
             + " CAST(NULL AS SMALLINT) AS CHAR_OCTET_LENGTH, "
@@ -2141,6 +2161,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'super' THEN -16 ");
       result.append("when 'varbyte' THEN -4 ");
       result.append("when 'geography' THEN -4 ");
+      result.append("when 'intervaly2m' THEN 1111 ");
+      result.append("when 'intervald2s' THEN 1111 ");
       result.append("else 1111 END as SMALLINT) AS DATA_TYPE, ");
       result.append("t.typname as TYPE_NAME, ");
       result.append("case typname ");
@@ -2185,6 +2207,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'super' THEN NULL ");
       result.append("when 'varbyte' THEN NULL ");
       result.append("when 'geography' THEN NULL ");
+      result.append("when 'intervaly2m' THEN 32 ");
+      result.append("when 'intervald2s' THEN 64 ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as COLUMN_SIZE , ");
@@ -2213,6 +2237,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("case typname ");
       result.append("when 'varbyte' then 2 ");
       result.append("when 'geography' then 2 ");
+      result.append("when 'intervaly2m' then 0 ");
+      result.append("when 'intervald2s' then 6 ");
       result.append("else 10 end as NUM_PREC_RADIX, ");
       result.append("case a.attnotnull OR (t.typtype = 'd' AND t.typnotnull) ");
       result.append("when 'false' then 1 ");
@@ -2270,6 +2296,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'super' THEN -16 ");
       result.append("when 'varbyte' THEN -4 ");
       result.append("when 'geography' THEN -4 ");
+      result.append("when 'intervaly2m' then 1111 ");
+      result.append("when 'intervald2s' then 1111 ");
       result.append("else 1111 END as SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) as SQL_DATETIME_SUB , ");
       result.append("case typname ");
@@ -2314,6 +2342,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("when 'super' THEN NULL ");
       result.append("when 'varbyte' THEN NULL ");
       result.append("when 'geography' THEN NULL ");
+      result.append("when 'intervaly2m' THEN 32 ");
+      result.append("when 'intervald2s' THEN 64 ");
 //      if (connSettings.m_unknownLength == null)
       {
           result.append("else 2147483647 end as CHAR_OCTET_LENGTH , ");
@@ -2415,6 +2445,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'super' THEN -16 ");
       result.append("WHEN 'varbyte' THEN -4 ");
       result.append("WHEN 'geography' THEN -4 ");
+      result.append("WHEN 'intervaly2m' THEN 1111 ");
+      result.append("WHEN 'intervald2s' THEN 1111 ");
       result.append("ELSE 1111 END AS SMALLINT) AS DATA_TYPE, ");
       result.append("COALESCE(NULL,CASE columntype WHEN 'boolean' THEN 'bool' ");
       result.append("WHEN 'character varying' THEN 'varchar' ");
@@ -2472,6 +2504,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'super' THEN NULL ");
       result.append("WHEN 'varbyte' THEN NULL ");
       result.append("WHEN 'geography' THEN NULL ");
+      result.append("WHEN 'intervaly2m' THEN 32 ");
+      result.append("WHEN 'intervald2s' THEN 64 ");
       result.append("ELSE 2147483647 END AS COLUMN_SIZE, ");
       result.append("NULL AS BUFFER_LENGTH, ");
       result.append("CASE REGEXP_REPLACE(columntype,'[()0-9,]') ");
@@ -2536,6 +2570,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHEN 'super' THEN -16 ");
       result.append("WHEN 'varbyte' THEN -4 ");
       result.append("WHEN 'geography' THEN -4 ");
+      result.append("WHEN 'intervaly2m' THEN 1111 ");
+      result.append("WHEN 'intervald2s' THEN 1111 ");
       result.append("ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, ");
       result.append("CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, CASE ");
       result.append("WHEN LEFT (columntype,7) = 'varchar' THEN isnull(nullif(regexp_substr (columntype,'[0-9]+',7),''),'0')::INTEGER ");
@@ -2631,6 +2667,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'super' THEN -16 "
     + " WHEN 'varbyte' THEN -4 "
     + " WHEN 'geography' THEN -4 "
+    + " WHEN 'intervaly2m' THEN 1111 "
+    + " WHEN 'intervald2s' THEN 1111 "
     + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE, "
     + " CASE data_type "
     + " WHEN 'boolean' THEN 'bool' "
@@ -2690,6 +2728,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
     + " WHEN 'geography' THEN NULL "
+    + " WHEN 'intervaly2m' THEN 32 "
+    + " WHEN 'intervald2s' THEN 64 "
     + " ELSE   2147483647 "
     + " END AS COLUMN_SIZE, "
     + " NULL AS BUFFER_LENGTH, "
@@ -2711,6 +2751,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
     + " WHEN 'geography' THEN NULL "
+    + " WHEN 'intervaly2m' THEN 0 "
+    + " WHEN 'intervald2s' THEN 6 "
     + " ELSE 0 "
     + " END AS DECIMAL_DIGITS, "
     + " CASE data_type "
@@ -2767,6 +2809,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'super' THEN -16 "
     + " WHEN 'varbyte' THEN -4 "
     + " WHEN 'geography' THEN -4 "
+    + " WHEN 'intervaly2m' THEN 1111 "
+    + " WHEN 'intervald2s' THEN 1111 "
     + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE, "
     + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB, "
     + " CASE data_type "
@@ -2812,6 +2856,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
     + " WHEN 'geography' THEN NULL "
+    + " WHEN 'intervaly2m' THEN 32 "
+    + " WHEN 'intervald2s' THEN 64 "
     + " ELSE   2147483647 "
     + " END AS CHAR_OCTET_LENGTH, "
     + " ordinal_position AS ORDINAL_POSITION, "
@@ -2903,6 +2949,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'super' THEN -16 "
         + " WHEN 'varbyte' THEN -4 "
         + " WHEN 'geography' THEN -4 "
+        + " WHEN 'intervaly2m' THEN 1111 "
+        + " WHEN 'intervald2s' THEN 1111 "
 	      + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE,"
 	      + " COALESCE("
 	      + " domain_name,"
@@ -2964,6 +3012,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
         + " WHEN 'geography' THEN NULL"
+        + " WHEN 'intervaly2m' THEN 32 "
+        + " WHEN 'intervald2s' THEN 64 "
 	      + " ELSE " + unknownColumnSize
 	      + " END AS COLUMN_SIZE,"
 	      + " NULL AS BUFFER_LENGTH,"
@@ -2985,6 +3035,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
         + " WHEN 'geography' THEN NULL"
+        + " WHEN 'intervaly2m' THEN 0 "
+        + " WHEN 'intervald2s' THEN 6 "
 	      + " ELSE 0"
 	      + " END AS DECIMAL_DIGITS,"
 	      + " CASE data_type"
@@ -3041,6 +3093,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'super' THEN -16"
         + " WHEN 'varbyte' THEN -4"
         + " WHEN 'geography' THEN -4"
+        + " WHEN 'intervaly2m' THEN 1111"
+        + " WHEN 'intervald2s' THEN 1111"
 	      + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE,"
 	      + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB,"
 	      + " CASE data_type"
@@ -3086,6 +3140,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " WHEN 'super' THEN NULL"
         + " WHEN 'varbyte' THEN NULL"
         + " WHEN 'geography' THEN NULL"
+        + " WHEN 'intervaly2m' THEN 32"
+        + " WHEN 'intervald2s' THEN 64"
 	      + " ELSE " + unknownColumnSize
 	      + " END AS CHAR_OCTET_LENGTH,"
 	      + " ordinal_position AS ORDINAL_POSITION,"
@@ -3183,6 +3239,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
     + " WHEN external_type = 'geography' THEN -4"
+    + " WHEN external_type = 'intervaly2m' THEN 1111"
+    + " WHEN external_type = 'intervald2s' THEN 1111"
     + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE," 
     + " CASE WHEN left(external_type, 17) = 'character varying' THEN 'varchar'" 
     + " WHEN left(external_type, 7) = 'varchar' THEN 'varchar'" 
@@ -3268,6 +3326,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
     + " WHEN external_type = 'geography' THEN NULL"
+    + " WHEN external_type = 'intervaly2m' THEN 32"
+    + " WHEN external_type = 'intervald2s' THEN 64"
     + " ELSE 2147483647 END AS COLUMN_SIZE," 
     + " NULL AS BUFFER_LENGTH," 
     + " CASE WHEN external_type = 'real'THEN 8" 
@@ -3289,6 +3349,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
     + " WHEN external_type = 'geography' THEN NULL"
+    + " WHEN external_type = 'intervaly2m' THEN 0"
+    + " WHEN external_type = 'intervald2s' THEN 6"
     + " ELSE 0 END AS DECIMAL_DIGITS," 
     + " CASE WHEN external_type = 'varbyte' THEN 2"
     + " WHEN external_type = 'geography' THEN 2"
@@ -3345,6 +3407,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
     + " WHEN external_type = 'geography' THEN -4"
+    + " WHEN external_type = 'intervaly2m' THEN 1111"
+    + " WHEN external_type = 'intervald2s' THEN 1111"
     + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE," 
     + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB," 
     + " CASE WHEN left(external_type, 7) = 'varchar' "
@@ -4704,6 +4768,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'super' THEN -1 "
 	        + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+          + " WHEN 'intervaly2m' THEN 1111 "
+          + " WHEN 'intervald2s' THEN 1111 "
 	        + " ELSE 1111 "
 	        + " END AS SMALLINT) AS DATA_TYPE, "
 	        + " pg_catalog.format_type(p.prorettype, NULL) AS TYPE_NAME, "
@@ -4736,6 +4802,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'super' THEN " + superMaxLength
 	        + " WHEN 'varbyte' THEN " + varbyteMaxLength
             + " WHEN 'geography' THEN " + geographyMaxLength
+          + " WHEN 'intervaly2m' THEN 32 "
+          + " WHEN 'intervald2s' THEN 64 "
 	        + " ELSE " + unknownColumnSize
 	        + " END AS COLUMN_SIZE, "
 	        + " CASE pg_catalog.format_type(p.prorettype, NULL) "
@@ -4766,6 +4834,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'super' THEN " + superMaxLength
 	        + " WHEN 'varbyte' THEN " + varbyteMaxLength
             + " WHEN 'geography' THEN " + geographyMaxLength
+          + " WHEN 'intervaly2m' THEN 4 "
+          + " WHEN 'intervald2s' THEN 8 "
 	        + " END AS LENGTH, "
 	        + " CAST(CASE pg_catalog.format_type(p.prorettype, NULL) "
 	        + " WHEN 'smallint' THEN 0 "
@@ -4786,6 +4856,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	        + " WHEN 'timestamp without time zone' THEN 6 "
 	        + " WHEN 'timestamptz' THEN 6 "
 	        + " WHEN 'timestamp with time zone' THEN 6 "
+          + " WHEN 'intervaly2m' THEN 0 "
+          + " WHEN 'intervald2s' THEN 6 "
 	        + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
 	        + " 10 AS NUM_PREC_RADIX, "
 	        + " CAST(2 AS SMALLINT) AS NULLABLE, "
@@ -4869,6 +4941,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN -1 "
             + " WHEN 'varbyte' THEN -4 "
             + " WHEN 'geography' THEN -4 "
+            + " WHEN 'intervaly2m' THEN 1111 "
+            + " WHEN 'intervald2s' THEN 1111 "
             + " ELSE 1111 "
             + " END AS SMALLINT) AS DATA_TYPE, "
             + " TYPE_NAME, "
@@ -4901,6 +4975,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN " + superMaxLength
             + " WHEN 'varbyte' THEN " + varbyteMaxLength
             + " WHEN 'geography' THEN " + geographyMaxLength
+            + " WHEN 'intervaly2m' THEN NULL "
+            + " WHEN 'intervald2s' THEN NULL "
             + " ELSE " + unknownColumnSize
             + " END AS COLUMN_SIZE, "
             + " CASE LENGTH "
@@ -4931,6 +5007,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'super' THEN " + superMaxLength
             + " WHEN 'varbyte' THEN " + varbyteMaxLength
             + " WHEN 'geography' THEN " + geographyMaxLength
+            + " WHEN 'intervaly2m' THEN 4 "
+            + " WHEN 'intervald2s' THEN 8 "
             + " END AS LENGTH, "
             + " CAST(CASE DECIMAL_DIGITS "
             + " WHEN 'smallint' THEN 0 "
@@ -4951,6 +5029,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN 'timestamp without time zone' THEN 6 "
             + " WHEN 'timestamptz' THEN 6 "
             + " WHEN 'timestamp with time zone' THEN 6 "
+            + " WHEN 'intervaly2m' THEN 0 "
+            + " WHEN 'intervald2s' THEN 6 "
             + " ELSE NULL END AS SMALLINT) AS DECIMAL_DIGITS, "
             + " 10 AS NUM_PREC_RADIX, "
             + " CAST(2 AS SMALLINT) AS NULLABLE, "

@@ -239,6 +239,37 @@ public class RedshiftInterval extends RedshiftObject implements Serializable, Cl
   }
 
   /**
+   * Set all values of this interval using just two specified values.
+   * 
+   * @param month Total number of months (assuming 12 months in a year)
+   * @param time  Total number of microseconds (assuming 1day = 24hrs = 1440mins = 86400secs = 8.64e10microsecs)
+   */
+  public void setValue(int month, long time) {
+    int tm_year;
+    int tm_mon;
+    
+    if (month != 0) {
+      tm_year = month / 12;
+      tm_mon = month % 12;
+    } else {
+      tm_year = 0;
+      tm_mon = 0;
+    }
+    
+    int tm_mday = (int)(time / 86400000000L);
+    time -= (tm_mday * 86400000000L);
+    int tm_hour = (int)(time / 3600000000L);
+    time -= (tm_hour * 3600000000L);
+    int tm_min = (int)(time / 60000000L);
+    time -= (tm_min * 60000000L);
+    int tm_sec = (int)(time / 1000000L);
+    int fsec = (int)(time - (tm_sec * 1000000));
+    double sec = tm_sec + (fsec/1000000.0);
+
+    setValue(tm_year, tm_mon, tm_mday, tm_hour, tm_min, sec);
+  }
+
+  /**
    * Returns the stored interval information as a string.
    *
    * @return String represented interval
@@ -435,6 +466,25 @@ public class RedshiftInterval extends RedshiftObject implements Serializable, Cl
     setHours(factor * getHours());
     setMinutes(factor * getMinutes());
     setSeconds(factor * getSeconds());
+  }
+
+  /**
+   * Converts the month-year part of interval to the total number of months using 1year = 12months.
+   * 
+   * @return Total number of months.
+   */
+  public int totalMonths() {
+    return 12 * years + months;
+  }
+
+  /**
+   * Converts the day-time part of interval to the total number of microseconds using
+   * 1day = 24hrs = 1440mins = 86400secs = 8.64e10microsecs.
+   * 
+   * @return Total number of microseconds.
+   */
+  public long totalMicroseconds() {
+    return ((long) (((days *  24 + hours) * 60 + minutes) * 60 + wholeSeconds)) * 1000000 + microSeconds;
   }
 
   /**

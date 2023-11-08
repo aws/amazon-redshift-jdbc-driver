@@ -122,6 +122,8 @@ public class TypeInfoCache implements TypeInfo {
       {"timetz", Oid.TIMETZ, Types.TIME, "java.sql.Time", Oid.TIMETZ_ARRAY},
       {"timestamp", Oid.TIMESTAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMP_ARRAY},
       {"timestamptz", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMPTZ_ARRAY},
+      {"intervaly2m", Oid.INTERVALY2M, Types.OTHER, "com.amazon.redshift.util.RedshiftIntervalYearToMonth", Oid.INTERVALY2M_ARRAY},
+      {"intervald2s", Oid.INTERVALD2S, Types.OTHER, "com.amazon.redshift.util.RedshiftIntervalDayToSecond", Oid.INTERVALD2S_ARRAY},
       //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
       //JCP! endif
@@ -745,6 +747,8 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.TIME:
       case Oid.TIMETZ:
       case Oid.INTERVAL:
+      case Oid.INTERVALY2M:
+      case Oid.INTERVALD2S:
       case Oid.TIMESTAMP:
       case Oid.TIMESTAMPTZ:
         return getDisplaySize(oid, typmod);
@@ -817,6 +821,8 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.TIMESTAMP:
       case Oid.TIMESTAMPTZ:
       case Oid.INTERVAL:
+      case Oid.INTERVALY2M:
+      case Oid.INTERVALD2S:
       case Oid.GEOGRAPHY:
         return false;
       default:
@@ -902,6 +908,8 @@ public class TypeInfoCache implements TypeInfo {
             return 13 + 1 + 8 + secondSize + 6;
         }
       case Oid.INTERVAL:
+      case Oid.INTERVALY2M:
+      case Oid.INTERVALD2S:
         // SELECT LENGTH('-123456789 years 11 months 33 days 23 hours 10.123456 seconds'::interval);
         return 49;
       case Oid.VARCHAR:
@@ -955,6 +963,7 @@ public class TypeInfoCache implements TypeInfo {
       case Oid.TIMESTAMP:
       case Oid.TIMESTAMPTZ:
       case Oid.INTERVAL:
+      case Oid.INTERVALD2S:
         return 6;
       case Oid.BPCHAR:
       case Oid.VARCHAR:

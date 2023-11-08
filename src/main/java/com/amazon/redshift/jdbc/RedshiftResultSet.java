@@ -32,6 +32,8 @@ import com.amazon.redshift.util.RedshiftVarbyte;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftGeography;
 import com.amazon.redshift.util.RedshiftGeometry;
+import com.amazon.redshift.util.RedshiftIntervalYearToMonth;
+import com.amazon.redshift.util.RedshiftIntervalDayToSecond;
 import com.amazon.redshift.util.RedshiftState;
 
 import java.io.ByteArrayInputStream;
@@ -247,6 +249,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         return getClob(columnIndex);
       case Types.BLOB:
         return getBlob(columnIndex);
+      case Types.OTHER:
+        if (field.getOID() == Oid.INTERVALY2M)
+          return getIntervalYearToMonth(columnIndex);
+        if (field.getOID() == Oid.INTERVALD2S)
+          return getIntervalDayToSecond(columnIndex);
 
       default:
         String type = getRSType(columnIndex);
@@ -2244,7 +2251,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   						|| colType == Types.NCHAR
   						|| colType == Types.LONGNVARCHAR
   						|| colType == Types.REF_CURSOR
-                        || (colType == Types.OTHER && !isInterval(columnIndex)));
+  						|| (colType == Types.OTHER && !isInterval(columnIndex) &&
+  								!isIntervalYearToMonth(columnIndex) &&
+  								!isIntervalDayToSecond(columnIndex)));
   }
   
   @Override
@@ -2278,6 +2287,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         int oid = field.getOID();
         return connection.getTimestampUtils().timeToString((java.util.Date) obj,
             oid == Oid.TIMESTAMPTZ || oid == Oid.TIMETZ);
+      }
+      if (obj instanceof RedshiftIntervalYearToMonth) {
+        RedshiftIntervalYearToMonth ym = (RedshiftIntervalYearToMonth) obj;
+        return ym.getValue();
+      }
+      if (obj instanceof RedshiftIntervalDayToSecond) {
+        RedshiftIntervalDayToSecond ds = (RedshiftIntervalDayToSecond) obj;
+        return ds.getValue();
       }
       if ("hstore".equals(getRSType(columnIndex))) {
         return HStoreConverter.toString((Map<?, ?>) obj);
@@ -2896,6 +2913,40 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return getTimestamp(columnIndex, null);
   }
 
+  public RedshiftIntervalYearToMonth getIntervalYearToMonth(int columnIndex) throws SQLException{
+    if (RedshiftLogger.isEnable())
+      connection.getLogger().log(LogLevel.DEBUG, "  getIntervalYearToMonth columnIndex: {0}", columnIndex);
+
+    checkResultSet(columnIndex);
+    if (wasNullFlag) {
+      return null;
+    }
+
+    if (isBinary(columnIndex)) {
+      return new RedshiftIntervalYearToMonth(ByteConverter.int4(thisRow.get(columnIndex - 1), 0));
+    }
+
+    String str = getString(columnIndex);
+    return new RedshiftIntervalYearToMonth(getString(columnIndex));
+  }
+
+  public RedshiftIntervalDayToSecond getIntervalDayToSecond(int columnIndex) throws SQLException{
+    if (RedshiftLogger.isEnable())
+      connection.getLogger().log(LogLevel.DEBUG, "  getIntervalDayToSecond columnIndex: {0}", columnIndex);
+
+    checkResultSet(columnIndex);
+    if (wasNullFlag) {
+      return null;
+    }
+
+    if (isBinary(columnIndex)) {
+      return new RedshiftIntervalDayToSecond(ByteConverter.int8(thisRow.get(columnIndex - 1), 0));
+    }
+
+    String str = getString(columnIndex);
+    return new RedshiftIntervalDayToSecond(getString(columnIndex));
+  }
+
   public InputStream getAsciiStream(int columnIndex) throws SQLException {
     if (RedshiftLogger.isEnable()) 
     	connection.getLogger().log(LogLevel.DEBUG, "  getAsciiStream columnIndex: {0}", columnIndex);
@@ -3013,6 +3064,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   public Timestamp getTimestamp(String columnName) throws SQLException {
     return getTimestamp(findColumn(columnName), null);
+  }
+
+  public RedshiftIntervalYearToMonth getIntervalYearToMonth(String columnName) throws SQLException {
+    return getIntervalYearToMonth(findColumn(columnName));
+  }
+
+  public RedshiftIntervalDayToSecond getIntervalDayToSecond(String columnName) throws SQLException {
+    return getIntervalDayToSecond(findColumn(columnName));
   }
 
   public InputStream getAsciiStream(String columnName) throws SQLException {
@@ -3308,6 +3367,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   
   protected boolean isInterval(int column) {
     return (fields[column - 1].getOID() == Oid.INTERVAL);
+  }
+
+  protected boolean isIntervalYearToMonth(int column) {
+    return (fields[column - 1].getOID() == Oid.INTERVALY2M);
+  }
+
+  protected boolean isIntervalDayToSecond(int column) {
+    return (fields[column - 1].getOID() == Oid.INTERVALD2S);
   }
   
   

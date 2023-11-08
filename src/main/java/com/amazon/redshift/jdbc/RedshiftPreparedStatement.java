@@ -24,6 +24,8 @@ import com.amazon.redshift.util.HStoreConverter;
 import com.amazon.redshift.util.RedshiftBinaryObject;
 import com.amazon.redshift.util.RedshiftTime;
 import com.amazon.redshift.util.RedshiftTimestamp;
+import com.amazon.redshift.util.RedshiftIntervalYearToMonth;
+import com.amazon.redshift.util.RedshiftIntervalDayToSecond;
 import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -506,6 +508,44 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
     	connection.getLogger().logFunction(true, parameterIndex, x);
   	
     setTimestamp(parameterIndex, x, null);
+  }
+
+  public void setIntervalYearToMonth(int parameterIndex, RedshiftIntervalYearToMonth x) throws SQLException {
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(true, parameterIndex, x);
+  	
+    if (x == null) {
+      setNull(parameterIndex, Types.OTHER);
+      return;
+    }
+
+    if (connection.binaryTransferSend(Oid.INTERVALY2M)) {
+      byte[] bytes = new byte[4];
+      ByteConverter.int4(bytes, 0, (int) x.totalMonths());
+      preparedParameters.setBinaryParameter(parameterIndex, bytes, Oid.INTERVALY2M);
+      return;
+    }
+
+    bindString(parameterIndex, x.getValue(), Oid.UNSPECIFIED);
+  }
+
+  public void setIntervalDayToSecond(int parameterIndex, RedshiftIntervalDayToSecond x) throws SQLException {
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(true, parameterIndex, x);
+  	
+    if (x == null) {
+      setNull(parameterIndex, Types.OTHER);
+      return;
+    }
+
+    if (connection.binaryTransferSend(Oid.INTERVALD2S)) {
+      byte[] bytes = new byte[8];
+      ByteConverter.int8(bytes, 0, (long) x.totalMicroseconds());
+      preparedParameters.setBinaryParameter(parameterIndex, bytes, Oid.INTERVALD2S);
+      return;
+    }
+
+    bindString(parameterIndex, x.getValue(), Oid.UNSPECIFIED);
   }
 
   private void setCharacterStreamPost71(int parameterIndex, InputStream x, int length,
@@ -1092,6 +1132,10 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
       setTime(parameterIndex, (Time) x);
     } else if (x instanceof Timestamp) {
       setTimestamp(parameterIndex, (Timestamp) x);
+    } else if (x instanceof RedshiftIntervalYearToMonth) {
+      setIntervalYearToMonth(parameterIndex, (RedshiftIntervalYearToMonth) x);
+    } else if (x instanceof RedshiftIntervalDayToSecond) {
+      setIntervalDayToSecond(parameterIndex, (RedshiftIntervalDayToSecond) x);
     } else if (x instanceof Boolean) {
       setBoolean(parameterIndex, (Boolean) x);
     } else if (x instanceof Byte) {

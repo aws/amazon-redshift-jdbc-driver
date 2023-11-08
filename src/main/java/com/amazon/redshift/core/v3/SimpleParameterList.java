@@ -272,6 +272,10 @@ class SimpleParameterList implements V3ParameterList {
         p.append("::date");
       } else if (paramType == Oid.INTERVAL) {
         p.append("::interval");
+      } else if (paramType == Oid.INTERVALY2M) {
+        p.append("::interval year to month");
+      } else if (paramType == Oid.INTERVALD2S) {
+        p.append("::interval day to second");
       } else if (paramType == Oid.NUMERIC) {
         p.append("::numeric");
       }

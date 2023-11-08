@@ -60,6 +60,10 @@ public class Oid {
   public static final int VOID = 2278;
   public static final int INTERVAL = 1186;
   public static final int INTERVAL_ARRAY = 1187;
+  public static final int INTERVALY2M = 1188;
+  public static final int INTERVALY2M_ARRAY = 1189;
+  public static final int INTERVALD2S = 1190;
+  public static final int INTERVALD2S_ARRAY = 1191;
   public static final int CHAR = 18; // This is not char(N), this is "char" a single byte type.
   public static final int CHAR_ARRAY = 1002;
   public static final int VARBIT = 1562;

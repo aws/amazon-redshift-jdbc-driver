@@ -48,6 +48,8 @@ import com.amazon.redshift.util.RedshiftConstants;
 import com.amazon.redshift.util.RedshiftObject;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftInterval;
+import com.amazon.redshift.util.RedshiftIntervalYearToMonth;
+import com.amazon.redshift.util.RedshiftIntervalDayToSecond;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.RedshiftProperties;
 
@@ -486,6 +488,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
         Oid.TIMETZ,
         Oid.TIMESTAMP,
         Oid.TIMESTAMPTZ,
+        Oid.INTERVALY2M,
+        Oid.INTERVALD2S,
         Oid.INT2_ARRAY,
         Oid.INT4_ARRAY,
         Oid.INT8_ARRAY,
@@ -824,31 +828,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
         	// Binary format is 8 bytes time and 4 byes months
         	long time = ByteConverter.int8(byteValue, 0);
         	int month = ByteConverter.int4(byteValue, 8);
-        	int tm_year;
-        	int tm_mon;
         	
-        	if(month != 0)
-        	{
-        	    tm_year = month / 12;
-        	    tm_mon = month % 12;
-        	}
-        	else
-        	{
-        	  tm_year = 0;
-        	  tm_mon = 0;
-        	}
-        	
-        	int tm_mday = (int)(time / 86400000000L);
-        	time -= (tm_mday * 86400000000L);
-        	int tm_hour = (int)(time / 3600000000L);
-        	time -= (tm_hour * 3600000000L);
-        	int tm_min = (int)(time / 60000000L);
-        	time -= (tm_min * 60000000L);
-        	int tm_sec = (int)(time / 1000000L);
-        	int fsec = (int)(time - (tm_sec * 1000000));
-        	double sec = tm_sec + (fsec/1000000.0);
-        	
-        	intervalObj.setValue(tm_year, tm_mon, tm_mday, tm_hour, tm_min, sec);
+        	intervalObj.setValue(month, time);
         	
 //        	intervalObj.setValue(new String(byteValue));
         }
@@ -909,6 +890,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     addDataType("polygon", com.amazon.redshift.geometric.RedshiftPolygon.class);
     addDataType("money", com.amazon.redshift.util.RedshiftMoney.class);
     addDataType("interval", com.amazon.redshift.util.RedshiftInterval.class);
+    // intervaly2m and intervald2s are not object types rather they are
+    // binary types native to Redshift, hence they are added in TypeInfoCache.
 
     Enumeration<?> e = info.propertyNames();
     while (e.hasMoreElements()) {
