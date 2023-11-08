@@ -1581,23 +1581,31 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
 
   private void resumeReadAndDiscardResults()
   {
-    RedshiftResultSet rs = null;
-    if(firstUnclosedResult != null)
+    if (connection.getQueryExecutor().isRingBufferThreadRunning())
     {
-      rs = (RedshiftResultSet) firstUnclosedResult.getResultSet();
-    }
-    if(rs != null && rs.queueRows != null)
-    {
-      rs.queueRows.setSkipRows();
-    }
+      RedshiftResultSet rs = null;
+      if (firstUnclosedResult != null)
+      {
+        rs = (RedshiftResultSet) firstUnclosedResult.getResultSet();
+      }
+      if (rs != null && rs.queueRows != null)
+      {
+        boolean endOfResult = rs.queueRows.endOfResult();
+        if(!endOfResult)
+        {
+          rs.queueRows.setSkipRows();
 
-    // We sleep here for 2 seconds to give the ring buffer adequate time to start reading results again once it wakes up,
-    // and the server adequate time to detect that send buffer is no longer full
-    try
-    {
-      Thread.sleep(2000);
-    }
-    catch (InterruptedException e) {
+          // We sleep here for 2 seconds to give the ring buffer adequate time to start reading results again once it wakes up,
+          // and the server adequate time to detect that send buffer is no longer full
+          try
+          {
+            Thread.sleep(2000);
+          }
+          catch (InterruptedException e)
+          {
+          }
+        }
+      }
     }
   }
 }
