@@ -142,6 +142,14 @@ public enum RedshiftProperty {
     "The timeout value used for socket connect operations."),
 
   /**
+   * <p>Configures the session level timezone to one of the two logical values LOCAL or SERVER</p>
+   */
+  CONNECTION_TIMEZONE(
+    "connectiontimezone",
+            "LOCAL",
+            "Configures the session level timezone to one of the two logical values LOCAL or SERVER"),
+
+  /**
    * Specify the schema (or several schema separated by commas) to be set in the search-path. This schema will be used to resolve
    * unqualified object names used in statements over this connection.
    */

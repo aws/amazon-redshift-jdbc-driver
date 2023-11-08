@@ -413,6 +413,13 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     paramList.add(new String[]{"database", database});
     paramList.add(new String[]{"client_encoding", "UTF8"});
     paramList.add(new String[]{"DateStyle", "ISO"});
+
+    if(RedshiftProperty.CONNECTION_TIMEZONE.get(info).equalsIgnoreCase("LOCAL"))
+    {
+      // Sets session level timezone to JVM timezone.
+      paramList.add(new String[]{"TimeZone", createRedshiftTimeZone()});
+    }
+
     paramList.add(new String[]{"_pq_.compression", info.getProperty("compression", RedshiftProperty.COMPRESSION.get(info))});
 
     Version assumeVersion = ServerVersion.from(RedshiftProperty.ASSUME_MIN_SERVER_VERSION.get(info));
