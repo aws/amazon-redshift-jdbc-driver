@@ -123,7 +123,7 @@ public final class IamHelper extends IdpAuthHelper {
 
       String host = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.HOST.getName(), info);
       String userSetServerless = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.IS_SERVERLESS.getName(), info);
-      Boolean hasUserSetServerless = userSetServerless.equalsIgnoreCase("true");
+      Boolean hasUserSetServerless = "true".equalsIgnoreCase(userSetServerless);
       String acctId = null;
       String workGroup = null;
 
