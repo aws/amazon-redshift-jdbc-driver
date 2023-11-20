@@ -2841,6 +2841,18 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         throw new RedshiftException(GT.tr("Protocol error.  Session setup failed. Invalid value of datashare_enabled parameter. Only on/off are valid values"),
             RedshiftState.PROTOCOL_VIOLATION);
       }
+    }
+    else if ("external_database".equals(name)) {
+        if ("on".equals(value)) {
+            setCrossDatasharingEnabled(true);
+        }
+        else if ("off".equals(value)) {
+            setCrossDatasharingEnabled(false);
+        }
+        else {
+            throw new RedshiftException(GT.tr("Protocol error.  Session setup failed. Invalid value of external_database parameter. Only on/off are valid values"),
+                    RedshiftState.PROTOCOL_VIOLATION);
+        }
     } // enable_redshift_federation
   }
 

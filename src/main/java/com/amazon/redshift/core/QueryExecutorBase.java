@@ -68,6 +68,8 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   protected int serverProtocolVersion;
   protected boolean datashareEnabled;
   protected boolean enableMultiSqlSupport;
+  protected boolean isCrossDatasharingEnabled;
+
   protected Properties properties;
 
 
@@ -139,6 +141,11 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   @Override
   public int getBackendPID() {
     return cancelPid;
+  }
+
+  @Override
+  public boolean isCrossDatasharingEnabled() {
+    return isCrossDatasharingEnabled;
   }
 
   @Override
@@ -230,6 +237,10 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     }
   }
 
+  public void setCrossDatasharingEnabled(boolean isCrossDatasharingEnabled) {
+    this.isCrossDatasharingEnabled = isCrossDatasharingEnabled;
+  }
+
   public synchronized void addNotification(RedshiftNotification notification) {
     notifications.add(notification);
   }
@@ -281,7 +292,7 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     																: 0;
   }
 
-  protected void setDatashareEnabled(boolean datashareEnabled) {
+  public void setDatashareEnabled(boolean datashareEnabled) {
     this.datashareEnabled = datashareEnabled;
   }
   

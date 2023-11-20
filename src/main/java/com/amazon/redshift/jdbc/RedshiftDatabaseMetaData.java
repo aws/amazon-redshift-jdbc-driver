@@ -5406,16 +5406,29 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       }
   }
   
-  private boolean isSingleDatabaseMetaData() {
-    return (isDatabaseMetadataCurrentDbOnly()
-            || !isMultiDatabasesCatalogEnableInServer());
+  public boolean isSingleDatabaseMetaData()
+  {
+    if (isCrossDatasharingEnableInServer())
+    {
+      return false;
+    }
+    else
+    {
+      return (isDatabaseMetadataCurrentDbOnly()
+              || !isMultiDatabasesCatalogEnableInServer());
+    }
   }
+
   private boolean isDatabaseMetadataCurrentDbOnly() {
   	return connection.isDatabaseMetadataCurrentDbOnly();
   }
   
   private boolean isMultiDatabasesCatalogEnableInServer() {
   	return connection.getQueryExecutor().isDatashareEnabled();
+  }
+
+  private boolean isCrossDatasharingEnableInServer() {
+    return connection.getQueryExecutor().isCrossDatasharingEnabled();
   }
 
   private String getCatalogFilterCondition(String catalog) throws SQLException {

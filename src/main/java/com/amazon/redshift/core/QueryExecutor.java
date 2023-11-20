@@ -524,4 +524,12 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    * @return true, if supported. false otherwise.
    */
   boolean isMultiSqlSupport();
+
+  /**
+   * Get the server capability for cross-datashare database query support.
+   * This should enable for cross data sharing.
+   *
+   * @return true means cross-datashare database query is supported otherwise false.
+   */
+  boolean isCrossDatasharingEnabled();
 }
