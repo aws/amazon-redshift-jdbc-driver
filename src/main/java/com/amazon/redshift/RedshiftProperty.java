@@ -926,13 +926,6 @@ public enum RedshiftProperty {
           "Indicates the optional token type to be used for connection"),
 
   /**
-   * Indicates the display name to be used for the client that is using IdC browser auth plugin.
-   */
-  IDC_CLIENT_DISPLAY_NAME("idc_client_display_name",
-          "Amazon Redshift JDBC driver",
-          "Indicates the display name to be used for the client that is using IdC browser auth plugin"),
-  
-  /**
    * The AWS region where the cluster is located.
    * Used only by JDBC driver internally only.
    */

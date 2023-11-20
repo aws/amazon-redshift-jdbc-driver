@@ -368,8 +368,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     String idpType = "";
     String tokenType = "";
     String identityNamepsace = "";
-    String idcClientDisplayName = "";
-    
+
     String pluginName = RedshiftProperty.CREDENTIALS_PROVIDER.get(info);
     if(RedshiftLogger.isEnable())
       logger.log(LogLevel.INFO, "using plugin: " + pluginName);
@@ -387,14 +386,7 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
         idpType = IDP_TYPE_OKTA;
         redshiftNativeAuth = true;
       }
-      else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDC_BROWSER_PLUGIN))
-      {
-        idpType = IDP_TYPE_AWS_IDC;
-        tokenType = TOKEN_TYPE_ACCESS_TOKEN;
-        identityNamepsace = RedshiftProperty.IDC_IDENTITY_NAMESPACE.get(info);
-        idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.get(info);
-        redshiftNativeAuth = true;
-      } else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN))
+      else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN))
       {
         idpType = IDP_TYPE_AWS_IDC;
         identityNamepsace = RedshiftProperty.IDC_IDENTITY_NAMESPACE.get(info);
@@ -492,12 +484,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       }
       if(RedshiftLogger.isEnable())
         logger.logDebug("Using identity_namespace=" + identityNamepsace);
-
-      if(!StringUtils.isNullOrEmpty(idcClientDisplayName)) {
-        paramList.add(new String[]{"idc_client_display_name", idcClientDisplayName});
-      }
-      if(RedshiftLogger.isEnable())
-        logger.logDebug("Using idc_client_display_name=" + idcClientDisplayName);
     }
     
     
