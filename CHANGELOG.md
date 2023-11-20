@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v2.1.0.23 (2023-11-20)
+----------------------
+- Feature: Added ability to connect to datashare databases for clusters and serverless workgroups running the PREVIEW_2023 track [Bhavik Shah]
+- Removed BrowserIdcAuthPlugin [Bhavik Shah]
+
 v2.1.0.22 (2023-11-09)
 ----------------------
 - Added support for Custom Cluster Names (CNAME) for Amazon Redshift Serverless [Bhavik Shah]
