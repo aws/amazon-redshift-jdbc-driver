@@ -12,7 +12,7 @@ v2.1.0.22 (2023-11-09)
 - Added support for IntervalY2M and IntervalD2S data types, which are mapped to the java.sql type Types.OTHER [Bhavik Shah]
 - Improved XML parsing [Bhavik Shah]
 - Fixed a bug where driver threw an error if connection options were not provided as a string object [Bhavik Shah]
-- Added the ability to set session level timezone to local JVM timezone or Redshift server timezone using new connection option ‘ConnectionTimezone’. By default, the session level timezone is set to the Redshift server’s timezone [Bhavik Shah]
+- Added the ability to set session level timezone to local JVM timezone or Redshift server timezone using new connection option ‘ConnectionTimezone’. By default, the session level timezone is set to local timezone [Bhavik Shah]
 - Driver now throws an error if timestamp data retrieved from queries is invalid [Bhavik Shah]
 - Fixed a bug where closing a statement explicitly introduced performance latency [issue#100](https://github.com/aws/amazon-redshift-jdbc-driver/issues/100) [Bhavik Shah]
 - Bump AWS Java SDK dependencies from 1.12.493 to 1.12.577 [Bhavik Shah]
