@@ -412,7 +412,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       paramList.add(new String[]{"TimeZone", createRedshiftTimeZone()});
     }
 
-    paramList.add(new String[]{"_pq_.compression", info.getProperty("compression", RedshiftProperty.COMPRESSION.get(info))});
+    if(!("off".equalsIgnoreCase(RedshiftProperty.COMPRESSION.get(info))))
+    {
+      paramList.add(new String[]{"_pq_.compression", info.getProperty("compression", RedshiftProperty.COMPRESSION.get(info))});
+    }
 
     Version assumeVersion = ServerVersion.from(RedshiftProperty.ASSUME_MIN_SERVER_VERSION.get(info));
 

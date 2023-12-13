@@ -324,7 +324,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     }
   }
 
-  public  void execute(Query query, ParameterList parameters, ResultHandler handler,
+  public void execute(Query query, ParameterList parameters, ResultHandler handler,
       int maxRows, int fetchSize, int flags) throws SQLException {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
