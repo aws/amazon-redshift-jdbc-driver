@@ -376,9 +376,6 @@ public class LibPQFactory extends WrappedFactory {
           keystore.load(keystoreStream, passphraseArray);
           keystoreStream.close();
 
-          loadDefaultCA(keystore, "redshift.crt");
-          loadDefaultCA(keystore, "bjs.redshift.crt");
-          loadDefaultCA(keystore, "pdt.redshift.crt");
           return keystore;
       }
       catch (Exception e)
@@ -426,10 +423,7 @@ public class LibPQFactory extends WrappedFactory {
 	        }
 	        keystore.load(keystoreStream, passphraseArray);
 	        keystoreStream.close();
-	
-	        loadDefaultCA(keystore, "redshift.crt");
-	        loadDefaultCA(keystore, "bjs.redshift.crt");
-	        loadDefaultCA(keystore, "pdt.redshift.crt");
+
 	        return keystore;
 		    }
 	  		catch (RedshiftException rsex) 
@@ -460,6 +454,7 @@ public class LibPQFactory extends WrappedFactory {
   private void loadDefaultCA(KeyStore keystore, String name)
           throws IOException, GeneralSecurityException
   {
+      // This method is no longer used, and kept around for historical purposes
       InputStream is = null;
 
       try
