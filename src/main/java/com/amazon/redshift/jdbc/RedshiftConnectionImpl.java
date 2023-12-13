@@ -259,6 +259,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
     {
         String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
             RedshiftProperty.CREDENTIALS_PROVIDER.getName(), info);
+        if(iamCredentialProvider != null && iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN)) {
+          throw new RedshiftException(GT.tr("You can not use this authentication plugin with IAM enabled."),
+                RedshiftState.UNEXPECTED_ERROR);
+        }
 
     	if (sslExplicitlyDisabled) {
 	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),

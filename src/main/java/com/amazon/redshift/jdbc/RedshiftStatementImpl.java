@@ -746,14 +746,6 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
       isClosed = true;
     }
 
-    // The user has closed the statement and does not want to read any more results. We send a cancellation request to
-    // the server. It is possible to have a situation where if the driver's ring buffer is not
-    // reading from the stream and the server's send buffer is full. The server treats this as a client side hang and
-    // closes the connection. To avoid this, we start reading from the stream again, but we throw away the rows we read
-    // because the user no longer needs them. Note, this is a temporary fix until a permanent server-side fix can be
-    // provided.
-    resumeReadAndDiscardResults();
-
     cancel();
 
     closeForNextExecution();
@@ -1577,35 +1569,5 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   }
 
   protected void transformQueriesAndParameters() throws SQLException {
-  }
-
-  private void resumeReadAndDiscardResults()
-  {
-    if (connection.getQueryExecutor().isRingBufferThreadRunning())
-    {
-      RedshiftResultSet rs = null;
-      if (firstUnclosedResult != null)
-      {
-        rs = (RedshiftResultSet) firstUnclosedResult.getResultSet();
-      }
-      if (rs != null && rs.queueRows != null)
-      {
-        boolean endOfResult = rs.queueRows.endOfResult();
-        if(!endOfResult)
-        {
-          rs.queueRows.setSkipRows();
-
-          // We sleep here for 2 seconds to give the ring buffer adequate time to start reading results again once it wakes up,
-          // and the server adequate time to detect that send buffer is no longer full
-          try
-          {
-            Thread.sleep(2000);
-          }
-          catch (InterruptedException e)
-          {
-          }
-        }
-      }
-    }
   }
 }
