@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.24 (2023-12-14)
+----------------------
+- Fixed a bug where connection setup would fail if compression was explicitly turned off in both the driver and the server [Bhavik Shah]
+- Improved driver performance when closing statements with partially read results [Bhavik Shah]
+- Removed unnecessary loading of Redshift CA certs into default truststore [Bhavik Shah]
+
 v2.1.0.23 (2023-11-20)
 ----------------------
 - Feature: Added ability to connect to datashare databases for clusters and serverless workgroups running the PREVIEW_2023 track [Bhavik Shah]
