@@ -43,16 +43,22 @@ import javax.security.auth.callback.UnsupportedCallbackException;
 public class LibPQFactory extends WrappedFactory {
 
   /**
-   * The system property to set/get the trustore path.
+   * The system property to set/get the truststore path.
    */
   private static final String TRUSTSTORE_PROPERTY = "javax.net.ssl.trustStore";
 
   /**
-   * The system property to set/get the trustore passphrase.
+   * The system property to set/get the truststore passphrase.
    */
   private static final String TRUSTSTORE_PWD_PROPERTY ="javax.net.ssl.trustStorePassword";
-	
-  KeyManager km;
+
+    /**
+     * The system property to set/get the truststore type.
+     */
+    private static final String TRUSTSTORE_TYPE ="javax.net.ssl.trustStoreType";
+
+
+    KeyManager km;
   boolean defaultfile;
 
   private CallbackHandler getCallbackHandler(Properties info) throws RedshiftException {
@@ -336,6 +342,7 @@ public class LibPQFactory extends WrappedFactory {
 
       String keystorePath = System.getProperty(TRUSTSTORE_PROPERTY);
       passphrase = System.getProperty(TRUSTSTORE_PWD_PROPERTY);
+      String type = System.getProperty(TRUSTSTORE_TYPE);
 
       if (null == keystorePath)
       {
@@ -367,7 +374,7 @@ public class LibPQFactory extends WrappedFactory {
       try
       {
           // Load the keystore
-          KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+          KeyStore keystore = (null != type && !type.isEmpty())? KeyStore.getInstance(type) : KeyStore.getInstance(KeyStore.getDefaultType());
           char[] passphraseArray = null;
           if (null != passphrase)
           {
