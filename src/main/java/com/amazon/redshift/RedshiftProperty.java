@@ -127,7 +127,7 @@ public enum RedshiftProperty {
    */
   COMPRESSION(
           "compression",
-          "lz4:1",
+          "off",
           "The compression method used for wire protocol communication between Redshift server and the client/driver"),
 
   /**
