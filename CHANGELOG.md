@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.25 (2024-01-17)
+----------------------
+- Added support for loading custom trust store types using the system property “javax.net.ssl.trustStoreType” [Bhavik Shah]
+- Fixed a bug where an incorrect version number was displayed in Maven Central for AWS SDK dependencies used by the driver [Bhavik Shah]
+- Set default value for the Connection Option “compression” to “off” [Bhavik Shah]
+
 v2.1.0.24 (2023-12-14)
 ----------------------
 - Fixed a bug where connection setup would fail if compression was explicitly turned off in both the driver and the server [Bhavik Shah]
