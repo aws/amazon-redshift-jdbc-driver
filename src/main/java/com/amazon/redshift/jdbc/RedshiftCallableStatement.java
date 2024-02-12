@@ -43,6 +43,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
   private int[] testReturn;
   // returnTypeSet is true when a proper call to registerOutParameter has been made
   private boolean returnTypeSet;
+  private boolean haveProcessedResults = false;
   protected Object[] callResult;
   private int lastIndex = 0;
 
@@ -91,73 +92,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
           RedshiftState.NO_DATA);
     }
 
-    ResultSet rs;
-    synchronized (this) {
-      checkClosed();
-      rs = result.getResultSet();
-    }
-    if (!rs.next()) {
-      throw new RedshiftException(GT.tr("A CallableStatement was executed with nothing returned."),
-          RedshiftState.NO_DATA);
-    }
-
-    // figure out how many columns
-    int cols = rs.getMetaData().getColumnCount();
-
-    int outParameterCount = preparedParameters.getOutParameterCount();
-
-    if (cols != outParameterCount) {
-      throw new RedshiftException(
-          GT.tr("A CallableStatement was executed with an invalid number of parameters"),
-          RedshiftState.SYNTAX_ERROR);
-    }
-
-    // reset last result fetched (for wasNull)
-    lastIndex = 0;
-
-    // allocate enough space for all possible parameters without regard to in/out
-    callResult = new Object[preparedParameters.getParameterCount() + 1];
-
-    // move them into the result set
-    for (int i = 0, j = 0; i < cols; i++, j++) {
-      // find the next out parameter, the assumption is that the functionReturnType
-      // array will be initialized with 0 and only out parameters will have values
-      // other than 0. 0 is the value for java.sql.Types.NULL, which should not
-      // conflict
-      while (j < functionReturnType.length && functionReturnType[j] == 0) {
-        j++;
-      }
-
-      callResult[j] = rs.getObject(i + 1);
-      int columnType = rs.getMetaData().getColumnType(i + 1);
-
-      if (columnType != functionReturnType[j]) {
-        // this is here for the sole purpose of passing the cts
-        if (columnType == Types.DOUBLE && functionReturnType[j] == Types.REAL) {
-          // return it as a float
-          if (callResult[j] != null) {
-            callResult[j] = ((Double) callResult[j]).floatValue();
-          }
-          //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
-        } else if (columnType == Types.REF_CURSOR && functionReturnType[j] == Types.OTHER) {
-          // For backwards compatibility reasons we support that ref cursors can be
-          // registered with both Types.OTHER and Types.REF_CURSOR so we allow
-          // this specific mismatch
-          //JCP! endif
-        } else {
-          throw new RedshiftException(GT.tr(
-              "A CallableStatement function was executed and the out parameter {0} was of type {1} however type {2} was registered.",
-              i + 1, "java.sql.Types=" + columnType, "java.sql.Types=" + functionReturnType[j]),
-              RedshiftState.DATA_TYPE_MISMATCH);
-        }
-      }
-
-    }
-    rs.close();
-    synchronized (this) {
-      result = null;
-    }
-    return false;
+    return true;
   }
 
   /**
@@ -250,6 +185,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.VARCHAR, "String");
     return (String) callResult[parameterIndex - 1];
   }
@@ -259,6 +195,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.BIT, "Boolean");
     if (callResult[parameterIndex - 1] == null) {
       return false;
@@ -272,6 +209,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     // fake tiny int with smallint
     checkIndex(parameterIndex, Types.SMALLINT, "Byte");
 
@@ -288,6 +226,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.SMALLINT, "Short");
     if (callResult[parameterIndex - 1] == null) {
       return 0;
@@ -300,6 +239,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.INTEGER, "Int");
     if (callResult[parameterIndex - 1] == null) {
       return 0;
@@ -313,6 +253,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.BIGINT, "Long");
     if (callResult[parameterIndex - 1] == null) {
       return 0;
@@ -326,6 +267,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.REAL, "Float");
     if (callResult[parameterIndex - 1] == null) {
       return 0;
@@ -339,6 +281,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.DOUBLE, "Double");
     if (callResult[parameterIndex - 1] == null) {
       return 0;
@@ -352,6 +295,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex, scale);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.NUMERIC, "BigDecimal");
     return ((BigDecimal) callResult[parameterIndex - 1]);
   }
@@ -361,6 +305,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.VARBINARY, Types.BINARY, "Bytes");
     return ((byte[]) callResult[parameterIndex - 1]);
   }
@@ -370,6 +315,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.DATE, "Date");
     return (java.sql.Date) callResult[parameterIndex - 1];
   }
@@ -379,6 +325,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.TIME, "Time");
     return (java.sql.Time) callResult[parameterIndex - 1];
   }
@@ -388,6 +335,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.TIMESTAMP, "Timestamp");
     return (java.sql.Timestamp) callResult[parameterIndex - 1];
   }
@@ -397,6 +345,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex);
     return callResult[parameterIndex - 1];
   }
@@ -485,6 +434,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
 
   public java.sql.Array getArray(int i) throws SQLException {
     checkClosed();
+    getResults();
     checkIndex(i, Types.ARRAY, "Array");
     return (Array) callResult[i - 1];
   }
@@ -494,6 +444,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.NUMERIC, "BigDecimal");
     return ((BigDecimal) callResult[parameterIndex - 1]);
   }
@@ -522,6 +473,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, i, cal);
   	
     checkClosed();
+    getResults();
     checkIndex(i, Types.DATE, "Date");
 
     if (callResult[i - 1] == null) {
@@ -537,6 +489,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, i, cal);
   	
     checkClosed();
+    getResults();
     checkIndex(i, Types.TIME, "Time");
 
     if (callResult[i - 1] == null) {
@@ -552,6 +505,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, i, cal);
   	
     checkClosed();
+    getResults();
     checkIndex(i, Types.TIMESTAMP, "Timestamp");
 
     if (callResult[i - 1] == null) {
@@ -715,6 +669,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     	connection.getLogger().logFunction(true, parameterIndex);
   	
     checkClosed();
+    getResults();
     checkIndex(parameterIndex, Types.SQLXML, "SQLXML");
     return (SQLXML) callResult[parameterIndex - 1];
   }
@@ -977,5 +932,91 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
   public void registerOutParameter(int parameterIndex, int sqlType, int scale) throws SQLException {
     // ignore scale for now
     registerOutParameter(parameterIndex, sqlType);
+  }
+
+  private void getResults() throws SQLException {
+    if (!haveProcessedResults)
+    {
+      haveProcessedResults = true;
+
+      ResultSet rs;
+      synchronized (this) {
+        checkClosed();
+        rs = result.getResultSet();
+      }
+      if (!rs.next()) {
+        throw new RedshiftException(GT.tr("A CallableStatement was executed with nothing returned."),
+                RedshiftState.NO_DATA);
+      }
+
+      // figure out how many columns
+      int cols = rs.getMetaData().getColumnCount();
+
+      int outParameterCount = preparedParameters.getOutParameterCount();
+
+      if (cols != outParameterCount) {
+        throw new RedshiftException(
+                GT.tr("A CallableStatement was executed with an invalid number of parameters"),
+                RedshiftState.SYNTAX_ERROR);
+      }
+
+      // reset last result fetched (for wasNull)
+      lastIndex = 0;
+
+      // allocate enough space for all possible parameters without regard to in/out
+      callResult = new Object[preparedParameters.getParameterCount() + 1];
+
+      // move them into the result set
+      for (int i = 0, j = 0; i < cols; i++, j++) {
+        // find the next out parameter, the assumption is that the functionReturnType
+        // array will be initialized with 0 and only out parameters will have values
+        // other than 0. 0 is the value for java.sql.Types.NULL, which should not
+        // conflict
+        while (j < functionReturnType.length && functionReturnType[j] == 0) {
+          j++;
+        }
+
+        callResult[j] = rs.getObject(i + 1);
+        int columnType = rs.getMetaData().getColumnType(i + 1);
+
+        if (columnType != functionReturnType[j]) {
+          // this is here for the sole purpose of passing the cts
+          if (columnType == Types.DOUBLE && functionReturnType[j] == Types.REAL) {
+            // return it as a float
+            if (callResult[j] != null) {
+              callResult[j] = ((Double) callResult[j]).floatValue();
+            }
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+          }
+          else if (columnType == Types.REAL && functionReturnType[j] == Types.DOUBLE) {
+            // return it as is
+          }
+          else if (columnType == Types.CHAR && functionReturnType[j] == Types.VARCHAR) {
+            // return it as a varchar
+            if (callResult[j] != null) {
+              callResult[j] = (callResult[j]).toString();
+            }
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+          }
+          else if (columnType == Types.REF_CURSOR && functionReturnType[j] == Types.OTHER) {
+            // For backwards compatibility reasons we support that ref cursors can be
+            // registered with both Types.OTHER and Types.REF_CURSOR so we allow
+            // this specific mismatch
+            //JCP! endif
+          }
+          else {
+            throw new RedshiftException(GT.tr(
+                    "A CallableStatement function was executed and the out parameter {0} was of type {1} however type {2} was registered.",
+                    i + 1, "java.sql.Types=" + columnType, "java.sql.Types=" + functionReturnType[j]),
+                    RedshiftState.DATA_TYPE_MISMATCH);
+          }
+        }
+
+      }
+      rs.close();
+      synchronized (this) {
+        result = null;
+      }
+    }
   }
 }
