@@ -942,8 +942,21 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
       ResultSet rs;
       synchronized (this) {
         checkClosed();
+        if (null == result) {
+          throw new RedshiftException(
+                  GT.tr("Results cannot be retrieved from a CallableStatement before it is executed."),
+                  RedshiftState.NO_DATA);
+        }
         rs = result.getResultSet();
       }
+
+      if(null == rs) {
+        if (!returnTypeSet) {
+          throw new RedshiftException(GT.tr("No function outputs were registered."),
+                  RedshiftState.OBJECT_NOT_IN_STATE);
+        }
+      }
+
       if (!rs.next()) {
         throw new RedshiftException(GT.tr("A CallableStatement was executed with nothing returned."),
                 RedshiftState.NO_DATA);
