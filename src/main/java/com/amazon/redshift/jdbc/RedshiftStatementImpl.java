@@ -280,12 +280,16 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   protected ResultSet getSingleResultSet() throws SQLException {
     synchronized (this) {
       checkClosed();
-      if (result.getNext() != null) {
-        throw new RedshiftException(GT.tr("Multiple ResultSets were returned by the query."),
-            RedshiftState.TOO_MANY_RESULTS);
+
+      ResultSet firstResult = result.getResultSet();
+
+      while ((result = result.getNext()) != null) {
+        if (result.getResultSet() != null) {
+          throw new RedshiftException(GT.tr("Multiple ResultSets were returned by the query."),
+                  RedshiftState.TOO_MANY_RESULTS);        }
       }
 
-      return result.getResultSet();
+      return firstResult;
     }
   }
 
