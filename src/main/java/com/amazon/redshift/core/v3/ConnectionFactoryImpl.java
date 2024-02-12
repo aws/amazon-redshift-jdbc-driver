@@ -656,6 +656,10 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     // or an authentication request
 
     String password = RedshiftProperty.PASSWORD.get(info);
+    if(null == password)
+    {
+      password = RedshiftProperty.PWD.get(info);
+    }
 
     /* SSPI negotiation state, if used */
     ISSPIClient sspiClient = null;
