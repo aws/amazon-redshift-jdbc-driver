@@ -620,11 +620,13 @@ public class TimestampUtils {
     long timeMillis = useCal.getTimeInMillis() + ts.nanos / 1000000;
     if (ts.tz != null || (ts.year == 1970 && ts.era == GregorianCalendar.AD)) {
       // time with time zone has proper time zone, so the value can be returned as is
-      return new Time(timeMillis);
+      Time timeObj = new Time(timeMillis);
+      return (ts.nanos > 0) ? new RedshiftTime(timeObj, ts.nanos) : timeObj;
     }
 
     // 2) Truncate date part so in given time zone the date would be formatted as 01/01/1970
-    return convertToTime(timeMillis, useCal.getTimeZone());
+    Time timeObj = convertToTime(timeMillis, useCal.getTimeZone());
+    return (ts.nanos > 0) ? new RedshiftTime(timeObj, ts.nanos) : timeObj;
   }
 
   public synchronized Date toDate(Calendar cal, String s) throws SQLException {

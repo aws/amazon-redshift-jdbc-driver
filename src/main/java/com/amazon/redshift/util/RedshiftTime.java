@@ -8,6 +8,7 @@ package com.amazon.redshift.util;
 import java.sql.PreparedStatement;
 import java.sql.Time;
 import java.util.Calendar;
+import java.text.SimpleDateFormat;
 
 /**
  * This class augments the Java built-in Time to allow for explicit setting of the time zone.
@@ -138,5 +139,43 @@ public class RedshiftTime extends Time {
       clone.setCalendar((Calendar) getCalendar().clone());
     }
     return clone;
+  }
+
+  /**
+   * Threadsafe access to ready to use time formatter
+   */
+  public static ThreadLocal<SimpleDateFormat> TIME_FORMAT =
+          new ThreadLocal<SimpleDateFormat>()
+          {
+            @Override
+            protected SimpleDateFormat initialValue()
+            {
+              return new SimpleDateFormat("HH:mm:ss");
+            }
+          };
+
+
+  /**
+   * Override default to string method to handle nanoSeconds
+   */
+  @Override
+  public String toString()
+  {
+    StringBuilder baseResult = new StringBuilder();
+    baseResult.append(TIME_FORMAT.get().format(this.getTime()));
+
+    // TIME columns store values with up to a maximum of 6 digits of precision for fractional seconds.
+    // If TIME has more than 6 digits, trim down to 6 digits from the end of TIME.
+    if (0 < nanos)
+    {
+      while (999999 < nanos)
+      {
+        nanos /= 10;
+      }
+      baseResult.append(".");
+      baseResult.append(String.valueOf(nanos));
+    }
+
+    return baseResult.toString();
   }
 }
