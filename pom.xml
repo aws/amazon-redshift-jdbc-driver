@@ -33,7 +33,7 @@
 
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
-        <jackson.version>2.15.0</jackson.version>
+        <jackson.version>2.16.0</jackson.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
@@ -125,12 +125,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-ssooidc</artifactId>
-            <version>1.12.577</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
