@@ -1,6 +1,16 @@
 Changelog
 =========
 
+v2.1.0.26 (2024-02-12)
+----------------------
+- Enhanced capability to retrieve results of OUT parameters from stored procedures by parsing the result set [Bhavik Shah]
+- Added tolerance for SQL comments after semi-colons - queries with trailing comments will no longer error, preventing failures from valid comment usage [Bhavik Shah]
+- Added support for TIME datatype to display up to 6 digits of fractional second data [Bhavik Shah]
+- Improved behavior of the PWD connection property for specifying passwords [issue#105](https://github.com/aws/amazon-redshift-jdbc-driver/issues/105) [Bhavik Shah]
+- Added performance testing use cases [Bhavik Shah]
+- Enhanced debug-level logging during query execution for better diagnostics and tracing when troubleshooting issues [Bhavik Shah]
+- Upgraded Jackson version from 2.15.0 to 2.16.0 [Bhavik Shah]
+
 v2.1.0.25 (2024-01-17)
 ----------------------
 - Added support for loading custom trust store types using the system property “javax.net.ssl.trustStoreType” [Bhavik Shah]
