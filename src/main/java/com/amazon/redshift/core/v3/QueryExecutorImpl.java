@@ -6,50 +6,6 @@
 
 package com.amazon.redshift.core.v3;
 
-import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.copy.CopyIn;
-import com.amazon.redshift.copy.CopyOperation;
-import com.amazon.redshift.copy.CopyOut;
-import com.amazon.redshift.core.CommandCompleteParser;
-import com.amazon.redshift.core.Encoding;
-import com.amazon.redshift.core.EncodingPredictor;
-import com.amazon.redshift.core.Field;
-import com.amazon.redshift.core.NativeQuery;
-import com.amazon.redshift.core.Oid;
-import com.amazon.redshift.core.RedshiftBindException;
-import com.amazon.redshift.core.RedshiftStream;
-import com.amazon.redshift.core.ParameterList;
-import com.amazon.redshift.core.Parser;
-import com.amazon.redshift.core.Query;
-import com.amazon.redshift.core.QueryExecutor;
-import com.amazon.redshift.core.QueryExecutorBase;
-import com.amazon.redshift.core.ReplicationProtocol;
-import com.amazon.redshift.core.ResultCursor;
-import com.amazon.redshift.core.ResultHandler;
-import com.amazon.redshift.core.ResultHandlerBase;
-import com.amazon.redshift.core.ResultHandlerDelegate;
-import com.amazon.redshift.core.SqlCommand;
-import com.amazon.redshift.core.SqlCommandType;
-import com.amazon.redshift.core.TransactionState;
-import com.amazon.redshift.core.Tuple;
-import com.amazon.redshift.core.Utils;
-import com.amazon.redshift.core.v3.replication.V3ReplicationProtocol;
-import com.amazon.redshift.jdbc.AutoSave;
-import com.amazon.redshift.jdbc.BatchResultHandler;
-import com.amazon.redshift.jdbc.FieldMetadata;
-import com.amazon.redshift.jdbc.TimestampUtils;
-import com.amazon.redshift.logger.LogLevel;
-import com.amazon.redshift.logger.RedshiftLogger;
-
-import com.amazon.redshift.util.QuerySanitizer;
-import com.amazon.redshift.util.ByteStreamWriter;
-import com.amazon.redshift.util.GT;
-import com.amazon.redshift.util.RedshiftException;
-import com.amazon.redshift.util.RedshiftPropertyMaxResultBufferParser;
-import com.amazon.redshift.util.RedshiftState;
-import com.amazon.redshift.util.RedshiftWarning;
-
-import com.amazon.redshift.util.ServerErrorMessage;
 import java.io.IOException;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
@@ -71,10 +27,51 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+
+import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.copy.CopyOperation;
+import com.amazon.redshift.core.CommandCompleteParser;
+import com.amazon.redshift.core.Encoding;
+import com.amazon.redshift.core.EncodingPredictor;
+import com.amazon.redshift.core.Field;
+import com.amazon.redshift.core.NativeQuery;
+import com.amazon.redshift.core.Oid;
+import com.amazon.redshift.core.ParameterList;
+import com.amazon.redshift.core.Parser;
+import com.amazon.redshift.core.Query;
+import com.amazon.redshift.core.QueryExecutor;
+import com.amazon.redshift.core.QueryExecutorBase;
+import com.amazon.redshift.core.RedshiftBindException;
+import com.amazon.redshift.core.RedshiftStream;
+import com.amazon.redshift.core.ReplicationProtocol;
+import com.amazon.redshift.core.ResultCursor;
+import com.amazon.redshift.core.ResultHandler;
+import com.amazon.redshift.core.ResultHandlerBase;
+import com.amazon.redshift.core.ResultHandlerDelegate;
+import com.amazon.redshift.core.SqlCommand;
+import com.amazon.redshift.core.SqlCommandType;
+import com.amazon.redshift.core.TransactionState;
+import com.amazon.redshift.core.Tuple;
+import com.amazon.redshift.core.Utils;
+import com.amazon.redshift.core.v3.replication.V3ReplicationProtocol;
+import com.amazon.redshift.jdbc.AutoSave;
+import com.amazon.redshift.jdbc.BatchResultHandler;
+import com.amazon.redshift.jdbc.FieldMetadata;
+import com.amazon.redshift.jdbc.ResourceLock;
+import com.amazon.redshift.jdbc.TimestampUtils;
+import com.amazon.redshift.logger.LogLevel;
+import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.util.ByteStreamWriter;
+import com.amazon.redshift.util.GT;
+import com.amazon.redshift.util.QuerySanitizer;
+import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftPropertyMaxResultBufferParser;
+import com.amazon.redshift.util.RedshiftState;
+import com.amazon.redshift.util.RedshiftWarning;
+import com.amazon.redshift.util.ServerErrorMessage;
 
 /**
  * QueryExecutor implementation for the V3 protocol.
@@ -84,7 +81,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   private static final Pattern ROLLBACK_PATTERN = Pattern.compile("\\brollback\\b", Pattern.CASE_INSENSITIVE);
   private static final Pattern COMMIT_PATTERN = Pattern.compile("\\bcommit\\b", Pattern.CASE_INSENSITIVE);
   private static final Pattern PREPARE_PATTERN = Pattern.compile("\\bprepare ++transaction\\b", Pattern.CASE_INSENSITIVE);
-
+  
   private static boolean looksLikeCommit(String sql) {
     if ("COMMIT".equalsIgnoreCase(sql)) {
       return true;
@@ -235,7 +232,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
           RedshiftState.OBJECT_NOT_IN_STATE);
     }
     lockedFor = null;
-    this.notify();
+    lockCondition.signal();
   }
 
   /**
@@ -245,7 +242,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   void waitOnLock() throws RedshiftException {
     while (lockedFor != null) {
       try {
-        this.wait();
+    	 lockCondition.await();
       } catch (InterruptedException ie) {
         Thread.currentThread().interrupt();
         throw new RedshiftException(
@@ -330,7 +327,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
     
-    synchronized(this) {
+    try (ResourceLock ignore = lock.obtain()) {
 	  	waitOnLock();
 	  	try {
 	  		m_executingLock.lock();	  		
@@ -420,7 +417,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	  	finally {
 	  		m_executingLock.unlock();
 	  	}
-    } // synchronized
+    }
   }
 
   private boolean sendAutomaticSavepoint(Query query, int flags) throws IOException {
@@ -542,7 +539,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
-    synchronized(this) {
+    try (ResourceLock ignore = lock.obtain()) {
 	    waitOnLock();
 	    try {
 	    	m_executingLock.lock();
@@ -624,7 +621,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	    finally {
 	    	m_executingLock.unlock();	    	
 	    }
-    } // synchronized
+    }
   }
 
   private ResultHandler sendQueryPreamble(final ResultHandler delegateHandler, int flags)
@@ -811,8 +808,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 */  
 
   // Just for API compatibility with previous versions.
-  public synchronized void processNotifies() throws SQLException {
+  public void processNotifies() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     processNotifies(-1);
+	  }
   }
 
   /**
@@ -820,7 +819,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    *                      when =0, block forever
    *                      when &lt; 0, don't block
    */
-  public synchronized void processNotifies(int timeoutMillis) throws SQLException {
+  public void processNotifies(int timeoutMillis) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     waitOnLock();
     // Asynchronous notifies only arrive when we are not in a transaction
     if (getTransactionState() != TransactionState.IDLE) {
@@ -889,6 +889,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         setSocketTimeout(oldTimeout);
       }
     }
+	  }
   }
 
   private void setSocketTimeout(int millis) throws RedshiftException {
@@ -1002,8 +1003,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @return number of rows updated for server versions 8.2 or newer
    * @throws SQLException on failure
    */
-  public synchronized long endCopy(CopyOperationImpl op) throws SQLException {
+  public long endCopy(CopyOperationImpl op) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
   	return copyQueryExecutor.endCopy(op);
+	  }
   }
 
   /**
@@ -1016,9 +1019,11 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @param siz number of bytes to send (usually data.length)
    * @throws SQLException on failure
    */
-  public synchronized void writeToCopy(CopyOperationImpl op, byte[] data, int off, int siz)
+  public void writeToCopy(CopyOperationImpl op, byte[] data, int off, int siz)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
   	copyQueryExecutor.writeToCopy(op, data, off, siz);
+	  }
   }
 
   /**
@@ -1029,13 +1034,17 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @param from the source of bytes, e.g. a ByteBufferByteStreamWriter
    * @throws SQLException on failure
    */
-  public synchronized void writeToCopy(CopyOperationImpl op, ByteStreamWriter from)
+  public void writeToCopy(CopyOperationImpl op, ByteStreamWriter from)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
   	copyQueryExecutor.writeToCopy(op, from);
+	  }
   }
 
-  public synchronized void flushCopy(CopyOperationImpl op) throws SQLException {
+  public void flushCopy(CopyOperationImpl op) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
   	copyQueryExecutor.flushCopy(op);
+	  }
   }
 
   /**
@@ -1046,8 +1055,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * @param block whether to block waiting for input
    * @throws SQLException on any failure
    */
-  synchronized void readFromCopy(CopyOperationImpl op, boolean block) throws SQLException {
+  void readFromCopy(CopyOperationImpl op, boolean block) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
   	copyQueryExecutor.readFromCopy(op, block);
+	  }
   }
 
   /*
@@ -1727,7 +1738,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
 
   public void closeStatementAndPortal() {
-      synchronized(this) {
+	  try(ResourceLock ignore = lock.obtain()) {
 	    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
 	    try {
 			processDeadParsedQueries();
@@ -1750,7 +1761,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 		  		logger.logError(sqe);
 		    }
 			}
-   	} // synchronized
+   	}
   }
   
   private void processDeadParsedQueries() throws IOException {
@@ -2511,7 +2522,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
-    synchronized(this) {
+    try (ResourceLock ignore = lock.obtain()) {
 	    waitOnLock();
 	    try {
 	    	m_executingLock.lock();
@@ -2551,7 +2562,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 	    finally {
 	    	m_executingLock.unlock();	    	
 	    }
-    } // synchronized
+    } 
   }
 
   /*
@@ -2959,7 +2970,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                                                                                         RedshiftRowsBlockingQueue<Tuple> queueRows,
   																						Thread ringBufferThread)
   {
-  	synchronized(m_ringBufferThreadLock) {
+  	try(ResourceLock ignore = lock.obtain()) {
   		try {
 	  		m_executingLock.lock();
 				// Wait for full read of any executing command

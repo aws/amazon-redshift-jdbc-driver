@@ -11,6 +11,7 @@ import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.EscapeSyntaxCallMode;
 import com.amazon.redshift.jdbc.PreferQueryMode;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.HostSpec;
@@ -27,9 +28,12 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.locks.Condition;
 
 public abstract class QueryExecutorBase implements QueryExecutor {
-
+  protected ResourceLock lock = new ResourceLock();
+  protected final Condition lockCondition = lock.newCondition();
+  
   protected RedshiftLogger logger;
   protected final RedshiftStream pgStream;
   private final String user;
@@ -229,34 +233,42 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     }
   }
 
-  public synchronized void addWarning(SQLWarning newWarning) {
+  public void addWarning(SQLWarning newWarning) {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (warnings == null) {
       warnings = newWarning;
     } else {
       warnings.setNextWarning(newWarning);
     }
+	  }
   }
 
   public void setCrossDatasharingEnabled(boolean isCrossDatasharingEnabled) {
     this.isCrossDatasharingEnabled = isCrossDatasharingEnabled;
   }
 
-  public synchronized void addNotification(RedshiftNotification notification) {
+  public void addNotification(RedshiftNotification notification) {
+	  try (ResourceLock ignore = lock.obtain()) {
     notifications.add(notification);
+	  }
   }
 
   @Override
-  public synchronized RedshiftNotification[] getNotifications() throws SQLException {
+  public RedshiftNotification[] getNotifications() throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     RedshiftNotification[] array = notifications.toArray(new RedshiftNotification[0]);
     notifications.clear();
     return array;
+	}
   }
 
   @Override
-  public synchronized SQLWarning getWarnings() {
+  public SQLWarning getWarnings() {
+	  try (ResourceLock ignore = lock.obtain()) {
     SQLWarning chain = warnings;
     warnings = null;
     return chain;
+	  }
   }
 
   @Override
@@ -300,22 +312,30 @@ public abstract class QueryExecutorBase implements QueryExecutor {
     this.serverVersionNum = serverVersionNum;
   }
 
-  public synchronized void setTransactionState(TransactionState state) {
+  public void setTransactionState(TransactionState state) {
+	  try (ResourceLock ignore = lock.obtain()) {
     transactionState = state;
+	  }
   }
 
-  public synchronized void setStandardConformingStrings(boolean value) {
+  public void setStandardConformingStrings(boolean value) {
+	  try (ResourceLock ignore = lock.obtain()) {
     standardConformingStrings = value;
+	  }
   }
 
   @Override
-  public synchronized boolean getStandardConformingStrings() {
+  public boolean getStandardConformingStrings() {
+	  try (ResourceLock ignore = lock.obtain()) {
     return standardConformingStrings;
+	  }
   }
 
   @Override
-  public synchronized TransactionState getTransactionState() {
+  public TransactionState getTransactionState() {
+	  try (ResourceLock ignore = lock.obtain()) {
     return transactionState;
+	  }
   }
 
   public void setEncoding(Encoding encoding) throws IOException {

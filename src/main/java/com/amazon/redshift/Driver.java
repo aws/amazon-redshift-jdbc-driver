@@ -5,29 +5,9 @@
 
 package com.amazon.redshift;
 
-import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
-import com.amazon.redshift.logger.LogLevel;
-import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazon.redshift.util.DriverInfo;
-import com.amazon.redshift.util.ExpressionProperties;
-import com.amazon.redshift.util.GT;
-import com.amazon.redshift.util.HostSpec;
-import com.amazon.redshift.util.IniFile;
-import com.amazon.redshift.util.RedshiftException;
-import com.amazon.redshift.util.RedshiftState;
-import com.amazon.redshift.util.SharedTimer;
-import com.amazon.redshift.util.URLCoder;
-import com.amazon.redshift.util.RedshiftProperties;
-
-import javax.naming.Context;
-import javax.naming.NamingException;
-import javax.naming.directory.Attribute;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.InitialDirContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.URL;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
@@ -41,10 +21,30 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.naming.Context;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.InitialDirContext;
+
+import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
+import com.amazon.redshift.jdbc.ResourceLock;
+import com.amazon.redshift.logger.LogLevel;
+import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.util.DriverInfo;
+import com.amazon.redshift.util.ExpressionProperties;
+import com.amazon.redshift.util.GT;
+import com.amazon.redshift.util.HostSpec;
+import com.amazon.redshift.util.IniFile;
+import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftProperties;
+import com.amazon.redshift.util.RedshiftState;
+import com.amazon.redshift.util.SharedTimer;
+import com.amazon.redshift.util.URLCoder;
 
 /**
  * <p>The Java SQL framework allows for multiple database drivers. Each driver should supply a class
@@ -97,29 +97,32 @@ public class Driver implements java.sql.Driver {
       throw new ExceptionInInitializerError(e);
     }
   }
+  private final ResourceLock lock = new ResourceLock();
 
   // Helper to retrieve default properties from classloader resource
   // properties files.
   private Properties defaultProperties;
 
-  private synchronized Properties getDefaultProperties() throws IOException {
-    if (defaultProperties != null) {
-      return defaultProperties;
-    }
-
-    // Make sure we load properties with the maximum possible privileges.
-    try {
-      defaultProperties =
-          AccessController.doPrivileged(new PrivilegedExceptionAction<Properties>() {
-            public Properties run() throws IOException {
-              return loadDefaultProperties();
-            }
-          });
-    } catch (PrivilegedActionException e) {
-      throw (IOException) e.getException();
-    }
-
-    return defaultProperties;
+  private Properties getDefaultProperties() throws IOException {
+	try(ResourceLock ignore = lock.obtain()){
+	    if (defaultProperties != null) {
+	      return defaultProperties;
+	    }
+	
+	    // Make sure we load properties with the maximum possible privileges.
+	    try {
+	      defaultProperties =
+	          AccessController.doPrivileged(new PrivilegedExceptionAction<Properties>() {
+	            public Properties run() throws IOException {
+	              return loadDefaultProperties();
+	            }
+	          });
+	    } catch (PrivilegedActionException e) {
+	      throw (IOException) e.getException();
+	    }
+	
+	    return defaultProperties;
+	}
   }
 
   private Properties loadDefaultProperties() throws IOException {
@@ -376,6 +379,9 @@ public class Driver implements java.sql.Driver {
    * while enforcing a login timeout.
    */
   private static class ConnectThread implements Runnable {
+	private final ResourceLock lock = new ResourceLock();
+	private final Condition lockCondition = lock.newCondition();
+	    
     ConnectThread(String url, RedshiftProperties props, RedshiftLogger connLogger) {
       this.url = url;
       this.props = props;
@@ -394,7 +400,7 @@ public class Driver implements java.sql.Driver {
         error = t;
       }
 
-      synchronized (this) {
+      try (ResourceLock ignore = lock.obtain()) {
         if (abandoned) {
           if (conn != null) {
             try {
@@ -405,7 +411,7 @@ public class Driver implements java.sql.Driver {
         } else {
           result = conn;
           resultException = error;
-          notify();
+          lockCondition.signal();
         }
       }
     }
@@ -420,7 +426,7 @@ public class Driver implements java.sql.Driver {
      */
     public Connection getResult(long timeout) throws SQLException {
       long expiry = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + timeout;
-      synchronized (this) {
+      try (ResourceLock ignore = lock.obtain()) {
         while (true) {
           if (result != null) {
             return result;
@@ -446,7 +452,7 @@ public class Driver implements java.sql.Driver {
           }
 
           try {
-            wait(delay);
+        	lockCondition.await(delay, TimeUnit.MILLISECONDS);
           } catch (InterruptedException ie) {
 
             // reset the interrupt flag

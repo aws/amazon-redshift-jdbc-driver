@@ -59,7 +59,8 @@ public class TypeInfoCache implements TypeInfo {
   private PreparedStatement getArrayDelimiterStatement;
   private PreparedStatement getTypeInfoStatement;
   private PreparedStatement getAllTypeInfoStatement;
-
+  private final ResourceLock lock = new ResourceLock();
+  
   // Geometry
   public static final String GEOMETRY_NAME = "geometry";
   public static final int GEOMETRYOID = Oid.GEOMETRY;
@@ -183,8 +184,9 @@ public class TypeInfoCache implements TypeInfo {
     rsNameToJavaClass.put("hstore", Map.class.getName());
   }
 
-  public synchronized void addCoreType(String rsTypeName, Integer oid, Integer sqlType,
+  public void addCoreType(String rsTypeName, Integer oid, Integer sqlType,
       String javaClass, Integer arrayOid) {
+	try (ResourceLock ignore = lock.obtain()) {
     rsNameToJavaClass.put(rsTypeName, javaClass);
     rsNameToOid.put(rsTypeName, oid);
     oidToRsName.put(oid, rsTypeName);
@@ -210,12 +212,15 @@ public class TypeInfoCache implements TypeInfo {
       rsNameToOid.put(pgArrayTypeName, arrayOid);
       oidToRsName.put(arrayOid, pgArrayTypeName);
     }
+   }
   }
 
-  public synchronized void addDataType(String type, Class<? extends RedshiftObject> klass)
+  public void addDataType(String type, Class<? extends RedshiftObject> klass)
       throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     rsNameToRsObject.put(type, klass);
     rsNameToJavaClass.put(type, klass.getName());
+	} 
   }
 
   public Iterator<String> getRSTypeNamesWithSQLTypes() {
@@ -308,7 +313,8 @@ public class TypeInfoCache implements TypeInfo {
     return getSQLType(getRSType(oid));
   }
 
-  public synchronized int getSQLType(String pgTypeName) throws SQLException {
+  public int getSQLType(String pgTypeName) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     if (pgTypeName.endsWith("[]")) {
       return Types.ARRAY;
     }
@@ -343,6 +349,7 @@ public class TypeInfoCache implements TypeInfo {
 
     rsNameToSQLType.put(pgTypeName, type);
     return type;
+	} 
   }
 
   private PreparedStatement getOidStatement(String pgTypeName) throws SQLException {
@@ -452,7 +459,8 @@ public class TypeInfoCache implements TypeInfo {
     return oidStatementComplex;
   }
 
-  public synchronized int getRSType(String pgTypeName) throws SQLException {
+  public int getRSType(String pgTypeName) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     Integer oid = rsNameToOid.get(pgTypeName);
     if (oid != null) {
       return oid;
@@ -481,9 +489,11 @@ public class TypeInfoCache implements TypeInfo {
     rs.close();
 
     return oid;
+	} 
   }
 
-  public synchronized String getRSType(int oid) throws SQLException {
+  public String getRSType(int oid) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     if (oid == Oid.UNSPECIFIED) {
       return null;
     }
@@ -536,6 +546,7 @@ public class TypeInfoCache implements TypeInfo {
     rs.close();
 
     return rsTypeName;
+	}
   }
 
   public int getRSArrayType(String elementTypeName) throws SQLException {
@@ -552,15 +563,18 @@ public class TypeInfoCache implements TypeInfo {
    * @param oid input oid
    * @return oid of the array's base element or the provided oid (if not array)
    */
-  protected synchronized int convertArrayToBaseOid(int oid) {
+  protected int convertArrayToBaseOid(int oid) {
+	try (ResourceLock ignore = lock.obtain()) {
     Integer i = rsArrayToRsType.get(oid);
     if (i == null) {
       return oid;
     }
     return i;
+	}
   }
 
-  public synchronized char getArrayDelimiter(int oid) throws SQLException {
+  public char getArrayDelimiter(int oid) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     if (oid == Oid.UNSPECIFIED) {
       return ',';
     }
@@ -601,9 +615,11 @@ public class TypeInfoCache implements TypeInfo {
     rs.close();
 
     return delim;
+	} 
   }
 
-  public synchronized int getRSArrayElement(int oid) throws SQLException {
+  public int getRSArrayElement(int oid) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (oid == Oid.UNSPECIFIED) {
       return Oid.UNSPECIFIED;
     }
@@ -656,13 +672,17 @@ public class TypeInfoCache implements TypeInfo {
     rs.close();
 
     return rsType;
+   } 
   }
 
-  public synchronized Class<? extends RedshiftObject> getRSobject(String type) {
-    return rsNameToRsObject.get(type);
-  }
+	public Class<? extends RedshiftObject> getRSobject(String type) {
+		try (ResourceLock ignore = lock.obtain()) {
+			return rsNameToRsObject.get(type);
+		}
+	}
 
-  public synchronized String getJavaClass(int oid) throws SQLException {
+  public String getJavaClass(int oid) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     String pgTypeName = getRSType(oid);
 
     String result = rsNameToJavaClass.get(pgTypeName);
@@ -679,6 +699,7 @@ public class TypeInfoCache implements TypeInfo {
     }
 
     return result;
+   } 
   }
 
   public String getTypeForAlias(String alias) {

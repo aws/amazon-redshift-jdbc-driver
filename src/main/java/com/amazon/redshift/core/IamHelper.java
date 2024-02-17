@@ -26,12 +26,12 @@ import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMResult;
 import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsRequest;
 import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsResult;
 import com.amazonaws.services.redshift.AmazonRedshiftClient;
-import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
 import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
@@ -46,7 +46,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -790,66 +789,68 @@ public final class IamHelper extends IdpAuthHelper {
     }
   }
 
-  private static synchronized GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings,
+  private static GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings,
       AmazonRedshift client, RedshiftLogger log, CredentialProviderType providerType, boolean idpCredentialsRefresh)
       throws AmazonClientException {
-
-    String key = null;
-    GetClusterCredentialsResult credentials = null;
-
-    if (!settings.m_iamDisableCache) {
-      key = getCredentialsCacheKey(settings, providerType, false);
-      credentials = credentialsCache.get(key);
-    }
-
-    if (credentials == null || (providerType == CredentialProviderType.PLUGIN && idpCredentialsRefresh)
-        || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
-      if (RedshiftLogger.isEnable())
-        log.logInfo("GetClusterCredentials NOT from cache");
-
-      if (!settings.m_iamDisableCache)
-        credentialsCache.remove(key);
-
-      if(settings.m_isCname)
-      {
-        // construct request packet with cname
-        GetClusterCredentialsRequest request = constructRequestForGetClusterCredentials(settings, true, log);
-
-        try
-        {
-          // make api call with cname
-          credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
-        }
-        catch(AmazonClientException ace)
-        {
-          // if api call with cname fails, recreate request packet with clusterid and re-make api call
-
-          if(RedshiftLogger.isEnable())
-          {
-            log.logInfo("GetClusterCredentials API call failed with CNAME request. Retrying with ClusterID.");
-          }
-
-            request = constructRequestForGetClusterCredentials(settings, false, log);
-            credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
-        }
-      }
-      else
-      {
-        // construct request packet with clusterid and make api call
-        GetClusterCredentialsRequest request = constructRequestForGetClusterCredentials(settings, false, log);
-        credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
-      }
-
-      if (!settings.m_iamDisableCache)
-        credentialsCache.put(key, credentials);
-    }
-    else
-    {
-      if (RedshiftLogger.isEnable())
-        log.logInfo("GetClusterCredentials from cache");
-    }
-
-    return credentials;
+	try(ResourceLock lock = new ResourceLock()){
+		lock.obtain();
+	    String key = null;
+	    GetClusterCredentialsResult credentials = null;
+	
+	    if (!settings.m_iamDisableCache) {
+	      key = getCredentialsCacheKey(settings, providerType, false);
+	      credentials = credentialsCache.get(key);
+	    }
+	
+	    if (credentials == null || (providerType == CredentialProviderType.PLUGIN && idpCredentialsRefresh)
+	        || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
+	      if (RedshiftLogger.isEnable())
+	        log.logInfo("GetClusterCredentials NOT from cache");
+	
+	      if (!settings.m_iamDisableCache)
+	        credentialsCache.remove(key);
+	
+	      if(settings.m_isCname)
+	      {
+	        // construct request packet with cname
+	        GetClusterCredentialsRequest request = constructRequestForGetClusterCredentials(settings, true, log);
+	
+	        try
+	        {
+	          // make api call with cname
+	          credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
+	        }
+	        catch(AmazonClientException ace)
+	        {
+	          // if api call with cname fails, recreate request packet with clusterid and re-make api call
+	
+	          if(RedshiftLogger.isEnable())
+	          {
+	            log.logInfo("GetClusterCredentials API call failed with CNAME request. Retrying with ClusterID.");
+	          }
+	
+	            request = constructRequestForGetClusterCredentials(settings, false, log);
+	            credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
+	        }
+	      }
+	      else
+	      {
+	        // construct request packet with clusterid and make api call
+	        GetClusterCredentialsRequest request = constructRequestForGetClusterCredentials(settings, false, log);
+	        credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
+	      }
+	
+	      if (!settings.m_iamDisableCache)
+	        credentialsCache.put(key, credentials);
+	    }
+	    else
+	    {
+	      if (RedshiftLogger.isEnable())
+	        log.logInfo("GetClusterCredentials from cache");
+	    }
+	
+	    return credentials;
+  }
   }
 
   /**
@@ -922,69 +923,72 @@ public final class IamHelper extends IdpAuthHelper {
     }
   }
 
-  private static synchronized GetClusterCredentialsWithIAMResult getClusterCredentialsResultV2(
+  private static GetClusterCredentialsWithIAMResult getClusterCredentialsResultV2(
       RedshiftJDBCSettings settings, AmazonRedshiftClient client, RedshiftLogger log,
       CredentialProviderType providerType, boolean idpCredentialsRefresh, AWSCredentialsProvider provider,
       int getClusterCredentialApiType) throws AmazonClientException
   {
-    String key = null;
-    GetClusterCredentialsWithIAMResult credentials = null;
-
-    if (!settings.m_iamDisableCache)
-    {
-      key = getCredentialsV2CacheKey(settings, providerType, provider, getClusterCredentialApiType, false);
-      credentials = credentialsV2Cache.get(key);
-    }
-
-    if (credentials == null || (providerType == CredentialProviderType.PLUGIN && settings.m_idpToken != null)
-        || RequestUtils.isCredentialExpired(credentials.getExpiration()))
-    {
-      if (RedshiftLogger.isEnable())
-        log.logInfo("GetClusterCredentialsV2 NOT from cache");
-
-      if (!settings.m_iamDisableCache)
-        credentialsV2Cache.remove(key);
-
-      if(settings.m_isCname)
-      {
-        // construct request packet with cname
-        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, true, log);
-
-        try
-        {
-          // make api call with cname
-          credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
-        }
-        catch (AmazonClientException ce)
-        {
-          // if api call with cname fails, recreate request packet with clusterid and re-make api call
-
-          if(RedshiftLogger.isEnable())
-          {
-            log.logInfo("GetClusterCredentials API call failed with CNAME request. Retrying with ClusterID.");
-          }
-
-          request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
-          credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
-        }
-      }
-      else
-      {
-        // construct request packet with clusterid and make api call
-        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
-        credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
-      }
-
-      if (!settings.m_iamDisableCache)
-        credentialsV2Cache.put(key, credentials);
-    }
-    else
-    {
-      if (RedshiftLogger.isEnable())
-        log.logInfo("GetClusterCredentialsV2 from cache");
-    }
-
-    return credentials;
+	try (ResourceLock lock = new ResourceLock()) {
+		lock.obtain();
+	    String key = null;
+	    GetClusterCredentialsWithIAMResult credentials = null;
+	
+	    if (!settings.m_iamDisableCache)
+	    {
+	      key = getCredentialsV2CacheKey(settings, providerType, provider, getClusterCredentialApiType, false);
+	      credentials = credentialsV2Cache.get(key);
+	    }
+	
+	    if (credentials == null || (providerType == CredentialProviderType.PLUGIN && settings.m_idpToken != null)
+	        || RequestUtils.isCredentialExpired(credentials.getExpiration()))
+	    {
+	      if (RedshiftLogger.isEnable())
+	        log.logInfo("GetClusterCredentialsV2 NOT from cache");
+	
+	      if (!settings.m_iamDisableCache)
+	        credentialsV2Cache.remove(key);
+	
+	      if(settings.m_isCname)
+	      {
+	        // construct request packet with cname
+	        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, true, log);
+	
+	        try
+	        {
+	          // make api call with cname
+	          credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
+	        }
+	        catch (AmazonClientException ce)
+	        {
+	          // if api call with cname fails, recreate request packet with clusterid and re-make api call
+	
+	          if(RedshiftLogger.isEnable())
+	          {
+	            log.logInfo("GetClusterCredentials API call failed with CNAME request. Retrying with ClusterID.");
+	          }
+	
+	          request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
+	          credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
+	        }
+	      }
+	      else
+	      {
+	        // construct request packet with clusterid and make api call
+	        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
+	        credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
+	      }
+	
+	      if (!settings.m_iamDisableCache)
+	        credentialsV2Cache.put(key, credentials);
+	    }
+	    else
+	    {
+	      if (RedshiftLogger.isEnable())
+	        log.logInfo("GetClusterCredentialsV2 from cache");
+	    }
+	
+	    return credentials;
+	}
   }
 
   /**

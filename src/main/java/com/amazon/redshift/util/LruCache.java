@@ -10,6 +10,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.amazon.redshift.jdbc.ResourceLock;
+
 /**
  * Caches values in simple least-recently-accessed order.
  */
@@ -38,6 +40,7 @@ public class LruCache<Key, Value extends CanEstimateSize> implements Gettable<Ke
   private final long maxSizeBytes;
   private long currentSize;
   private final Map<Key, Value> cache;
+  private final ResourceLock lock = new ResourceLock();
 
   private class LimitedMap extends LinkedHashMap<Key, Value> {
     LimitedMap(int initialCapacity, float loadFactor, boolean accessOrder) {
@@ -98,8 +101,10 @@ public class LruCache<Key, Value extends CanEstimateSize> implements Gettable<Ke
    * @param key cache key
    * @return entry from cache or null if cache does not contain given key.
    */
-  public synchronized Value get(Key key) {
-    return cache.get(key);
+  public Value get(Key key) {
+	try (ResourceLock ignore = lock.obtain()) {
+		return cache.get(key);
+	}
   }
 
   /**
@@ -109,13 +114,15 @@ public class LruCache<Key, Value extends CanEstimateSize> implements Gettable<Ke
    * @return entry from cache or newly created entry if cache does not contain given key.
    * @throws SQLException if entry creation fails
    */
-  public synchronized Value borrow(Key key) throws SQLException {
-    Value value = cache.remove(key);
-    if (value == null) {
-      return createAction.create(key);
+  public Value borrow(Key key) throws SQLException {
+    try (ResourceLock ignore = lock.obtain()) {
+    	Value value = cache.remove(key);
+	    if (value == null) {
+	      return createAction.create(key);
+	    }
+	    currentSize -= value.getSize();
+	    return value;
     }
-    currentSize -= value.getSize();
-    return value;
   }
 
   /**
@@ -124,24 +131,26 @@ public class LruCache<Key, Value extends CanEstimateSize> implements Gettable<Ke
    * @param key key
    * @param value value
    */
-  public synchronized void put(Key key, Value value) {
-    long valueSize = value.getSize();
-    if (maxSizeBytes == 0 || maxSizeEntries == 0 || valueSize * 2 > maxSizeBytes) {
-      // Just destroy the value if cache is disabled or if entry would consume more than a half of
-      // the cache
-      evictValue(value);
-      return;
-    }
-    currentSize += valueSize;
-    Value prev = cache.put(key, value);
-    if (prev == null) {
-      return;
-    }
-    // This should be a rare case
-    currentSize -= prev.getSize();
-    if (prev != value) {
-      evictValue(prev);
-    }
+  public void put(Key key, Value value) {
+	try (ResourceLock ignore = lock.obtain()) {
+	    long valueSize = value.getSize();
+	    if (maxSizeBytes == 0 || maxSizeEntries == 0 || valueSize * 2 > maxSizeBytes) {
+	      // Just destroy the value if cache is disabled or if entry would consume more than a half of
+	      // the cache
+	      evictValue(value);
+	      return;
+	    }
+	    currentSize += valueSize;
+	    Value prev = cache.put(key, value);
+	    if (prev == null) {
+	      return;
+	    }
+	    // This should be a rare case
+	    currentSize -= prev.getSize();
+	    if (prev != value) {
+	      evictValue(prev);
+	    }
+	}
   }
 
   /**
@@ -149,10 +158,12 @@ public class LruCache<Key, Value extends CanEstimateSize> implements Gettable<Ke
    *
    * @param m The map containing entries to put into the cache
    */
-  public synchronized void putAll(Map<Key, Value> m) {
-    for (Map.Entry<Key, Value> entry : m.entrySet()) {
-      this.put(entry.getKey(), entry.getValue());
-    }
+  public void putAll(Map<Key, Value> m) {
+	try (ResourceLock ignore = lock.obtain()) {
+	    for (Map.Entry<Key, Value> entry : m.entrySet()) {
+	      this.put(entry.getKey(), entry.getValue());
+	    }
+	}
   }
 
   public static final CreateAction NOOP_CREATE_ACTION = new CreateAction() {

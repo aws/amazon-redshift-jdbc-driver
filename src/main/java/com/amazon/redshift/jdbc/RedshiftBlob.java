@@ -10,13 +10,14 @@ import com.amazon.redshift.largeobject.LargeObject;
 import java.sql.SQLException;
 
 public class RedshiftBlob extends AbstractBlobClob implements java.sql.Blob {
-
+  private final ResourceLock lock = new ResourceLock();
   public RedshiftBlob(com.amazon.redshift.core.BaseConnection conn, long oid) throws SQLException {
     super(conn, oid);
   }
 
-  public synchronized java.io.InputStream getBinaryStream(long pos, long length)
+  public java.io.InputStream getBinaryStream(long pos, long length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     LargeObject subLO = getLo(false).copy();
     addSubLO(subLO);
@@ -26,17 +27,22 @@ public class RedshiftBlob extends AbstractBlobClob implements java.sql.Blob {
       subLO.seek((int) pos - 1, LargeObject.SEEK_SET);
     }
     return subLO.getInputStream(length);
+	  }
   }
 
-  public synchronized int setBytes(long pos, byte[] bytes) throws SQLException {
+  public int setBytes(long pos, byte[] bytes) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     return setBytes(pos, bytes, 0, bytes.length);
+	  }
   }
 
-  public synchronized int setBytes(long pos, byte[] bytes, int offset, int len)
+  public int setBytes(long pos, byte[] bytes, int offset, int len)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     assertPosition(pos);
     getLo(true).seek((int) (pos - 1));
     getLo(true).write(bytes, offset, len);
     return len;
+	  }
   }
 }
