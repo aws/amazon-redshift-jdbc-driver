@@ -1,6 +1,7 @@
 package com.amazon.redshift.util;
 
 import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.jdbc.ResourceLock;
 
 import java.util.Locale;
 import java.util.Properties;
@@ -8,7 +9,7 @@ import java.util.Enumeration;
 import java.util.Collections;
 
 public class RedshiftProperties extends Properties {
-
+	private ResourceLock lock = new ResourceLock();
     /**
      * Creates an empty property list with no default values.
      */
@@ -70,9 +71,11 @@ public class RedshiftProperties extends Properties {
     }
 
     @Override
-    public synchronized Object setProperty(String key, String value)
+    public Object setProperty(String key, String value)
     {
-        return super.setProperty(key.toLowerCase(Locale.ENGLISH), value);
+    	try(ResourceLock ignore = lock.obtain()) {
+    		return super.setProperty(key.toLowerCase(Locale.ENGLISH), value);
+    	}
     }
 
     public static void evaluateProperties(RedshiftProperties properties) throws RedshiftException

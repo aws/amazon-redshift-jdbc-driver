@@ -64,9 +64,9 @@ public class TimestampUtils {
   private static final LocalDateTime MIN_LOCAL_DATETIME = MIN_LOCAL_DATE.atStartOfDay();
   private static final OffsetDateTime MIN_OFFSET_DATETIME = MIN_LOCAL_DATETIME.atOffset(ZoneOffset.UTC);
   //JCP! endif
-
+  private final ResourceLock lock = new ResourceLock();
   private static final Field DEFAULT_TIME_ZONE_FIELD;
-
+  
   private TimeZone prevDefaultZoneFieldValue;
   private TimeZone defaultTimeZoneCache;
 
@@ -383,7 +383,8 @@ public class TimestampUtils {
    * @return null if s is null or a timestamp of the parsed string s.
    * @throws SQLException if there is a problem parsing s.
    */
-  public synchronized Timestamp toTimestamp(Calendar cal, String s) throws SQLException {
+  public Timestamp toTimestamp(Calendar cal, String s) throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     if (s == null) {
       return null;
     }
@@ -442,6 +443,7 @@ public class TimestampUtils {
     
     result.setNanos(ts.nanos);
     return result;
+	}
   }
 
   //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
@@ -584,7 +586,8 @@ public class TimestampUtils {
 
   //JCP! endif
 
-  public synchronized Time toTime(Calendar cal, String s) throws SQLException {
+  public Time toTime(Calendar cal, String s) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     // 1) Parse backend string
     if (s == null) {
       return null;
@@ -627,9 +630,11 @@ public class TimestampUtils {
     // 2) Truncate date part so in given time zone the date would be formatted as 01/01/1970
     Time timeObj = convertToTime(timeMillis, useCal.getTimeZone());
     return (ts.nanos > 0) ? new RedshiftTime(timeObj, ts.nanos) : timeObj;
+	  }
   }
 
-  public synchronized Date toDate(Calendar cal, String s) throws SQLException {
+  public Date toDate(Calendar cal, String s) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     // 1) Parse backend string
     Timestamp timestamp = toTimestamp(cal, s);
 
@@ -640,6 +645,7 @@ public class TimestampUtils {
     // Note: infinite dates are handled in convertToDate
     // 2) Truncate date part so in given time zone the date would be formatted as 00:00
     return convertToDate(timestamp.getTime(), cal == null ? null : cal.getTimeZone());
+	  }
   }
 
   private Calendar setupCalendar(Calendar cal) {
@@ -672,12 +678,15 @@ public class TimestampUtils {
     return nanos % 1000 > 499;
   }
 
-  public synchronized String toString(Calendar cal, Timestamp x) {
+  public String toString(Calendar cal, Timestamp x) {
+	  try (ResourceLock ignore = lock.obtain()) {
     return toString(cal, x, true);
+	  }
   }
 
-  public synchronized String toString(Calendar cal, Timestamp x,
+  public String toString(Calendar cal, Timestamp x,
       boolean withTimeZone) {
+	 try (ResourceLock ignore = lock.obtain()) {
     if (x.getTime() == RedshiftStatement.DATE_POSITIVE_INFINITY) {
       return "infinity";
     } else if (x.getTime() == RedshiftStatement.DATE_NEGATIVE_INFINITY) {
@@ -711,14 +720,18 @@ public class TimestampUtils {
     appendEra(sbuf, cal);
 
     return sbuf.toString();
+	 }
   }
 
-  public synchronized String toString(Calendar cal, Date x) {
+  public String toString(Calendar cal, Date x) {
+	  try (ResourceLock ignore = lock.obtain()) {
     return toString(cal, x, true);
+	  }
   }
 
-  public synchronized String toString(Calendar cal, Date x,
+  public String toString(Calendar cal, Date x,
       boolean withTimeZone) {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (x.getTime() == RedshiftStatement.DATE_POSITIVE_INFINITY) {
       return "infinity";
     } else if (x.getTime() == RedshiftStatement.DATE_NEGATIVE_INFINITY) {
@@ -738,14 +751,18 @@ public class TimestampUtils {
     }
 
     return sbuf.toString();
+	  }
   }
 
-  public synchronized String toString(Calendar cal, Time x) {
+  public String toString(Calendar cal, Time x) {
+	  try (ResourceLock ignore = lock.obtain()) {
     return toString(cal, x, true);
+	  }
   }
 
-  public synchronized String toString(Calendar cal, Time x,
+  public String toString(Calendar cal, Time x,
       boolean withTimeZone) {
+	  try (ResourceLock ignore = lock.obtain()) {
     cal = setupCalendar(cal);
     cal.setTime(x);
 
@@ -766,6 +783,7 @@ public class TimestampUtils {
     }
 
     return sbuf.toString();
+	  }
   }
 
   private static void appendDate(StringBuilder sb, Calendar cal) {
@@ -877,7 +895,8 @@ public class TimestampUtils {
   }
 
   //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
-  public synchronized String toString(LocalDate localDate) {
+  public String toString(LocalDate localDate) {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (LocalDate.MAX.equals(localDate)) {
       return "infinity";
     } else if (localDate.isBefore(MIN_LOCAL_DATE)) {
@@ -890,10 +909,11 @@ public class TimestampUtils {
     appendEra(sbuf, localDate);
 
     return sbuf.toString();
+	  }
   }
 
-  public synchronized String toString(LocalTime localTime) {
-
+  public String toString(LocalTime localTime) {
+	  try (ResourceLock ignore = lock.obtain()) {
     sbuf.setLength(0);
 
     if (localTime.isAfter(MAX_TIME)) {
@@ -909,9 +929,11 @@ public class TimestampUtils {
     appendTime(sbuf, localTime);
 
     return sbuf.toString();
+	  }
   }
 
-  public synchronized String toString(OffsetDateTime offsetDateTime) {
+  public String toString(OffsetDateTime offsetDateTime) {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (offsetDateTime.isAfter(MAX_OFFSET_DATETIME)) {
       return "infinity";
     } else if (offsetDateTime.isBefore(MIN_OFFSET_DATETIME)) {
@@ -935,6 +957,7 @@ public class TimestampUtils {
     appendEra(sbuf, localDate);
 
     return sbuf.toString();
+	  }
   }
 
   /**
@@ -943,7 +966,8 @@ public class TimestampUtils {
    * @param localDateTime The local date to format as a String
    * @return The formatted local date
    */
-  public synchronized String toString(LocalDateTime localDateTime) {
+  public String toString(LocalDateTime localDateTime) {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (localDateTime.isAfter(MAX_LOCAL_DATETIME)) {
       return "infinity";
     } else if (localDateTime.isBefore(MIN_LOCAL_DATETIME)) {
@@ -953,6 +977,7 @@ public class TimestampUtils {
     // LocalDateTime is always passed with time zone so backend can decide between timestamp and timestamptz
     ZonedDateTime zonedDateTime = localDateTime.atZone(getDefaultTz().toZoneId());
     return toString(zonedDateTime.toOffsetDateTime());
+	  }
   }
 
   private static void appendDate(StringBuilder sb, LocalDate localDate) {

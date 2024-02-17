@@ -10,6 +10,8 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 
+import com.amazon.redshift.jdbc.ResourceLock;
+
 /**
  * This class augments the Java built-in Timestamp to allow for explicit setting of the time zone.
  */
@@ -221,9 +223,12 @@ public class RedshiftTimestamp extends Timestamp {
    *
    * @return The adjusted Timestamp object.
    */
-  private synchronized Timestamp getAdjustedTimestamp()
+  private Timestamp getAdjustedTimestamp()
   {
-      return getTimestamp(this, Calendar.getInstance(), calendar);
+	  try (ResourceLock lock = new ResourceLock()) {
+		  lock.obtain();
+		  return getTimestamp(this, Calendar.getInstance(), calendar);
+	  }
   }
   
   /**

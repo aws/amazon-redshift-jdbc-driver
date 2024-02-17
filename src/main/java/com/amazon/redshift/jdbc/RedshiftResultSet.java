@@ -85,7 +85,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class RedshiftResultSet implements ResultSet, com.amazon.redshift.RedshiftRefCursorResultSet {
-
+  private final ResourceLock lock = new ResourceLock();
   // needed for updateable result set support
   private boolean updateable = false;
   private boolean doingUpdates = false;
@@ -989,7 +989,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     this.fetchdirection = direction;
   }
 
-  public synchronized void cancelRowUpdates() throws SQLException {
+  public void cancelRowUpdates() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkClosed();
     if (onInsertRow) {
       throw new RedshiftException(GT.tr("Cannot call cancelRowUpdates() when on the insert row."),
@@ -1001,9 +1002,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
       clearRowBuffer(true);
     }
+	  }
   }
 
-  public synchronized void deleteRow() throws SQLException {
+  public void deleteRow() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkUpdateable();
 
     if (onInsertRow) {
@@ -1061,10 +1064,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	    currentRow--;
 	    moveToCurrentRow();
     }
+	  }
   }
 
   @Override
-  public synchronized void insertRow() throws SQLException {
+  public void insertRow() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkUpdateable();
 
     if (!onInsertRow) {
@@ -1132,10 +1137,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       // need to clear this in case of another insert
       clearRowBuffer(false);
     }
+	  }
   }
 
   @Override
-  public synchronized void moveToCurrentRow() throws SQLException {
+  public void moveToCurrentRow() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkUpdateable();
 
     if (currentRow < 0 || currentRow >= rows.size()) {
@@ -1147,10 +1154,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     onInsertRow = false;
     doingUpdates = false;
+	  }
   }
 
   @Override
-  public synchronized void moveToInsertRow() throws SQLException {
+  public void moveToInsertRow() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkUpdateable();
 
     if (insertStatement != null) {
@@ -1162,11 +1171,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     onInsertRow = true;
     doingUpdates = false;
+	  }
   }
 
   // rowBuffer is the temporary storage for the row
-  private synchronized void clearRowBuffer(boolean copyCurrentRow) throws SQLException {
-
+  private void clearRowBuffer(boolean copyCurrentRow) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     // inserts want an empty array while updates want a copy of the current row
     if (copyCurrentRow) {
       rowBuffer = thisRow.updateableCopy();
@@ -1176,6 +1186,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
     // clear the updateValues hash map for the next set of updates
     updateValues.clear();
+	  }
   }
 
   public boolean rowDeleted() throws SQLException {
@@ -1193,8 +1204,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     return false;
   }
 
-  public synchronized void updateAsciiStream(int columnIndex, java.io.InputStream x, int length)
+  public void updateAsciiStream(int columnIndex, java.io.InputStream x, int length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (x == null) {
       updateNull(columnIndex);
       return;
@@ -1223,15 +1235,19 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     } catch (IOException ie) {
       throw new RedshiftException(GT.tr("Provided InputStream failed."), null, ie);
     }
+	  }
   }
 
-  public synchronized void updateBigDecimal(int columnIndex, java.math.BigDecimal x)
+  public void updateBigDecimal(int columnIndex, java.math.BigDecimal x)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateBinaryStream(int columnIndex, java.io.InputStream x, int length)
+  public void updateBinaryStream(int columnIndex, java.io.InputStream x, int length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (x == null) {
       updateNull(columnIndex);
       return;
@@ -1265,22 +1281,30 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       System.arraycopy(data, 0, data2, 0, numRead);
       updateBytes(columnIndex, data2);
     }
+	  }
   }
 
-  public synchronized void updateBoolean(int columnIndex, boolean x) throws SQLException {
+  public void updateBoolean(int columnIndex, boolean x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateByte(int columnIndex, byte x) throws SQLException {
+  public void updateByte(int columnIndex, byte x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, String.valueOf(x));
+	  }
   }
 
-  public synchronized void updateBytes(int columnIndex, byte[] x) throws SQLException {
+  public void updateBytes(int columnIndex, byte[] x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateCharacterStream(int columnIndex, java.io.Reader x, int length)
+  public void updateCharacterStream(int columnIndex, java.io.Reader x, int length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (x == null) {
       updateNull(columnIndex);
       return;
@@ -1305,40 +1329,57 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     } catch (IOException ie) {
       throw new RedshiftException(GT.tr("Provided Reader failed."), null, ie);
     }
+	  }
   }
 
-  public synchronized void updateDate(int columnIndex, java.sql.Date x) throws SQLException {
+  public void updateDate(int columnIndex, java.sql.Date x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateDouble(int columnIndex, double x) throws SQLException {
+  public void updateDouble(int columnIndex, double x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateFloat(int columnIndex, float x) throws SQLException {
+  public void updateFloat(int columnIndex, float x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateInt(int columnIndex, int x) throws SQLException {
+  public void updateInt(int columnIndex, int x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateLong(int columnIndex, long x) throws SQLException {
+  public void updateLong(int columnIndex, long x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateNull(int columnIndex) throws SQLException {
+  public void updateNull(int columnIndex) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkColumnIndex(columnIndex);
     String columnTypeName = getRSType(columnIndex);
     updateValue(columnIndex, new NullObject(columnTypeName));
+	  }
   }
 
-  public synchronized void updateObject(int columnIndex, Object x) throws SQLException {
+  public void updateObject(int columnIndex, Object x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateObject(int columnIndex, Object x, int scale) throws SQLException {
+  public void updateObject(int columnIndex, Object x, int scale) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     this.updateObject(columnIndex, x);
+	  }
   }
 
   @Override
@@ -1410,7 +1451,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   }
 
   @Override
-  public synchronized void updateRow() throws SQLException {
+  public void updateRow() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkUpdateable();
 
     if (onInsertRow) {
@@ -1493,104 +1535,150 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     	connection.getLogger().log(LogLevel.DEBUG, "done updates");
     updateValues.clear();
     doingUpdates = false;
+	  }
   }
 
-  public synchronized void updateShort(int columnIndex, short x) throws SQLException {
+  public  void updateShort(int columnIndex, short x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateString(int columnIndex, String x) throws SQLException {
+  public  void updateString(int columnIndex, String x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateTime(int columnIndex, Time x) throws SQLException {
+  public  void updateTime(int columnIndex, Time x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
+	  }
   }
 
-  public synchronized void updateTimestamp(int columnIndex, Timestamp x) throws SQLException {
+  public  void updateTimestamp(int columnIndex, Timestamp x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateValue(columnIndex, x);
-
+	  }
   }
 
-  public synchronized void updateNull(String columnName) throws SQLException {
+  public  void updateNull(String columnName) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateNull(findColumn(columnName));
+	  }
   }
 
-  public synchronized void updateBoolean(String columnName, boolean x) throws SQLException {
+  public  void updateBoolean(String columnName, boolean x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateBoolean(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateByte(String columnName, byte x) throws SQLException {
+  public  void updateByte(String columnName, byte x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateByte(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateShort(String columnName, short x) throws SQLException {
+  public  void updateShort(String columnName, short x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateShort(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateInt(String columnName, int x) throws SQLException {
+  public  void updateInt(String columnName, int x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateInt(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateLong(String columnName, long x) throws SQLException {
+  public  void updateLong(String columnName, long x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateLong(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateFloat(String columnName, float x) throws SQLException {
+  public  void updateFloat(String columnName, float x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateFloat(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateDouble(String columnName, double x) throws SQLException {
+  public  void updateDouble(String columnName, double x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateDouble(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateBigDecimal(String columnName, BigDecimal x) throws SQLException {
+  public  void updateBigDecimal(String columnName, BigDecimal x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateBigDecimal(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateString(String columnName, String x) throws SQLException {
+  public  void updateString(String columnName, String x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateString(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateBytes(String columnName, byte[] x) throws SQLException {
+  public  void updateBytes(String columnName, byte[] x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateBytes(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateDate(String columnName, java.sql.Date x) throws SQLException {
+  public  void updateDate(String columnName, java.sql.Date x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateDate(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateTime(String columnName, java.sql.Time x) throws SQLException {
+  public  void updateTime(String columnName, java.sql.Time x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateTime(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateTimestamp(String columnName, java.sql.Timestamp x)
+  public  void updateTimestamp(String columnName, java.sql.Timestamp x)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateTimestamp(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateAsciiStream(String columnName, java.io.InputStream x, int length)
+  public  void updateAsciiStream(String columnName, java.io.InputStream x, int length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateAsciiStream(findColumn(columnName), x, length);
+	  }
   }
 
-  public synchronized void updateBinaryStream(String columnName, java.io.InputStream x, int length)
+  public  void updateBinaryStream(String columnName, java.io.InputStream x, int length)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateBinaryStream(findColumn(columnName), x, length);
+	  }
   }
 
-  public synchronized void updateCharacterStream(String columnName, java.io.Reader reader,
+  public  void updateCharacterStream(String columnName, java.io.Reader reader,
       int length) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateCharacterStream(findColumn(columnName), reader, length);
+	  }
   }
 
-  public synchronized void updateObject(String columnName, Object x, int scale)
+  public  void updateObject(String columnName, Object x, int scale)
       throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateObject(findColumn(columnName), x);
+	  }
   }
 
-  public synchronized void updateObject(String columnName, Object x) throws SQLException {
+  public  void updateObject(String columnName, Object x) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     updateObject(findColumn(columnName), x);
+	  }
   }
 
   /**
@@ -2566,7 +2654,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     // hold strong references to user objects (e.g. classes -> classloaders), thus it might lead to
     // OutOfMemory conditions.
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
       return this;
     }
   };

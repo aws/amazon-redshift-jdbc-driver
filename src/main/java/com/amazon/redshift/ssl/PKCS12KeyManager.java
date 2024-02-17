@@ -5,10 +5,6 @@
 
 package com.amazon.redshift.ssl;
 
-import com.amazon.redshift.util.GT;
-import com.amazon.redshift.util.RedshiftException;
-import com.amazon.redshift.util.RedshiftState;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.Socket;
@@ -26,6 +22,11 @@ import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.auth.x500.X500Principal;
 
+import com.amazon.redshift.jdbc.ResourceLock;
+import com.amazon.redshift.util.GT;
+import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftState;
+
 public class PKCS12KeyManager implements X509KeyManager {
 
   private final CallbackHandler cbh;
@@ -33,6 +34,7 @@ public class PKCS12KeyManager implements X509KeyManager {
   private final String keyfile;
   private final KeyStore keyStore;
   boolean keystoreLoaded = false;
+  private final ResourceLock lock = new ResourceLock();
 
   public PKCS12KeyManager(String pkcsFile, CallbackHandler cbh) throws RedshiftException {
     try {
@@ -139,8 +141,8 @@ public class PKCS12KeyManager implements X509KeyManager {
     return null;
   }
 
-  private synchronized void loadKeyStore() throws Exception {
-
+  private void loadKeyStore() throws Exception {
+	try (ResourceLock ignore = lock.obtain()) {
     if (keystoreLoaded) {
       return;
     }
@@ -167,5 +169,5 @@ public class PKCS12KeyManager implements X509KeyManager {
     keyStore.load(new FileInputStream(new File(keyfile)), pwdcb.getPassword());
     keystoreLoaded = true;
   }
-
+  }
 }

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.amazon.redshift.core.IamHelper.CredentialProviderType;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazonaws.AmazonClientException;
@@ -21,7 +22,7 @@ import com.amazonaws.services.redshiftserverless.model.GetCredentialsResult;
 // If user specify group_federation with serverless,
 // it will call Provision V2 API.
 public final class ServerlessIamHelper {
-	
+	private ResourceLock lock = new ResourceLock();
 	private RedshiftLogger log;
 	private AWSRedshiftServerlessClient client;
 	
@@ -39,9 +40,9 @@ public final class ServerlessIamHelper {
 		client = (AWSRedshiftServerlessClient) builder.withCredentials(credProvider).build();
 	}
 	
-	synchronized void describeConfiguration(RedshiftJDBCSettings settings) {
+	void describeConfiguration(RedshiftJDBCSettings settings) {
 	  com.amazonaws.services.redshiftserverless.model.GetWorkgroupRequest req = new GetWorkgroupRequest();
-	  
+	  try (ResourceLock ignore = lock.obtain()) {  
       if(settings.m_workGroup != null && settings.m_workGroup.length() > 0) {
         // Set workgroup in the request
         req.setWorkgroupName(settings.m_workGroup);
@@ -62,12 +63,14 @@ public final class ServerlessIamHelper {
 		
       settings.m_host = endpoint.getAddress();
       settings.m_port = endpoint.getPort();
+	  }
 	}
 	
-	synchronized void getCredentialsResult(RedshiftJDBCSettings settings,
+	void getCredentialsResult(RedshiftJDBCSettings settings,
 									CredentialProviderType providerType,
 									boolean idpCredentialsRefresh
 			) throws AmazonClientException {
+	try (ResourceLock ignore = lock.obtain()) {
     String key = null;
     GetCredentialsResult credentials = null;
     		
@@ -140,4 +143,5 @@ public final class ServerlessIamHelper {
         log.logInfo(now + ": Using GetCredentialsResultV2 with TimeToRefresh " + credentials.getNextRefreshTime());
     }
 	}
+  }
 }

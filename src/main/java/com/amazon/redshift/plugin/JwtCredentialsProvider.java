@@ -1,12 +1,5 @@
 package com.amazon.redshift.plugin;
 
-import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.INativePlugin;
-import com.amazon.redshift.NativeTokenHolder;
-import com.amazon.redshift.core.IamHelper;
-import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazon.redshift.util.RedshiftException;
-
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collections;
@@ -16,6 +9,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.logging.LogFactory;
+
+import com.amazon.redshift.INativePlugin;
+import com.amazon.redshift.NativeTokenHolder;
+import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.jdbc.ResourceLock;
+import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.util.RedshiftException;
 
 
 public abstract class JwtCredentialsProvider extends IdpCredentialsProvider implements INativePlugin
@@ -28,7 +28,7 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
 
     private static Map<String, NativeTokenHolder> m_cache = new HashMap<String, NativeTokenHolder>();
     private NativeTokenHolder m_lastRefreshCredentials; // Used when cache is disable.
-
+    private final ResourceLock lock = new ResourceLock();
     /**
      * The custom log factory class.
      */
@@ -132,7 +132,7 @@ public abstract class JwtCredentialsProvider extends IdpCredentialsProvider impl
         if(RedshiftLogger.isEnable()) 
           m_log.logInfo("JWT getCredentials NOT from cache");
       	
-        synchronized(this) {
+        try(ResourceLock ignore = lock.obtain()) {
         	refresh();
         	
         	if(m_disableCache) {

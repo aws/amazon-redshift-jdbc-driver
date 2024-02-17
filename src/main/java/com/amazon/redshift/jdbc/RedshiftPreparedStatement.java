@@ -74,7 +74,7 @@ import java.util.TimeZone;
 public class RedshiftPreparedStatement extends RedshiftStatementImpl implements PreparedStatement {
   protected final CachedQuery preparedQuery; // Query fragments for prepared statement.
   protected final ParameterList preparedParameters; // Parameter values for prepared statement.
-
+  private final ResourceLock lock = new ResourceLock();
   private TimeZone defaultTimeZone;
   protected boolean enableGeneratedName;
 
@@ -201,7 +201,7 @@ public class RedshiftPreparedStatement extends RedshiftStatementImpl implements 
 
       execute(preparedQuery, preparedParameters, flags);
 
-      synchronized (this) {
+      try (ResourceLock ignore = lock.obtain()) {
         checkClosed();
         return (result != null && result.getResultSet() != null);
       }

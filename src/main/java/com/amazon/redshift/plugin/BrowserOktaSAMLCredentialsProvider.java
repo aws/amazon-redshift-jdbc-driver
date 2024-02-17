@@ -2,7 +2,7 @@ package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.INativePlugin;
 import com.amazon.redshift.NativeTokenHolder;
-import com.amazon.redshift.core.IamHelper;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
@@ -69,7 +69,7 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
     private NativeTokenHolder m_lastRefreshCredentials; // Used when cache is disable.
 
     protected Boolean m_disableCache = false;
-
+    private ResourceLock lock = new ResourceLock();
     /**
      * The custom log factory class.
      */
@@ -218,7 +218,7 @@ public class BrowserOktaSAMLCredentialsProvider extends IdpCredentialsProvider i
             if(RedshiftLogger.isEnable())
                m_log.logInfo("SAML getCredentials NOT from cache");
 
-            synchronized(this) {
+            try(ResourceLock ignore = lock.obtain()) {
                 refresh();
 
                 if(m_disableCache) {

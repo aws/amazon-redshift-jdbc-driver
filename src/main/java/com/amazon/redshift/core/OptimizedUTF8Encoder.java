@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.core;
 
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.GT;
 
@@ -27,7 +28,8 @@ abstract class OptimizedUTF8Encoder extends Encoding {
 
   private final int thresholdSize = 8 * 1024;
   private char[] decoderArray;
-
+  private ResourceLock lock = new ResourceLock();
+  
   OptimizedUTF8Encoder() {
     super(UTF_8_CHARSET, true, RedshiftLogger.getDriverLogger());
     decoderArray = new char[1024];
@@ -58,7 +60,8 @@ abstract class OptimizedUTF8Encoder extends Encoding {
   /**
    * Decodes binary content to {@code String} by first converting to {@code char[]}.
    */
-  synchronized String charDecode(byte[] encodedString, int offset, int length) throws IOException {
+  String charDecode(byte[] encodedString, int offset, int length) throws IOException {
+	  try (ResourceLock ignore = lock.obtain()) {
     final char[] chars = getCharArray(length);
     int out = 0;
     for (int i = offset, j = offset + length; i < j; ++i) {
@@ -70,6 +73,7 @@ abstract class OptimizedUTF8Encoder extends Encoding {
       }
     }
     return new String(chars, 0, out);
+	  }
   }
 
   /**

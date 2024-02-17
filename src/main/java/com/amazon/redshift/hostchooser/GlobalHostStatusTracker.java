@@ -5,6 +5,7 @@
 
 package com.amazon.redshift.hostchooser;
 
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.util.HostSpec;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class GlobalHostStatusTracker {
   private static final Map<HostSpec, HostSpecStatus> hostStatusMap =
       new HashMap<HostSpec, HostSpecStatus>();
-
+  private static final ResourceLock lock = new ResourceLock();
   /**
    * Store the actual observed host status.
    *
@@ -27,7 +28,7 @@ public class GlobalHostStatusTracker {
    */
   public static void reportHostStatus(HostSpec hostSpec, HostStatus hostStatus) {
     long now = System.nanoTime() / 1000000;
-    synchronized (hostStatusMap) {
+    try (ResourceLock ignore = lock.obtain()) {
       HostSpecStatus hostSpecStatus = hostStatusMap.get(hostSpec);
       if (hostSpecStatus == null) {
         hostSpecStatus = new HostSpecStatus(hostSpec);
@@ -50,7 +51,7 @@ public class GlobalHostStatusTracker {
       HostRequirement targetServerType, long hostRecheckMillis) {
     List<HostSpec> candidates = new ArrayList<HostSpec>(hostSpecs.length);
     long latestAllowedUpdate = System.nanoTime() / 1000000 - hostRecheckMillis;
-    synchronized (hostStatusMap) {
+    try (ResourceLock ignore = lock.obtain()) {
       for (HostSpec hostSpec : hostSpecs) {
         HostSpecStatus hostInfo = hostStatusMap.get(hostSpec);
         // candidates are nodes we do not know about and the nodes with correct type

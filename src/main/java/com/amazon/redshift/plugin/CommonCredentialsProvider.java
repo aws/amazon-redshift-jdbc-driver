@@ -16,6 +16,7 @@ package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.INativePlugin;
 import com.amazon.redshift.NativeTokenHolder;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.RedshiftException;
@@ -34,7 +35,7 @@ public abstract class CommonCredentialsProvider extends IdpCredentialsProvider i
     private static final Map<String, NativeTokenHolder> m_cache = new HashMap<String, NativeTokenHolder>();
     protected Boolean m_disableCache = true;
     private NativeTokenHolder m_lastRefreshCredentials; // Used when cache is disabled
-
+    private ResourceLock lock = new ResourceLock();
     /**
      * Log properties file name.
      */
@@ -103,7 +104,7 @@ public abstract class CommonCredentialsProvider extends IdpCredentialsProvider i
                 }
             }
 
-            synchronized (this) {
+            try(ResourceLock ignore = lock.obtain()) {
                 refresh();
 
                 if (m_disableCache) {

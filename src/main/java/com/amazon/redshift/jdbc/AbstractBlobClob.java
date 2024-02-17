@@ -26,7 +26,7 @@ import java.util.ArrayList;
  */
 public abstract class AbstractBlobClob {
   protected BaseConnection conn;
-
+  private ResourceLock lock = new ResourceLock();
   private LargeObject currentLo;
   private boolean currentLoIsWriteable;
   private boolean support64bit;
@@ -50,7 +50,8 @@ public abstract class AbstractBlobClob {
     subLOs = new ArrayList<LargeObject>();
   }
 
-  public synchronized void free() throws SQLException {
+  public void free() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (currentLo != null) {
       currentLo.close();
       currentLo = null;
@@ -60,6 +61,7 @@ public abstract class AbstractBlobClob {
       subLO.close();
     }
     subLOs = null;
+	  }
   }
 
   /**
@@ -70,7 +72,8 @@ public abstract class AbstractBlobClob {
    * @param len maximum length
    * @throws SQLException if operation fails
    */
-  public synchronized void truncate(long len) throws SQLException {
+  public void truncate(long len) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     if (!conn.haveMinimumServerVersion(ServerVersion.v8_3)) {
       throw new RedshiftException(
@@ -92,37 +95,46 @@ public abstract class AbstractBlobClob {
     } else {
       getLo(true).truncate((int) len);
     }
+	  }
   }
 
-  public synchronized long length() throws SQLException {
+  public long length() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     if (support64bit) {
       return getLo(false).size64();
     } else {
       return getLo(false).size();
     }
+	  }
   }
 
-  public synchronized byte[] getBytes(long pos, int length) throws SQLException {
+  public byte[] getBytes(long pos, int length) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     assertPosition(pos);
     getLo(false).seek((int) (pos - 1), LargeObject.SEEK_SET);
     return getLo(false).read(length);
+	  }
   }
 
-  public synchronized InputStream getBinaryStream() throws SQLException {
+  public InputStream getBinaryStream() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     LargeObject subLO = getLo(false).copy();
     addSubLO(subLO);
     subLO.seek(0, LargeObject.SEEK_SET);
     return subLO.getInputStream();
+	  }
   }
 
-  public synchronized OutputStream setBinaryStream(long pos) throws SQLException {
+  public OutputStream setBinaryStream(long pos) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     assertPosition(pos);
     LargeObject subLO = getLo(true).copy();
     addSubLO(subLO);
     subLO.seek((int) (pos - 1));
     return subLO.getOutputStream();
+	  }
   }
 
   /**
@@ -133,7 +145,8 @@ public abstract class AbstractBlobClob {
    * @return position of the specified pattern
    * @throws SQLException if something wrong happens
    */
-  public synchronized long position(byte[] pattern, long start) throws SQLException {
+  public long position(byte[] pattern, long start) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     assertPosition(start, pattern.length);
 
     int position = 1;
@@ -158,6 +171,7 @@ public abstract class AbstractBlobClob {
     }
 
     return result;
+	  }
   }
 
   /**
@@ -198,8 +212,10 @@ public abstract class AbstractBlobClob {
    * @return position of given pattern
    * @throws SQLException if something goes wrong
    */
-  public synchronized long position(Blob pattern, long start) throws SQLException {
+  public long position(Blob pattern, long start) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     return position(pattern.getBytes(1, (int) pattern.length()), start);
+	  }
   }
 
   /**
@@ -245,7 +261,8 @@ public abstract class AbstractBlobClob {
     }
   }
 
-  protected synchronized LargeObject getLo(boolean forWrite) throws SQLException {
+  protected LargeObject getLo(boolean forWrite) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (this.currentLo != null) {
       if (forWrite && !currentLoIsWriteable) {
         // Reopen the stream in read-write, at the same pos.
@@ -267,6 +284,7 @@ public abstract class AbstractBlobClob {
     currentLo = lom.open(oid, forWrite ? LargeObjectManager.READWRITE : LargeObjectManager.READ);
     currentLoIsWriteable = forWrite;
     return currentLo;
+	  }
   }
 
   protected void addSubLO(LargeObject subLO) {

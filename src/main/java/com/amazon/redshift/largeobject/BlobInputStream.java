@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
 
+import com.amazon.redshift.jdbc.ResourceLock;
+
 /**
  * This is an implementation of an InputStream from a large object.
  */
@@ -47,7 +49,7 @@ public class BlobInputStream extends InputStream {
    * The limit.
    */
   private long limit = -1;
-
+  private final ResourceLock lock = new ResourceLock();
   /**
    * @param lo LargeObject to read from
    */
@@ -150,8 +152,10 @@ public class BlobInputStream extends InputStream {
    *        invalid.
    * @see java.io.InputStream#reset()
    */
-  public synchronized void mark(int readlimit) {
-    mpos = apos;
+  public void mark(int readlimit) {
+	  try (ResourceLock ignore = lock.obtain()) {
+		  mpos = apos;
+	  }
   }
 
   /**
@@ -161,7 +165,8 @@ public class BlobInputStream extends InputStream {
    * @see java.io.InputStream#mark(int)
    * @see java.io.IOException
    */
-  public synchronized void reset() throws IOException {
+  public void reset() throws IOException {
+	try (ResourceLock ignore = lock.obtain()) {
     checkClosed();
     try {
       if (mpos <= Integer.MAX_VALUE) {
@@ -174,6 +179,7 @@ public class BlobInputStream extends InputStream {
     } catch (SQLException se) {
       throw new IOException(se.toString());
     }
+	}
   }
 
   /**

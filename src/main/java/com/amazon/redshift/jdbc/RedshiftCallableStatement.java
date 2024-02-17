@@ -46,7 +46,8 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
   private boolean haveProcessedResults = false;
   protected Object[] callResult;
   private int lastIndex = 0;
-
+  private ResourceLock lock = new ResourceLock();
+  
   RedshiftCallableStatement(RedshiftConnectionImpl connection, String sql, int rsType, int rsConcurrency,
       int rsHoldability) throws SQLException {
     super(connection, connection.borrowCallableQuery(sql), rsType, rsConcurrency, rsHoldability);
@@ -940,7 +941,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
       haveProcessedResults = true;
 
       ResultSet rs;
-      synchronized (this) {
+      try (ResourceLock ignore = lock.obtain()) {
         checkClosed();
         if (null == result) {
           throw new RedshiftException(
@@ -1027,7 +1028,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
 
       }
       rs.close();
-      synchronized (this) {
+      try (ResourceLock ignore = lock.obtain()) {
         result = null;
       }
     }

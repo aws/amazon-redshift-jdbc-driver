@@ -1,5 +1,44 @@
 package com.amazon.redshift.plugin;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import com.amazon.redshift.CredentialsHolder;
+import com.amazon.redshift.CredentialsHolder.IamMetadata;
+import com.amazon.redshift.IPlugin;
+import com.amazon.redshift.RedshiftProperty;
+import com.amazon.redshift.core.IamHelper;
+import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
+import com.amazon.redshift.jdbc.ResourceLock;
+import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSCredentials;
@@ -13,45 +52,6 @@ import com.amazonaws.services.securitytoken.model.AssumeRoleWithSAMLRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleWithSAMLResult;
 import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.util.StringUtils;
-import com.amazon.redshift.CredentialsHolder;
-import com.amazon.redshift.CredentialsHolder.IamMetadata;
-import com.amazon.redshift.IPlugin;
-import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.core.IamHelper;
-import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
-import com.amazon.redshift.logger.LogLevel;
-import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazon.redshift.plugin.utils.RequestUtils;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.logging.LogFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 public abstract class SamlCredentialsProvider extends IdpCredentialsProvider implements IPlugin
 {
@@ -75,6 +75,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
     protected String m_region;
     protected Boolean m_disableCache = false;
     protected Boolean m_groupFederation = false;
+    private final ResourceLock lock = new ResourceLock();
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
     
@@ -235,7 +236,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
 	          if(RedshiftLogger.isEnable()) 
 	            m_log.logInfo("SAML getCredentials NOT from cache");
         	
-	          synchronized(this) {
+	          try(ResourceLock ignore = lock.obtain()) {
 	          	
 	          	refresh();
 	          	
