@@ -125,7 +125,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private final Query rollbackQuery;
 
   private final CachedQuery setSessionReadOnly;
-  
+
   private final CachedQuery setSessionNotReadOnly;
 
   private final TypeInfo typeCache;
@@ -133,13 +133,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private boolean disableColumnSanitiser = false;
 
   private boolean disableIsValidQuery = false;
-  
+
   // Default statement prepare threshold.
   protected int prepareThreshold;
 
   // Default enable generated name for statement and portal.
   protected boolean enableGeneratedName;
-  
+
   /**
    * Default fetch size for statement.
    *
@@ -177,16 +177,16 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private final boolean replicationConnection;
 
   private final LruCache<FieldMetadata.Key, FieldMetadata> fieldMetadataCache;
-  
+
   /**
    * The connection settings.
    */
   private RedshiftJDBCSettings m_settings;
-  
+
   private int reWriteBatchedInsertsSize;
-  
+
   private boolean databaseMetadataCurrentDbOnly;
-  
+
   public static String NON_VALIDATING_SSL_FACTORY = "org.postgresql.ssl.NonValidatingFactory";
 
   public static final boolean IS_64_BIT_JVM = checkIs64bitJVM();
@@ -235,7 +235,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
                       RedshiftProperties info,
                       String url,
                       RedshiftLogger logger) throws SQLException {
-  	
+
   	this.logger = logger;
     // Print out the driver version number and whether its 32-bit or 64-bit JVM
   	if(RedshiftLogger.isEnable()) {
@@ -246,8 +246,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     RedshiftProperties.evaluateProperties(info);
 
     m_settings = new RedshiftJDBCSettings();
-    
-    // IAM 
+
+    // IAM
     boolean sslExplicitlyDisabled = setAuthMech(info);
     boolean redshiftNativeAuth = false;
 
@@ -268,10 +268,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
 	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
 	      			RedshiftState.UNEXPECTED_ERROR);
     	}
-    	
+
       if (RedshiftLogger.isEnable())
         logger.log(LogLevel.DEBUG, "Start IAM authentication");
-      
+
       // Check for JWT and convert into Redshift Native Auth
       if(iamCredentialProvider != null
           && (iamCredentialProvider.equalsIgnoreCase("com.amazon.redshift.plugin.BasicJwtCredentialsProvider") ||
@@ -279,13 +279,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
         redshiftNativeAuth = true;
       }
 
-      
+
        if(!redshiftNativeAuth) {
       	info = IamHelper.setIAMProperties(info, m_settings, logger);
-  
+
   //      if (RedshiftLogger.isEnable())
   //        logger.log(LogLevel.DEBUG, "info after setIAMProperties" + info);
-      	
+
       	// Set the user name and temporary password in the property
       	RedshiftProperties updatedInfo = new RedshiftProperties();
       	updatedInfo.putAll(info);
@@ -295,19 +295,19 @@ public class RedshiftConnectionImpl implements BaseConnection {
       	}
       	if(m_settings.m_password != null)
       		updatedInfo.put(RedshiftProperty.PASSWORD.getName(), m_settings.m_password);
-      	
+
       	if(m_settings.m_host != null) {
       		updatedInfo.putIfAbsent(RedshiftProperty.HOST.getName(), m_settings.m_host);
       	}
-      	
+
       	if(m_settings.m_port != 0) {
       		updatedInfo.putIfAbsent(RedshiftProperty.PORT.getName(), String.valueOf(m_settings.m_port));
       	}
-      	
+
       	if (hostSpecs == null) {
       		hostSpecs = Driver.hostSpecs(updatedInfo);
       	}
-      	
+
       	info = updatedInfo;
        } // !Redshift Native Auth
     } // IAM auth
@@ -330,14 +330,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
         info = NativeAuthPluginHelper.setNativeAuthPluginProperties(info, m_settings, logger);
       }
     }
-    
+
     this.creatingURL = url;
 
     this.readOnlyBehavior = getReadOnlyBehavior(RedshiftProperty.READ_ONLY_MODE.get(info));
 
     int dfltRowFetchSizeProp = RedshiftProperty.DEFAULT_ROW_FETCH_SIZE.getInt(info);
     int blockingRowsMode = RedshiftProperty.BLOCKING_ROWS_MODE.getInt(info);
-    int dfltRowFetchSize = (dfltRowFetchSizeProp != 0) ? dfltRowFetchSizeProp : blockingRowsMode; 
+    int dfltRowFetchSize = (dfltRowFetchSizeProp != 0) ? dfltRowFetchSizeProp : blockingRowsMode;
     setDefaultFetchSize(dfltRowFetchSize);
 
     setPrepareThreshold(RedshiftProperty.PREPARE_THRESHOLD.getInt(info));
@@ -346,7 +346,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     setGeneratedName(RedshiftProperty.ENABLE_GENERATED_NAME_FOR_PREPARED_STATEMENT.getBoolean(info));
-    
+
     // Now make the initial connection and set up local state
     this.queryExecutor = ConnectionFactory.openConnection(hostSpecs, user, database, info, logger);
 
@@ -357,7 +357,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     if (RedshiftProperty.READ_ONLY.getBoolean(info)) {
       setReadOnly(true);
     }
-    
+
     this.databaseMetadataCurrentDbOnly = RedshiftProperty.DATABASE_METADATA_CURRENT_DB_ONLY.getBoolean(info);
 
     this.hideUnprivilegedObjects = RedshiftProperty.HIDE_UNPRIVILEGED_OBJECTS.getBoolean(info);
@@ -365,7 +365,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     this.overrideSchemaPatternType = RedshiftProperty.OVERRIDE_SCHEMA_PATTERN_TYPE.getInteger(info);
 
     this.reWriteBatchedInsertsSize = RedshiftProperty.REWRITE_BATCHED_INSERTS_SIZE.getInt(info);
-    
+
     Set<Integer> binaryOids = getBinaryOids(info);
 
     // split for receive and send for better control
@@ -435,7 +435,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       openStackTrace = new Throwable("Connection was created at this point:");
     }
     this.disableColumnSanitiser = RedshiftProperty.DISABLE_COLUMN_SANITISER.getBoolean(info);
-    this.disableIsValidQuery = RedshiftProperty.DISABLE_ISVALID_QUERY.getBoolean(info);    	
+    this.disableIsValidQuery = RedshiftProperty.DISABLE_ISVALID_QUERY.getBoolean(info);
 
 
 /*    if (haveMinimumServerVersion(ServerVersion.v8_3)) {
@@ -451,7 +451,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
         appName = "";
       }
       this.clientInfo.put("ApplicationName", appName);
-    } 
+    }
 
     fieldMetadataCache = new LruCache<FieldMetadata.Key, FieldMetadata>(
             Math.max(0, RedshiftProperty.DATABASE_METADATA_CACHE_FIELDS.getInt(info)),
@@ -553,13 +553,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public Statement createStatement() throws SQLException {
     if (RedshiftLogger.isEnable())
     	logger.logFunction(true);
-  	
+
     // We now follow the spec and default to TYPE_FORWARD_ONLY.
     Statement stmt = createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-    
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false, stmt);
-    
+
     return stmt;
   }
 
@@ -575,7 +575,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
-    
+
     return pstmt;
   }
 
@@ -584,12 +584,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql));
-    
+
     CallableStatement cstmt = prepareCall(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
-    
+
     return cstmt;
   }
 
@@ -822,13 +822,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
         }
         else if (byteValue != null && obj instanceof RedshiftInterval) {
         	RedshiftInterval intervalObj = (RedshiftInterval) obj;
-        	
+
         	// Binary format is 8 bytes time and 4 byes months
         	long time = ByteConverter.int8(byteValue, 0);
         	int month = ByteConverter.int4(byteValue, 8);
-        	
+
         	intervalObj.setValue(month, time);
-        	
+
 //        	intervalObj.setValue(new String(byteValue));
         }
         else {
@@ -921,7 +921,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
    */
   @Override
   public void close() throws SQLException {
-  	
+
     if (RedshiftLogger.isEnable())
       logger.logFunction(true);
 
@@ -932,16 +932,16 @@ public class RedshiftConnectionImpl implements BaseConnection {
       	logger.logFunction(false);
       	logger.close();
       }
-      
+
       return;
     }
     releaseTimer();
     queryExecutor.close();
     openStackTrace = null;
-    
+
     // Close the logger stream
     if(RedshiftLogger.isEnable()) {
-    	logger.logFunction(false);    	
+    	logger.logFunction(false);
     	logger.close();
     }
   }
@@ -977,17 +977,17 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public void setDatabaseMetadataCurrentDbOnly(boolean databaseMetadataCurrentDbOnly) throws SQLException {
   	this.databaseMetadataCurrentDbOnly = databaseMetadataCurrentDbOnly;
   }
-  
+
   public boolean isDatabaseMetadataCurrentDbOnly() {
   	return databaseMetadataCurrentDbOnly;
   }
-  
+
   @Override
   public void setReadOnly(boolean readOnly) throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, readOnly);
-  	
+
     checkClosed();
     if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
       throw new RedshiftException(
@@ -1000,21 +1000,21 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     this.readOnly = readOnly;
-    if(RedshiftLogger.isEnable()) 
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setReadOnly = {0}", readOnly);
   }
 
   @Override
   public boolean isReadOnly() throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true);
-  	
+
     checkClosed();
-    
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, readOnly);
-    
+
     return readOnly;
   }
 
@@ -1025,10 +1025,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   @Override
   public void setAutoCommit(boolean autoCommit) throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, autoCommit);
-  	
+
     checkClosed();
 
     if (this.autoCommit == autoCommit) {
@@ -1055,7 +1055,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     this.autoCommit = autoCommit;
-    
+
     if(RedshiftLogger.isEnable()) {
     	logger.log(LogLevel.DEBUG, "  setAutoCommit = {0}", autoCommit);
     	logger.logFunction(false);
@@ -1064,16 +1064,16 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   @Override
   public boolean getAutoCommit() throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true);
-  	
+
     checkClosed();
     boolean rc = this.autoCommit;
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, rc);
-    
+
     return rc;
   }
 
@@ -1099,10 +1099,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   @Override
   public void commit() throws SQLException {
-  	
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(true);
-  	
+
     checkClosed();
 
     if (autoCommit) {
@@ -1113,7 +1113,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
       executeTransactionCommand(commitQuery);
     }
-    
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false);
   }
@@ -1127,10 +1127,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   @Override
   public void rollback() throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true);
-  	
+
     checkClosed();
 
     if (autoCommit) {
@@ -1142,10 +1142,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
       executeTransactionCommand(rollbackQuery);
     } else {
       // just log for debugging
-      if(RedshiftLogger.isEnable())    
+      if(RedshiftLogger.isEnable())
       	logger.log(LogLevel.DEBUG, "Rollback requested but no transaction in progress");
     }
-    
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false);
   }
@@ -1159,10 +1159,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
   }
 
   public void setTransactionIsolation(int level) throws SQLException {
-  	
-    if(RedshiftLogger.isEnable())    
+
+    if(RedshiftLogger.isEnable())
     	logger.logFunction(true, level);
-  	
+
     checkClosed();
 
     if (queryExecutor.getTransactionState() != TransactionState.IDLE) {
@@ -1180,8 +1180,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     String isolationLevelSQL =
         "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL " + isolationLevelName;
     execSQLUpdate(isolationLevelSQL); // nb: no BEGIN triggered
-    
-    if(RedshiftLogger.isEnable())   
+
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setTransactionIsolation = {0}", isolationLevelName);
   }
 
@@ -1224,7 +1224,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   protected void finalize() throws Throwable {
     try {
       if (openStackTrace != null) {
-        if(RedshiftLogger.isEnable())    
+        if(RedshiftLogger.isEnable())
         	logger.log(LogLevel.INFO, GT.tr("Finalizing a Connection that was never closed:"), openStackTrace);
       }
 
@@ -1308,7 +1308,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     return Utils.escapeLiteral(null, str, queryExecutor.getStandardConformingStrings(),true)
         .toString();
   }
-  
+
   @Override
   public boolean getStandardConformingStrings() {
     return queryExecutor.getStandardConformingStrings();
@@ -1325,9 +1325,9 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public void cancelQuery() throws SQLException {
     checkClosed();
-    
+
     queryExecutor.sendQueryCancel();
-    
+
   	if (RedshiftLogger.isEnable())
   		logger.logError("Send query cancel to server");
   }
@@ -1370,14 +1370,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     this.defaultFetchSize = fetchSize;
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setDefaultFetchSize = {0}", fetchSize);
   }
 
   public int getDefaultFetchSize() {
     return defaultFetchSize;
   }
-  
+
   public int getReWriteBatchedInsertsSize() {
     return this.reWriteBatchedInsertsSize;
   }
@@ -1388,14 +1388,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   public void setPrepareThreshold(int newThreshold) {
     this.prepareThreshold = newThreshold;
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setPrepareThreshold = {0}", newThreshold);
   }
-  
+
   public void setGeneratedName(boolean enable) {
   	enableGeneratedName = enable;
   }
-  
+
   public boolean getGeneratedName() {
     return enableGeneratedName;
   }
@@ -1406,7 +1406,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   public void setForceBinary(boolean newValue) {
     this.forcebinary = newValue;
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setForceBinary = {0}", newValue);
   }
 
@@ -1450,7 +1450,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   public void setDisableColumnSanitiser(boolean disableColumnSanitiser) {
     this.disableColumnSanitiser = disableColumnSanitiser;
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setDisableColumnSanitiser = {0}", disableColumnSanitiser);
   }
 
@@ -1467,7 +1467,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public void setAutosave(AutoSave autoSave) {
     queryExecutor.setAutoSave(autoSave);
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setAutosave = {0}", autoSave.value());
   }
 
@@ -1574,13 +1574,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public Statement createStatement(int resultSetType, int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-  	
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(true, resultSetType, resultSetConcurrency, resultSetHoldability);
-  	
+
     checkClosed();
     Statement stmt = new RedshiftStatementImpl(this, resultSetType, resultSetConcurrency, resultSetHoldability);
-    
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false, stmt);
 
@@ -1590,36 +1590,36 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency, resultSetHoldability);
-  	
+
     checkClosed();
-    
+
     PreparedStatement pstmt = new RedshiftPreparedStatement(this, sql, resultSetType, resultSetConcurrency,
         resultSetHoldability);
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
-    
+
     return pstmt;
   }
 
   @Override
   public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency, resultSetHoldability);
-  	
+
     checkClosed();
-    
+
     CallableStatement cstmt= new RedshiftCallableStatement(this, sql, resultSetType, resultSetConcurrency,
         resultSetHoldability);
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
-    
+
     return cstmt;
   }
 
@@ -1635,7 +1635,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
     setTypeMapImpl(map);
-    if(RedshiftLogger.isEnable())    
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setTypeMap = {0}", map);
   }
 
@@ -1798,8 +1798,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
         // "current transaction aborted", assume the connection is up and running
         return true;
       }
-      
-      if(RedshiftLogger.isEnable())    
+
+      if(RedshiftLogger.isEnable())
           logger.log(LogLevel.DEBUG, GT.tr("Validating connection."), e);
     }
     return false;
@@ -1815,11 +1815,11 @@ public class RedshiftConnectionImpl implements BaseConnection {
       throw new SQLClientInfoException(GT.tr("This connection has been closed."), failures, cause);
     }
 
-    if ("ApplicationName".equals(name)) // haveMinimumServerVersion(ServerVersion.v9_0) && 
+    if ("ApplicationName".equals(name)) // haveMinimumServerVersion(ServerVersion.v9_0) &&
     {
       if (value == null) {
         value = "";
-      } 
+      }
       final String oldValue = queryExecutor.getApplicationName();
       if (value.equals(oldValue)) {
         return;
@@ -1839,7 +1839,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       }
       clientInfo.put(name, value);
       return;
-    } 
+    }
 
     addWarning(new SQLWarning(GT.tr("ClientInfo property not supported."),
         RedshiftState.NOT_IMPLEMENTED.getState()));
@@ -1939,7 +1939,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
         Utils.escapeLiteral(sb, schema, getStandardConformingStrings());
         sb.append("'");
         stmt.executeUpdate(sb.toString());
-        if(RedshiftLogger.isEnable())    
+        if(RedshiftLogger.isEnable())
         	logger.log(LogLevel.DEBUG, "  setSchema = {0}", schema);
       }
     } finally {
@@ -1957,14 +1957,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
     if (RedshiftLogger.isEnable())
     	logger.logFunction(true, executor);
-  	
+
     if (executor == null) {
       throw new SQLException("executor is null");
     }
     if (isClosed()) {
       if (RedshiftLogger.isEnable())
       	logger.logFunction(false);
-      
+
       return;
     }
 
@@ -1972,7 +1972,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
     AbortCommand command = new AbortCommand();
     executor.execute(command);
-    
+
     if (RedshiftLogger.isEnable())
     	logger.logFunction(false);
   }
@@ -1980,7 +1980,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public void setNetworkTimeout(Executor executor /*not used*/, int milliseconds) throws SQLException {
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, executor, milliseconds);
-  	
+
     checkClosed();
 
     if (milliseconds < 0) {
@@ -1999,10 +1999,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
       throw new RedshiftException(GT.tr("Unable to set network timeout."),
               RedshiftState.COMMUNICATION_ERROR, ioe);
     }
-    
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false);
-    
+
   }
 
   public int getNetworkTimeout() throws SQLException {
@@ -2031,8 +2031,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
         throw new RedshiftException(GT.tr("Unknown ResultSet holdability setting: {0}.", holdability),
             RedshiftState.INVALID_PARAMETER_VALUE);
     }
-    
-    if(RedshiftLogger.isEnable())    
+
+    if(RedshiftLogger.isEnable())
     	logger.log(LogLevel.DEBUG, "  setHoldability = {0}", holdability);
   }
 
@@ -2094,12 +2094,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public void rollback(Savepoint savepoint) throws SQLException {
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, savepoint);
-  	
+
     checkClosed();
 
     RedshiftSavepoint pgSavepoint = (RedshiftSavepoint) savepoint;
     execSQLUpdate("ROLLBACK TO SAVEPOINT " + pgSavepoint.getRSName());
-    
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false);
   }
@@ -2119,83 +2119,83 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, resultSetType, resultSetConcurrency);
-  	
+
     checkClosed();
     Statement stmt = createStatement(resultSetType, resultSetConcurrency, getHoldability());
-    
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, stmt);
-  	
+
   	return stmt;
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency);
-  	
+
     checkClosed();
     PreparedStatement pstmt = prepareStatement(sql, resultSetType, resultSetConcurrency, getHoldability());
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
-    
+
     return pstmt;
   }
 
   @Override
   public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), resultSetType, resultSetConcurrency);
-  	
+
     checkClosed();
     CallableStatement cstmt = prepareCall(sql, resultSetType, resultSetConcurrency, getHoldability());
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(cstmt.toString()));
-    
+
     return cstmt;
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-  	
+
   	PreparedStatement pstmt;
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), autoGeneratedKeys);
-  	
+
     if (autoGeneratedKeys != Statement.RETURN_GENERATED_KEYS) {
     	pstmt = prepareStatement(sql);
     }
     else {
-    	pstmt = prepareStatement(sql, (String[]) null); 
+    	pstmt = prepareStatement(sql, (String[]) null);
     	((RedshiftPreparedStatement)pstmt).setAutoGeneratedKeys(autoGeneratedKeys);
     }
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
-    
+
     return pstmt;
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), columnIndexes);
-  	
+
     if (columnIndexes == null
     		|| columnIndexes.length == 0) {
     	PreparedStatement pstmt = prepareStatement(sql);
-    	
+
     	if (RedshiftLogger.isEnable())
       	logger.logFunction(false, pstmt);
-    	
+
       return pstmt;
     }
 
@@ -2207,10 +2207,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
   @Override
   public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
   	PreparedStatement pstmt;
-  	
+
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(true, QuerySanitizer.filterCredentials(sql), columnNames);
-  	
+
     if (columnNames == null
     		 || columnNames.length == 0) {
     	pstmt = prepareStatement(sql);
@@ -2218,7 +2218,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     else {
 //      throw new RedshiftException(GT.tr("Returning autogenerated keys by column name is not supported."),
 //          RedshiftState.NOT_IMPLEMENTED);
-    	
+
 	    CachedQuery cachedQuery = borrowReturningQuery(sql, columnNames);
 	    RedshiftPreparedStatement ps =
 	        new RedshiftPreparedStatement(this, cachedQuery,
@@ -2232,12 +2232,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
 	    } else {
 	      // If composite query is given, just ignore "generated keys" arguments
 	    }
-	    pstmt = ps; 
+	    pstmt = ps;
     }
 
   	if (RedshiftLogger.isEnable())
     	logger.logFunction(false, QuerySanitizer.filterCredentials(pstmt.toString()));
-    
+
     return pstmt;
   }
 
@@ -2294,13 +2294,13 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
       return setting;
   }
-  
+
   public static String getRequiredConnSetting(String key, Properties info)
       throws RedshiftException
   {
   	return getRequiredSetting(key, info);
   }
-  
+
   /**
    * Helper function to break out AuthMech setting logic which is overly complicated in order to
    * remain backwards compatible with earlier releases, and add the "sslmode" feature.
@@ -2344,7 +2344,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
       String sslModeProp = getOptionalSetting(RedshiftProperty.SSL_MODE.getName(), info);
       String authMechProp = getOptionalSetting(RedshiftProperty.AUTH_MECH.getName(), info);
-      String sslMode = (sslModeProp != null) ? sslModeProp : authMechProp; 
+      String sslMode = (sslModeProp != null) ? sslModeProp : authMechProp;
 
       boolean sslModeSet = false;
       if (null != sslMode)
@@ -2370,7 +2370,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 								RedshiftProperty.SSL_MODE.getName(),
 								RedshiftProperty.SSL_FACTORY.getName()),
           		RedshiftState.UNEXPECTED_ERROR);
-          	
+
           }
 
           if (sslMode.equalsIgnoreCase(SslMode.VERIFY_FULL.value))
@@ -2386,12 +2386,12 @@ public class RedshiftConnectionImpl implements BaseConnection {
           }
           else
           {
-          	RedshiftException err =  new RedshiftException(GT.tr("Invalid connection property value {0} : {1}", 
+          	RedshiftException err =  new RedshiftException(GT.tr("Invalid connection property value {0} : {1}",
 								RedshiftProperty.SSL_MODE.getName(),
 								sslMode),
-							RedshiftState.UNEXPECTED_ERROR);         	
+							RedshiftState.UNEXPECTED_ERROR);
 
-            if(RedshiftLogger.isEnable())    
+            if(RedshiftLogger.isEnable())
           		logger.log(LogLevel.ERROR, err.toString());
 
           	throw err;
@@ -2403,10 +2403,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
       {
           m_settings.m_authMech = AuthMech.VERIFY_CA;
       }
-      
+
       return sslExplicitlyDisabled;
   }
-  
+
   /**
    * Returns true if the given factory is non validating. False otherwise.
    *
