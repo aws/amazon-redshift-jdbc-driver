@@ -265,7 +265,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
         }
 
     	if (sslExplicitlyDisabled) {
-	      	throw new RedshiftException(GT.tr("SSL should be enable in IAM authentication."),
+	      	throw new RedshiftException(GT.tr("SSL should be enabled in IAM authentication."),
 	      			RedshiftState.UNEXPECTED_ERROR);
     	}
 
