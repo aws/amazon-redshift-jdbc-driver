@@ -1152,20 +1152,8 @@ public final class IamHelper extends IdpAuthHelper {
       }
     } else {
       // Serverless
-      if (!settings.m_groupFederation)
         return GET_SERVERLESS_CREDENTIALS_V1_API;
-      else
-      {
-        if (settings.m_isCname)
-        {
-          throw new AmazonClientException("Custom cluster names are not supported for Redshift Serverless");
-        }
-        else
-        {
-          return GET_CLUSTER_CREDENTIALS_IAM_V2_API; // Fallback to Provision API support in serverless
-        }
-      }
-    } // Serverless
+    }
   }
 
   static AwsClientBuilder setBuilderConfiguration(RedshiftJDBCSettings settings, RedshiftLogger log,
