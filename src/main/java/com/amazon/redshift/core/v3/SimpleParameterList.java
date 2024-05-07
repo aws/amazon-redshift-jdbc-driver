@@ -284,27 +284,64 @@ class SimpleParameterList implements V3ParameterList {
       textValue = paramValues[index].toString();
       int paramType = paramTypes[index];
 
-      if (paramType == Oid.TIMESTAMP) {
-        type = "timestamp";
-      } else if (paramType == Oid.TIMESTAMPTZ) {
-        type = "timestamp with time zone";
-      } else if (paramType == Oid.TIME) {
-        type = "time";
-      } else if (paramType == Oid.TIMETZ) {
-        type = "time with time zone";
-      } else if (paramType == Oid.DATE) {
-        type = "date";
-      } else if (paramType == Oid.INTERVAL) {
-        type = "interval";
-      } else if (paramType == Oid.INTERVALY2M) {
-        type = "interval year to month";
-      } else if (paramType == Oid.INTERVALD2S) {
-        type = "interval day to second";
-      } else if (paramType == Oid.NUMERIC) {
-        type = "numeric";
-      }
-      else {
-        type = null;
+      switch (paramTypes[index])
+      {
+        case Oid.INT2:
+          type = "int2";
+          break;
+        case Oid.INT4:
+          type = "int4";
+          break;
+        case Oid.INT8:
+          type = "int8";
+          break;
+        case Oid.FLOAT4:
+          type = "real";
+          break;
+        case Oid.FLOAT8:
+          type = "double precision";
+          break;
+        case Oid.TIMESTAMP:
+          type = "timestamp";
+          break;
+        case Oid.TIMESTAMPTZ:
+          type = "timestamp with time zone";
+          break;
+        case Oid.TIME:
+          type = "time";
+          break;
+        case Oid.TIMETZ:
+          type = "time with time zone";
+          break;
+        case Oid.DATE:
+          type = "date";
+          break;
+        case Oid.INTERVAL:
+          type = "interval";
+          break;
+        case Oid.INTERVALY2M:
+          type = "interval year to month";
+          break;
+        case Oid.INTERVALD2S:
+          type = "interval day to second";
+          break;
+        case Oid.NUMERIC:
+          type = "numeric";
+          break;
+        case Oid.UUID:
+          type = "uuid";
+          break;
+        case Oid.BOOL:
+          type = "boolean";
+          break;
+        case Oid.BOX:
+          type = "box";
+          break;
+        case Oid.POINT:
+          type = "point";
+          break;
+        default:
+          type = null;
       }
     }
     return quoteAndCast(textValue, type, standardConformingStrings);
