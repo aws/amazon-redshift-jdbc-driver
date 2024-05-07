@@ -109,11 +109,13 @@ public class TypeInfoCache implements TypeInfo {
       {"int2", Oid.INT2, Types.SMALLINT, "java.lang.Integer", Oid.INT2_ARRAY},
       {"int4", Oid.INT4, Types.INTEGER, "java.lang.Integer", Oid.INT4_ARRAY},
       {"int8", Oid.INT8, Types.BIGINT, "java.lang.Long", Oid.INT8_ARRAY},
+      {"int2vector", Oid.INT2VECTOR, Types.VARCHAR, "java.lang.Object", Oid.INT2VECTOR_ARRAY},
       {"numeric", Oid.NUMERIC, Types.NUMERIC, "java.math.BigDecimal", Oid.NUMERIC_ARRAY},
       {"float4", Oid.FLOAT4, Types.REAL, "java.lang.Float", Oid.FLOAT4_ARRAY},
       {"float8", Oid.FLOAT8, Types.DOUBLE, "java.lang.Double", Oid.FLOAT8_ARRAY},
       {"char", Oid.CHAR, Types.CHAR, "java.lang.String", Oid.CHAR_ARRAY},
       {"varchar", Oid.VARCHAR, Types.VARCHAR, "java.lang.String", Oid.VARCHAR_ARRAY},
+      {"varbit", Oid.VARBIT, Types.OTHER, "java.lang.String", Oid.VARBIT_ARRAY},
       {"bytea", Oid.BYTEA, Types.BINARY, "[B", Oid.BYTEA_ARRAY},
       {"bool", Oid.BOOL, Types.BIT, "java.lang.Boolean", Oid.BOOL_ARRAY},
       {"date", Oid.DATE, Types.DATE, "java.sql.Date", Oid.DATE_ARRAY},
@@ -122,21 +124,60 @@ public class TypeInfoCache implements TypeInfo {
       {"timetz", Oid.TIMETZ, Types.TIME, "java.sql.Time", Oid.TIMETZ_ARRAY},
       {"timestamp", Oid.TIMESTAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMP_ARRAY},
       {"timestamptz", Oid.TIMESTAMPTZ, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIMESTAMPTZ_ARRAY},
+      {"reltime", Oid.RELTIME, Types.TIME, "java.sql.Time", Oid.RELTIME_ARRAY},
       {"intervaly2m", Oid.INTERVALY2M, Types.OTHER, "com.amazon.redshift.util.RedshiftIntervalYearToMonth", Oid.INTERVALY2M_ARRAY},
       {"intervald2s", Oid.INTERVALD2S, Types.OTHER, "com.amazon.redshift.util.RedshiftIntervalDayToSecond", Oid.INTERVALD2S_ARRAY},
+      {"tinterval", Oid.TINTERVAL, Types.OTHER, "java.lang.String", Oid.TINTERVAL_ARRAY},
+      {"interval", Oid.INTERVAL, Types.OTHER, "java.lang.String", Oid.INTERVAL_ARRAY},
       //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
       {"refcursor", Oid.REF_CURSOR, Types.REF_CURSOR, "java.sql.ResultSet", Oid.REF_CURSOR_ARRAY},
       //JCP! endif
       {"aclitem", Oid.ACLITEM, Types.OTHER, "java.lang.Object", Oid.ACLITEM_ARRAY}, 
       {"regproc", Oid.REGPROC, Types.OTHER, "java.lang.Object", Oid.REGPROC_ARRAY},
       {"oidvector", Oid.OIDVECTOR, Types.VARCHAR, "java.lang.Object", Oid.OIDVECTOR_ARRAY},
-          
+      {"cid", Oid.CID, Types.INTEGER, "java.lang.Integer", Oid.CID_ARRAY},
+      {"cidr", Oid.CIDR, Types.INTEGER, "java.lang.Integer", Oid.CIDR_ARRAY},
+      {"lseg", Oid.LSEG, Types.OTHER, "java.lang.String", Oid.LSEG_ARRAY},
+      {"path", Oid.PATH, Types.VARCHAR, "java.lang.String", Oid.PATH_ARRAY},
+      {"polygon", Oid.POLYGON, Types.OTHER, "java.lang.String", Oid.POLYGON_ARRAY},
+      {"line", Oid.LINE, Types.INTEGER, "java.lang.Integer", Oid.LINE_ARRAY},
+      {"circle", Oid.CIRCLE, Types.OTHER, "java.lang.String", Oid.CIRCLE_ARRAY},
+      {"macaddr", Oid.MACADDR, Types.VARCHAR, "java.lang.String", Oid.MACADDR_ARRAY},
+      {"inet", Oid.INET, Types.VARCHAR, "java.lang.String", Oid.INET_ARRAY},
+      {"void", Oid.VOID, Types.VARCHAR, "java.lang.String", Oid.VOID_ARRAY},
+
+      {"regprocedure", Oid.REGPROCEDURE, Types.OTHER, "java.lang.String", Oid.REGPROCEDURE_ARRAY},
+      {"regoper", Oid.REGOPER, Types.OTHER, "java.lang.String", Oid.REGOPER_ARRAY},
+      {"regoperator", Oid.REGOPERATOR, Types.OTHER, "java.lang.String", Oid.REGOPERATOR_ARRAY},
+      {"regclass", Oid.REGCLASS, Types.OTHER, "java.lang.String", Oid.REGCLASS_ARRAY},
+      {"regtype", Oid.REGTYPE, Types.OTHER, "java.lang.String", Oid.REGTYPE_ARRAY},
+      {"box", Oid.BOX, Types.OTHER, "java.lang.Object", Oid.BOX_ARRAY},
+      {"useritem", Oid.USERITEM, Types.OTHER, "java.lang.Object", Oid.USERITEM_ARRAY},
+      {"roleitem", Oid.ROLEITEM, Types.OTHER, "java.lang.Object", Oid.ROLEITEM_ARRAY},
+
       {"json", Oid.JSON, Types.OTHER, "com.amazon.redshift.util.RedshiftObject", Oid.JSON_ARRAY},
       {"point", Oid.POINT, Types.OTHER, "com.amazon.redshift.geometric.RedshiftPoint", Oid.POINT_ARRAY},
       {GEOMETRY_NAME, Oid.GEOMETRY, Types.LONGVARBINARY, "[B", Oid.GEOMETRY_ARRAY},
       {SUPER_NAME, Oid.SUPER, Types.LONGVARCHAR, "java.lang.String", Oid.SUPER_ARRAY},
       {VARBYTE_NAME, Oid.VARBYTE, Types.LONGVARBINARY, "[B", Oid.VARBYTE_ARRAY},
-      {GEOGRAPHY_NAME, Oid.GEOGRAPHY, Types.LONGVARBINARY, "[B", Oid.GEOGRAPHY_ARRAY}
+      {GEOGRAPHY_NAME, Oid.GEOGRAPHY, Types.LONGVARBINARY, "[B", Oid.GEOGRAPHY_ARRAY},
+
+      {"smgr", Oid.SMGR, Types.OTHER, "java.lang.String", Oid.SMGR_ARRAY},
+      {"unknown", Oid.UNKNOWN, Types.VARCHAR, "java.lang.String", Oid.UNKNOWN_ARRAY},
+      {"record", Oid.RECORD, Types.OTHER, "java.lang.String", Oid.RECORD_ARRAY},
+      {"cstring", Oid.CSTRING, Types.OTHER, "java.lang.String", Oid.CSTRING_ARRAY},
+      {"any", Oid.ANY, Types.OTHER, "java.lang.String", Oid.ANY_ARRAY},
+      {"anyarray", Oid.ANYARRAY, Types.OTHER, "java.lang.String", Oid.ANYARRAY_ARRAY},
+      {"trigger", Oid.TRIGGER, Types.OTHER, "java.lang.String", Oid.TRIGGER_ARRAY},
+      {"language_handler", Oid.LANGUAGE_HANDLER, Types.OTHER, "java.lang.String", Oid.LANGUAGE_HANDLER_ARRAY},
+      {"internal", Oid.INTERNAL, Types.OTHER, "java.lang.String", Oid.INTERNAL_ARRAY},
+      {"opaque", Oid.OPAQUE, Types.OTHER, "java.lang.String", Oid.OPAQUE_ARRAY},
+      {"anyelement", Oid.ANYELEMENT, Types.OTHER, "java.lang.String", Oid.ANYELEMENT_ARRAY},
+      {"hllsketch", Oid.HLLSKETCH, Types.OTHER, "java.lang.String", Oid.HLLSKETCH_ARRAY},
+      {"cardinal_number", Oid.CARDINAL_NUMBER, Types.OTHER, "java.lang.String", Oid.CARDINAL_NUMBER_ARRAY},
+      {"character_data", Oid.CHARACTER_DATA, Types.OTHER, "java.lang.String", Oid.CHARACTER_DATA_ARRAY},
+      {"sql_identifier", Oid.SQL_IDENTIFIER, Types.OTHER, "java.lang.String", Oid.SQL_IDENTIFIER_ARRAY},
+      {"time_stamp", Oid.TIME_STAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIME_STAMP_ARRAY}
   };
 
   /**
@@ -309,6 +350,13 @@ public class TypeInfoCache implements TypeInfo {
   }
 
   public synchronized int getSQLType(String pgTypeName) throws SQLException {
+    if(pgTypeName == null){
+      if (RedshiftLogger.isEnable()){
+        conn.getLogger().log(LogLevel.INFO, "Unknown pgTypeName found when retrieving the SQL Type --null");
+      }
+      throw new RedshiftException("Unknown pgTypeName found when retrieving the SQL Type --null");
+    }
+
     if (pgTypeName.endsWith("[]")) {
       return Types.ARRAY;
     }
@@ -485,57 +533,22 @@ public class TypeInfoCache implements TypeInfo {
 
   public synchronized String getRSType(int oid) throws SQLException {
     if (oid == Oid.UNSPECIFIED) {
-      return null;
+      if(RedshiftLogger.isEnable() && conn.getLogger()!=null) {
+        conn.getLogger().log(LogLevel.INFO, "Unspecified oid found when retrieving the RedShift Type");
+      }
+      throw new RedshiftException("Unspecified oid found when retrieving the RedShift Type");
     }
 
     String rsTypeName = oidToRsName.get(oid);
     if (rsTypeName != null) {
       return rsTypeName;
     }
-
-    if(RedshiftLogger.isEnable() && conn.getLogger()!=null)
-      conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the RedShift Type --" + oid);
-
-    if (getNameStatement == null) {
-      String sql;
-      sql = "SELECT n.nspname = ANY(current_schemas(true)), n.nspname, t.typname "
-            + "FROM pg_catalog.pg_type t "
-            + "JOIN pg_catalog.pg_namespace n ON t.typnamespace = n.oid WHERE t.oid = ?";
-
-      getNameStatement = conn.prepareStatement(sql);
-    }
-
-    getNameStatement.setInt(1, oid);
-
-    // Go through BaseStatement to avoid transaction start.
-    if (!((BaseStatement) getNameStatement).executeWithFlags(QueryExecutor.QUERY_SUPPRESS_BEGIN)) {
-      throw new RedshiftException(GT.tr("No results were returned by the query."), RedshiftState.NO_DATA);
-    }
-
-    ResultSet rs = getNameStatement.getResultSet();
-    if (rs.next()) {
-      boolean onPath = rs.getBoolean(1);
-      String schema = rs.getString(2);
-      String name = rs.getString(3);
-      if (onPath) {
-        rsTypeName = name;
-        rsNameToOid.put(schema + "." + name, oid);
-      } else {
-        // TODO: escaping !?
-        rsTypeName = "\"" + schema + "\".\"" + name + "\"";
-        // if all is lowercase add special type info
-        // TODO: should probably check for all special chars
-        if (schema.equals(schema.toLowerCase()) && schema.indexOf('.') == -1
-            && name.equals(name.toLowerCase()) && name.indexOf('.') == -1) {
-          rsNameToOid.put(schema + "." + name, oid);
-        }
+    else{
+      if(RedshiftLogger.isEnable() && conn.getLogger()!=null) {
+        conn.getLogger().log(LogLevel.INFO, "Unknown oid found when retrieving the RedShift Type --" + oid);
       }
-      rsNameToOid.put(rsTypeName, oid);
-      oidToRsName.put(oid, rsTypeName);
+      throw new RedshiftException("Unknown oid found when retrieving the RedShift Type --" + oid);
     }
-    rs.close();
-
-    return rsTypeName;
   }
 
   public int getRSArrayType(String elementTypeName) throws SQLException {
