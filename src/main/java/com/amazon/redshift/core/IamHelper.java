@@ -621,7 +621,7 @@ public final class IamHelper extends IdpAuthHelper {
           AmazonRedshift client = builder.withCredentials(credProvider).build();
 
           callDescribeCustomDomainNameAssociationsAPIForV1(settings, client, log);
-          callDescribeClustersAPIForV1(settings, client);
+          callDescribeClustersAPIForV1(settings, client, log);
 
           if (RedshiftLogger.isEnable())
             log.log(LogLevel.DEBUG, "Call V1 API of GetClusterCredentials");
@@ -661,7 +661,7 @@ public final class IamHelper extends IdpAuthHelper {
           AmazonRedshiftClient iamClient = (AmazonRedshiftClient) builder.withCredentials(credProvider).build();
 
           callDescribeCustomDomainNameAssociationsAPIForV2(settings, iamClient, log);
-          callDescribeClustersAPIForV2(settings, iamClient);
+          callDescribeClustersAPIForV2(settings, iamClient, log);
 
           if (RedshiftLogger.isEnable())
             log.log(LogLevel.DEBUG, "Call V2 API of GetClusterCredentials");
@@ -697,10 +697,13 @@ public final class IamHelper extends IdpAuthHelper {
   /**
    * Helper function to call the DescribeClustersAPIForV2 for IAM clients for provisioned clusters
    */
-  static void callDescribeClustersAPIForV2(RedshiftJDBCSettings settings, AmazonRedshiftClient iamClient)
+  static void callDescribeClustersAPIForV2(RedshiftJDBCSettings settings, AmazonRedshiftClient iamClient, RedshiftLogger log)
   {
     if (null == settings.m_host || settings.m_port == 0)
     {
+      if (RedshiftLogger.isEnable())
+        log.logInfo("calling describe clusters API with clusterID : " + settings.m_clusterIdentifier);
+
       DescribeClustersRequest req = new DescribeClustersRequest();
       req.setClusterIdentifier(settings.m_clusterIdentifier);
       DescribeClustersResult resp = iamClient.describeClusters(req);
@@ -723,10 +726,13 @@ public final class IamHelper extends IdpAuthHelper {
   /**
    * Helper function to call the DescribeClustersAPIForV1 for provisioned clusters
    */
-  static void callDescribeClustersAPIForV1(RedshiftJDBCSettings settings, AmazonRedshift client)
+  static void callDescribeClustersAPIForV1(RedshiftJDBCSettings settings, AmazonRedshift client, RedshiftLogger log)
   {
     if (null == settings.m_host || settings.m_port == 0)
     {
+      if (RedshiftLogger.isEnable())
+        log.logInfo("calling describe clusters API with clusterID : " + settings.m_clusterIdentifier);
+
       DescribeClustersRequest req = new DescribeClustersRequest();
       req.setClusterIdentifier(settings.m_clusterIdentifier);
       DescribeClustersResult resp = client.describeClusters(req);
@@ -758,20 +764,23 @@ public final class IamHelper extends IdpAuthHelper {
       if(null != settings.m_host)
       {
         // this is traditional case where we pass in the host, aka custom domain name to the API
-        log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
+        if (RedshiftLogger.isEnable())
+          log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
 
         describeRequest.setCustomDomainName(settings.m_host);
       }
       else if (null != settings.m_clusterIdentifier)
       {
         // this case is for the url format clusterID:region, and user passes in cname:region instead
-        log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
+        if (RedshiftLogger.isEnable())
+          log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
 
         describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
       }
       else
       {
-        log.logInfo("No CNAME provided. No-op.");
+        if (RedshiftLogger.isEnable())
+          log.logInfo("No CNAME provided. No-op.");
         return;
       }
 
@@ -782,15 +791,22 @@ public final class IamHelper extends IdpAuthHelper {
         // API itself will throw if result list's count is 0, so we enter catch case
         if(associations.stream().count() > 1)
         {
-          log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+          if (RedshiftLogger.isEnable())
+            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
           return;
         }
 
-        settings.m_clusterIdentifier = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        String clusterID = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        if(null != clusterID && !clusterID.isEmpty()) {
+          settings.m_clusterIdentifier = clusterID;
+          if (RedshiftLogger.isEnable())
+            log.logDebug("setting cluster ID to : " + settings.m_clusterIdentifier);
+        }
       }
       catch (Exception ex)
       {
-        log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
+        if (RedshiftLogger.isEnable())
+          log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
         settings.m_isCname = false;      }
     }
   }
@@ -807,20 +823,23 @@ public final class IamHelper extends IdpAuthHelper {
       if(null != settings.m_host)
       {
         // this is traditional case where we pass in the host, aka custom domain name to the API
-        log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
+        if (RedshiftLogger.isEnable())
+          log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
 
         describeRequest.setCustomDomainName(settings.m_host);
       }
       else if (null != settings.m_clusterIdentifier)
       {
         // this case is for the url format clusterID:region, and user passes in cname:region instead
-        log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
+        if (RedshiftLogger.isEnable())
+          log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
 
         describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
       }
       else
       {
-        log.logInfo("No CNAME provided. No-op.");
+        if (RedshiftLogger.isEnable())
+          log.logInfo("No CNAME provided. No-op.");
         return;
       }
 
@@ -831,15 +850,22 @@ public final class IamHelper extends IdpAuthHelper {
         // API itself will throw if result list's count is 0, so we enter catch case
         if(associations.stream().count() > 1)
         {
-          log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+          if (RedshiftLogger.isEnable())
+            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
           return;
         }
 
-        settings.m_clusterIdentifier = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        String clusterID = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        if(null != clusterID && !clusterID.isEmpty()) {
+          settings.m_clusterIdentifier = clusterID;
+          if (RedshiftLogger.isEnable())
+            log.logDebug("setting cluster ID to : " + settings.m_clusterIdentifier);
+        }
       }
       catch (Exception ex)
       {
-        log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
+        if (RedshiftLogger.isEnable())
+          log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
         settings.m_isCname = false;
       }
     }
@@ -955,6 +981,8 @@ public final class IamHelper extends IdpAuthHelper {
       }
       catch (AmazonClientException ce)
       {
+        if(RedshiftLogger.isEnable())
+          log.logDebug("Call to getClusterCredentials failed with error: " + ce.getMessage());
         checkForApiCallRateExceedError(ce, i, "getClusterCredentialsResult", log);
       }
     }
