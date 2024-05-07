@@ -25,6 +25,7 @@ import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMRequest
 import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMResult;
 import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsRequest;
 import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsResult;
+import com.amazonaws.services.redshift.model.Association;
 import com.amazonaws.services.redshift.AmazonRedshiftClient;
 import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
 import com.amazonaws.util.StringUtils;
@@ -135,11 +136,11 @@ public final class IamHelper extends IdpAuthHelper {
         mProvisioned = HOST_PATTERN.matcher(host);
         mServerless = SERVERLESS_WORKGROUP_HOST_PATTERN.matcher(host);
       }
-      String clusterId = null;
+      String clusterId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);;
 
-      if (null != mProvisioned && mProvisioned.matches())
+      if ((null != mProvisioned && mProvisioned.matches()) || (null != clusterId && clusterId.startsWith("redshift-serverless-")))
       {
-        // provisioned vanilla
+        // provisioned vanilla OR serverless backdoor which allows calling getClusterCredentials which is a provisioned API
         if (RedshiftLogger.isEnable())
           log.logInfo("Code flow for regular provisioned cluster");
 
@@ -191,7 +192,6 @@ public final class IamHelper extends IdpAuthHelper {
       {
         if (RedshiftLogger.isEnable())
           log.logInfo("Code flow for nlb/cname in provisioned clusters");
-        clusterId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);
 
         // attempt provisioned cname call
         // cluster id will be fetched upon describing custom domain name
@@ -754,17 +754,44 @@ public final class IamHelper extends IdpAuthHelper {
     if(settings.m_isCname)
     {
       DescribeCustomDomainAssociationsRequest describeRequest = new DescribeCustomDomainAssociationsRequest();
-      describeRequest.setCustomDomainName(settings.m_host);
+
+      if(null != settings.m_host)
+      {
+        // this is traditional case where we pass in the host, aka custom domain name to the API
+        log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
+
+        describeRequest.setCustomDomainName(settings.m_host);
+      }
+      else if (null != settings.m_clusterIdentifier)
+      {
+        // this case is for the url format clusterID:region, and user passes in cname:region instead
+        log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
+
+        describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
+      }
+      else
+      {
+        log.logInfo("No CNAME provided. No-op.");
+        return;
+      }
 
       try
       {
         DescribeCustomDomainAssociationsResult describeResponse = iamClient.describeCustomDomainAssociations(describeRequest);
+        List<Association> associations = describeResponse.getAssociations();
+        // API itself will throw if result list's count is 0, so we enter catch case
+        if(associations.stream().count() > 1)
+        {
+          log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+          return;
+        }
+
         settings.m_clusterIdentifier = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
       }
       catch (Exception ex)
       {
-        log.logInfo("No cluster identifier received from Redshift CNAME lookup");
-      }
+        log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
+        settings.m_isCname = false;      }
     }
   }
 
@@ -776,16 +803,44 @@ public final class IamHelper extends IdpAuthHelper {
     if(settings.m_isCname)
     {
       DescribeCustomDomainAssociationsRequest describeRequest = new DescribeCustomDomainAssociationsRequest();
-      describeRequest.setCustomDomainName(settings.m_host);
+
+      if(null != settings.m_host)
+      {
+        // this is traditional case where we pass in the host, aka custom domain name to the API
+        log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
+
+        describeRequest.setCustomDomainName(settings.m_host);
+      }
+      else if (null != settings.m_clusterIdentifier)
+      {
+        // this case is for the url format clusterID:region, and user passes in cname:region instead
+        log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
+
+        describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
+      }
+      else
+      {
+        log.logInfo("No CNAME provided. No-op.");
+        return;
+      }
 
       try
       {
         DescribeCustomDomainAssociationsResult describeResponse = client.describeCustomDomainAssociations(describeRequest);
+        List<Association> associations = describeResponse.getAssociations();
+        // API itself will throw if result list's count is 0, so we enter catch case
+        if(associations.stream().count() > 1)
+        {
+          log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+          return;
+        }
+
         settings.m_clusterIdentifier = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
       }
       catch (Exception ex)
       {
-        log.logInfo("No cluster identifier received from Redshift CNAME lookup");
+        log.logInfo("No cluster identifier received from Redshift CNAME lookup. Setting CNAME to false.");
+        settings.m_isCname = false;
       }
     }
   }
