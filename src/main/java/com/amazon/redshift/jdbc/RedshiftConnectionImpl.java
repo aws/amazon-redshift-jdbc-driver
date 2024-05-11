@@ -91,7 +91,7 @@ import java.util.TimerTask;
 import java.util.concurrent.Executor;
 
 public class RedshiftConnectionImpl implements BaseConnection {
-
+  private ResourceLock lock = new ResourceLock();
   private RedshiftLogger logger;
   private static final Set<Integer> SUPPORTED_BINARY_OIDS = getSupportedBinaryOids();
   private static final SQLPermission SQL_PERMISSION_ABORT = new SQLPermission("callAbort");
@@ -955,7 +955,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   }
 
   @Override
-  public synchronized SQLWarning getWarnings() throws SQLException {
+  public SQLWarning getWarnings() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkClosed();
     SQLWarning newWarnings = queryExecutor.getWarnings(); // NB: also clears them.
     if (firstWarning == null) {
@@ -965,13 +966,16 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     return firstWarning;
+	  }
   }
 
   @Override
-  public synchronized void clearWarnings() throws SQLException {
+  public void clearWarnings() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkClosed();
     queryExecutor.getWarnings(); // Clear and discard.
     firstWarning = null;
+	  }
   }
 
   public void setDatabaseMetadataCurrentDbOnly(boolean databaseMetadataCurrentDbOnly) throws SQLException {
@@ -1475,18 +1479,22 @@ public class RedshiftConnectionImpl implements BaseConnection {
     queryExecutor.abort();
   }
 
-  private synchronized Timer getTimer() {
+  private Timer getTimer() {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (cancelTimer == null) {
       cancelTimer = Driver.getSharedTimer().getTimer();
     }
     return cancelTimer;
+	  }
   }
 
-  private synchronized void releaseTimer() {
+  private void releaseTimer() {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (cancelTimer != null) {
       cancelTimer = null;
       Driver.getSharedTimer().releaseTimer();
     }
+	  }
   }
 
   @Override
@@ -1776,7 +1784,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
             else
             {
               PreparedStatement checkConnectionQuery;
-              synchronized (this)
+              try (ResourceLock ignore = lock.obtain())
               {
                 checkConnectionQuery = prepareStatement("");
               }

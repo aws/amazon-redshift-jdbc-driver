@@ -5,18 +5,20 @@
 
 package com.amazon.redshift.core.v3;
 
+import java.sql.SQLException;
+
 import com.amazon.redshift.copy.CopyOperation;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
-
-import java.sql.SQLException;
 
 public abstract class CopyOperationImpl implements CopyOperation {
   QueryExecutorImpl queryExecutor;
   int rowFormat;
   int[] fieldFormats;
   long handledRowCount = -1;
+  private ResourceLock lock = new ResourceLock();
 
   void init(QueryExecutorImpl q, int fmt, int[] fmts) {
     queryExecutor = q;
@@ -41,7 +43,7 @@ public abstract class CopyOperationImpl implements CopyOperation {
   }
 
   public boolean isActive() {
-    synchronized (queryExecutor) {
+	try (ResourceLock ignore = lock.obtain()) {
       return queryExecutor.hasLock(this);
     }
   }

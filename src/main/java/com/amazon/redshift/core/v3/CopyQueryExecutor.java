@@ -9,6 +9,7 @@ import com.amazon.redshift.copy.CopyOperation;
 import com.amazon.redshift.copy.CopyOut;
 import com.amazon.redshift.core.RedshiftStream;
 import com.amazon.redshift.core.Utils;
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.ByteStreamWriter;
@@ -23,13 +24,11 @@ import com.amazon.redshift.util.RedshiftState;
 class CopyQueryExecutor {
 	
 	private QueryExecutorImpl queryExecutor;
-  RedshiftLogger logger;
-  final RedshiftStream pgStream;
-	
-	
-	CopyQueryExecutor(QueryExecutorImpl queryExecutor,
-										RedshiftLogger logger,
-										RedshiftStream pgStream) {
+	RedshiftLogger logger;
+	final RedshiftStream pgStream;
+	private final ResourceLock lock = new ResourceLock();
+
+	CopyQueryExecutor(QueryExecutorImpl queryExecutor, RedshiftLogger logger, RedshiftStream pgStream) {
 		this.queryExecutor = queryExecutor;
 		this.logger = logger;
 		this.pgStream = pgStream;
@@ -49,7 +48,7 @@ class CopyQueryExecutor {
   	// Shouldn't call from synchronized method, which can cause dead-lock.
   	queryExecutor.waitForRingBufferThreadToFinish(false, false, false, null, null);
   	
-    synchronized(queryExecutor) {
+  	 try (ResourceLock ignore = lock.obtain()) {
     	queryExecutor.waitOnLock();
 	    
 	    if (!suppressBegin) {
@@ -87,7 +86,7 @@ class CopyQueryExecutor {
 
     try {
       if (op instanceof CopyIn) {
-        synchronized (queryExecutor) {
+    	try (ResourceLock ignore = lock.obtain()) {
         	if(RedshiftLogger.isEnable())    	
         		logger.log(LogLevel.DEBUG, "FE => CopyFail");
           final byte[] msg = Utils.encodeUTF8("Copy cancel requested");
@@ -125,7 +124,7 @@ class CopyQueryExecutor {
       // future operations, rather than failing due to the
       // broken connection, will simply hang waiting for this
       // lock.
-      synchronized (queryExecutor) {
+      try (ResourceLock ignore = lock.obtain()) {
         if (queryExecutor.hasLock(op)) {
         	queryExecutor.unlock(op);
         }
@@ -405,7 +404,7 @@ class CopyQueryExecutor {
    * @throws IOException on database connection failure
    */
   void initCopy(CopyOperationImpl op) throws SQLException, IOException {
-  	synchronized(queryExecutor) {
+	try (ResourceLock ignore = lock.obtain()) {
 	    pgStream.receiveInteger4(); // length not used
 	    int rowFormat = pgStream.receiveChar();
 	    int numFields = pgStream.receiveInteger2();
@@ -428,7 +427,7 @@ class CopyQueryExecutor {
    * @throws SQLException on failure
    */
   long endCopy(CopyOperationImpl op) throws SQLException {
-  	synchronized(queryExecutor) {
+  	try (ResourceLock ignore = lock.obtain()) {
 	    if (!queryExecutor.hasLock(op)) {
 	      throw new RedshiftException(GT.tr("Tried to end inactive copy"), RedshiftState.OBJECT_NOT_IN_STATE);
 	    }
@@ -464,7 +463,7 @@ class CopyQueryExecutor {
    */
   void writeToCopy(CopyOperationImpl op, byte[] data, int off, int siz)
       throws SQLException {
-  	synchronized(queryExecutor) {
+  	try (ResourceLock ignore = lock.obtain()) {
 	    if (!queryExecutor.hasLock(op)) {
 	      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
 	          RedshiftState.OBJECT_NOT_IN_STATE);
@@ -494,7 +493,7 @@ class CopyQueryExecutor {
    */
   public void writeToCopy(CopyOperationImpl op, ByteStreamWriter from)
       throws SQLException {
-  	synchronized(queryExecutor) {
+  	try (ResourceLock ignore = lock.obtain()) {
 	    if (!queryExecutor.hasLock(op)) {
 	      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
 	          RedshiftState.OBJECT_NOT_IN_STATE);
@@ -516,7 +515,7 @@ class CopyQueryExecutor {
   }
   
   public void flushCopy(CopyOperationImpl op) throws SQLException {
-  	synchronized(queryExecutor) {
+  	try (ResourceLock ignore = lock.obtain()) {
 	    if (!queryExecutor.hasLock(op)) {
 	      throw new RedshiftException(GT.tr("Tried to write to an inactive copy operation"),
 	          RedshiftState.OBJECT_NOT_IN_STATE);
@@ -540,7 +539,7 @@ class CopyQueryExecutor {
    * @throws SQLException on any failure
    */
   void readFromCopy(CopyOperationImpl op, boolean block) throws SQLException {
-  	synchronized(queryExecutor) {
+  	try (ResourceLock ignore = lock.obtain()) {
 	    if (!queryExecutor.hasLock(op)) {
 	      throw new RedshiftException(GT.tr("Tried to read from inactive copy"),
 	          RedshiftState.OBJECT_NOT_IN_STATE);

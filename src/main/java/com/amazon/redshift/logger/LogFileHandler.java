@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.amazon.redshift.jdbc.ResourceLock;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -48,7 +49,7 @@ public class LogFileHandler implements LogHandler {
   private PrintWriter writer = null;
   
   private boolean flushAfterWrite;
-  
+  private final ResourceLock lock = new ResourceLock();
   public LogFileHandler(String filename, 
   											boolean flushAfterWrite, 
   											String maxLogFileSize,
@@ -69,8 +70,9 @@ public class LogFileHandler implements LogHandler {
   }
   
   @Override
-  public synchronized void write(String message) throws Exception
+  public void write(String message) throws Exception
   {
+	  try (ResourceLock ignore = lock.obtain()) {
       writer.println(message);
       if (flushAfterWrite)
         writer.flush();
@@ -84,20 +86,25 @@ public class LogFileHandler implements LogHandler {
             openFile();
         }
       }
+	  } 
   }
   
   @Override
-  public synchronized void close() throws Exception {
+  public void close() throws Exception {
+	try (ResourceLock ignore = lock.obtain()) {
   	if (writer != null) {
   		writer.close();
   	}
+	}
   }
 
   @Override
-  public synchronized void flush() {
+  public void flush() {
+	try (ResourceLock ignore = lock.obtain()) {
   	if (writer != null) {
   		writer.flush();
   	}
+	}
   }
   
   private void createDirectory() throws RedshiftException

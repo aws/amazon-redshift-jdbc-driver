@@ -51,7 +51,7 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 public class RedshiftSQLXML implements SQLXML {
-
+  private final ResourceLock lock = new ResourceLock();
   private final BaseConnection conn;
   private String data; // The actual data contained.
   private boolean initialized; // Has someone assigned the data for this object?
@@ -79,13 +79,16 @@ public class RedshiftSQLXML implements SQLXML {
   }
 
   @Override
-  public synchronized void free() {
-    freed = true;
-    data = null;
+  public void free() {
+	try (ResourceLock ignore = lock.obtain()) {
+	    freed = true;
+	    data = null;
+	}
   }
 
   @Override
-  public synchronized InputStream getBinaryStream() throws SQLException {
+  public InputStream getBinaryStream() throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     ensureInitialized();
 
@@ -102,10 +105,12 @@ public class RedshiftSQLXML implements SQLXML {
       // For this reason don't make it translatable.
       throw new RedshiftException("Failed to re-encode xml data.", RedshiftState.DATA_ERROR, ioe);
     }
+	}
   }
 
   @Override
-  public synchronized Reader getCharacterStream() throws SQLException {
+  public Reader getCharacterStream() throws SQLException {
+	try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     ensureInitialized();
 
@@ -114,6 +119,7 @@ public class RedshiftSQLXML implements SQLXML {
     }
 
     return new StringReader(data);
+	}
   }
 
   // We must implement this unsafely because that's what the
@@ -123,7 +129,8 @@ public class RedshiftSQLXML implements SQLXML {
   // ensure they are the same.
   //
   @Override
-  public synchronized <T extends Source> T getSource(Class<T> sourceClass) throws SQLException {
+  public <T extends Source> T getSource(Class<T> sourceClass) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     ensureInitialized();
 
@@ -164,35 +171,43 @@ public class RedshiftSQLXML implements SQLXML {
 
     throw new RedshiftException(GT.tr("Unknown XML Source class: {0}", sourceClass),
         RedshiftState.INVALID_PARAMETER_TYPE);
+	  }
   }
 
   @Override
-  public synchronized String getString() throws SQLException {
+  public String getString() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     ensureInitialized();
     return data;
+	  }
   }
 
   @Override
-  public synchronized OutputStream setBinaryStream() throws SQLException {
+  public OutputStream setBinaryStream() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     initialize();
     active = true;
     byteArrayOutputStream = new ByteArrayOutputStream();
     return byteArrayOutputStream;
+	  }
   }
 
   @Override
-  public synchronized Writer setCharacterStream() throws SQLException {
+  public Writer setCharacterStream() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     initialize();
     active = true;
     stringWriter = new StringWriter();
     return stringWriter;
+	  }
   }
 
   @Override
-  public synchronized <T extends Result> T setResult(Class<T> resultClass) throws SQLException {
+  public <T extends Result> T setResult(Class<T> resultClass) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     initialize();
 
@@ -238,13 +253,16 @@ public class RedshiftSQLXML implements SQLXML {
 
     throw new RedshiftException(GT.tr("Unknown XML Result class: {0}", resultClass),
         RedshiftState.INVALID_PARAMETER_TYPE);
+	  }
   }
 
   @Override
-  public synchronized void setString(String value) throws SQLException {
+  public void setString(String value) throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     checkFreed();
     initialize();
     data = value;
+	  }
   }
 
   private void checkFreed() throws SQLException {

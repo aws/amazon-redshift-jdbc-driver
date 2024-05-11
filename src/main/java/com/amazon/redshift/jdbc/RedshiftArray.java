@@ -42,7 +42,7 @@ import java.util.Map;
  * @see ResultSet#getArray
  */
 public class RedshiftArray implements java.sql.Array {
-
+  private final ResourceLock lock = new ResourceLock();
   static {
     ArrayAssistantRegistry.register(Oid.UUID, new UUIDArrayAssistant());
     ArrayAssistantRegistry.register(Oid.UUID_ARRAY, new UUIDArrayAssistant());
@@ -420,7 +420,8 @@ public class RedshiftArray implements java.sql.Array {
    * {@link #arrayList} is build. Method can be called many times in order to make sure that array
    * list is ready to use, however {@link #arrayList} will be set only once during first call.
    */
-  private synchronized void buildArrayList() throws SQLException {
+  private void buildArrayList() throws SQLException {
+	  try (ResourceLock ignore = lock.obtain()) {
     if (arrayList != null) {
       return;
     }
@@ -536,6 +537,7 @@ public class RedshiftArray implements java.sql.Array {
           buffer.append(chars[i]);
         }
       }
+    }
     }
   }
 
