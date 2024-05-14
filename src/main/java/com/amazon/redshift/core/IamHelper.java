@@ -772,14 +772,6 @@ public final class IamHelper extends IdpAuthHelper {
 
         describeRequest.setCustomDomainName(settings.m_host);
       }
-      else if (null != settings.m_clusterIdentifier)
-      {
-        // this case is for the url format clusterID:region, and user passes in cname:region instead
-        if (RedshiftLogger.isEnable())
-          log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
-
-        describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
-      }
       else
       {
         if (RedshiftLogger.isEnable())
@@ -830,14 +822,6 @@ public final class IamHelper extends IdpAuthHelper {
           log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
 
         describeRequest.setCustomDomainName(settings.m_host);
-      }
-      else if (null != settings.m_clusterIdentifier)
-      {
-        // this case is for the url format clusterID:region, and user passes in cname:region instead
-        if (RedshiftLogger.isEnable())
-          log.logInfo("calling describe cname associations API with clusterID : " + settings.m_clusterIdentifier);
-
-        describeRequest.setCustomDomainName(settings.m_clusterIdentifier);
       }
       else
       {
