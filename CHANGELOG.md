@@ -1,6 +1,18 @@
 Changelog
 =========
 
+v2.1.0.28 (2024-05-14)
+----------------------
+- Security improvements (CVE-2024-32888)
+- Consolidated SDK API calls for retrieving cluster credentials for serverless instances.
+- Added logging of returned cluster identifiers during custom domain name resolution to aid debugging.
+- Added Object IDentifier (OID) mappings for missing Redshift data types.
+- Added null check for IsServerless property within IamHelper to address Dbeaver error (GitHub Issue #114)
+
+v2.1.0.27 (2024-05-07)
+----------------------
+- This version was published to Maven in error and is not recommended for use.
+
 v2.1.0.26 (2024-02-12)
 ----------------------
 - Enhanced capability to retrieve results of OUT parameters from stored procedures by parsing the result set [Bhavik Shah]
