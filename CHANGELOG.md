@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v2.1.0.29 (2024-06-05)
+----------------------
+- Limiting DNS queries to CNAME only for improved DNS compatibility since ANY type query may be rejected [Ruei Yang Huang]
+- Fix wrong OID mapping for type cstring from OTHER to VARCHAR to return correct value for command SHOW USE [Tim Hsu]
+
 v2.1.0.28 (2024-05-14)
 ----------------------
 - Security improvements (CVE-2024-32888) [Beaux Sharifi]
