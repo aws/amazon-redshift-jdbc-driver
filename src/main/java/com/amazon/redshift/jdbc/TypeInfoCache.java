@@ -165,7 +165,7 @@ public class TypeInfoCache implements TypeInfo {
       {"smgr", Oid.SMGR, Types.OTHER, "java.lang.String", Oid.SMGR_ARRAY},
       {"unknown", Oid.UNKNOWN, Types.VARCHAR, "java.lang.String", Oid.UNKNOWN_ARRAY},
       {"record", Oid.RECORD, Types.OTHER, "java.lang.String", Oid.RECORD_ARRAY},
-      {"cstring", Oid.CSTRING, Types.OTHER, "java.lang.String", Oid.CSTRING_ARRAY},
+      {"cstring", Oid.CSTRING, Types.VARCHAR, "java.lang.String", Oid.CSTRING_ARRAY},
       {"any", Oid.ANY, Types.OTHER, "java.lang.String", Oid.ANY_ARRAY},
       {"anyarray", Oid.ANYARRAY, Types.OTHER, "java.lang.String", Oid.ANYARRAY_ARRAY},
       {"trigger", Oid.TRIGGER, Types.OTHER, "java.lang.String", Oid.TRIGGER_ARRAY},
