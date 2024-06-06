@@ -45,6 +45,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 
 /**
  * <p>The Java SQL framework allows for multiple database drivers. Each driver should supply a class
@@ -774,11 +776,11 @@ public class Driver implements java.sql.Driver {
       try
       {
         String cnameHost = urlProps.getProperty(RedshiftProperty.HOST.getName());
-
+        String [] AttrIds = new String[]{"CNAME"};
         Properties env = new Properties();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.dns.DnsContextFactory");
         InitialDirContext idc = new InitialDirContext(env);
-        Attributes attrs = idc.getAttributes(cnameHost);
+        Attributes attrs = idc.getAttributes(cnameHost, AttrIds);
         Attribute attr = attrs.get("CNAME");
         String fqdn = attr.get().toString();
 
@@ -788,7 +790,14 @@ public class Driver implements java.sql.Driver {
       {
         if(RedshiftLogger.isEnable())
         {
+          StringWriter sw = new StringWriter();
+          PrintWriter pw = new PrintWriter(sw);
+          ex.printStackTrace(pw);
+          String stackTraceAsString = sw.toString();
+          logger.logInfo(ex.getMessage());
+          logger.logInfo(stackTraceAsString);
           logger.logInfo("No CNAME detected for URL");
+          logger.logInfo(urlProps.getProperty(RedshiftProperty.HOST.getName()));
         }
       }
     }
