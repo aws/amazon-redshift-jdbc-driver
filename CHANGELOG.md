@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.30 (2024-07-31)
+----------------------
+- Fixed a data type conversion issue for Redshift, where BigInt was mapped to Big Serial instead of int8 and Integer was mapped to Serial instead of int4, within the getColumnTypeName function. [Tim Hsu]
+- Added support for a new browser authentication plugin called BrowserIdcAuthPlugin to facilitate single-sign-on integration with AWS IAM Identity Center. [James Cai]
+
+
 v2.1.0.29 (2024-06-05)
 ----------------------
 - Limiting DNS queries to CNAME only for improved DNS compatibility since ANY type query may be rejected [Ruei Yang Huang]
