@@ -157,7 +157,6 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
     else {
       idpToken = credentials.getAccessToken();
     }
-    
     return idpToken;
   }
 }

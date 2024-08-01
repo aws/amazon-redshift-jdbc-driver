@@ -27,6 +27,6 @@ public class InvalidHttpRequestHandler implements HttpRequestHandler
         response.setHeader(
             HttpHeaders.CONTENT_TYPE,
             ContentType.TEXT_HTML.withCharset(StandardCharsets.UTF_8).toString());
-        response.setStatusCode(HttpStatus.SC_BAD_REQUEST);
+        response.setStatusCode(HttpStatus.SC_NOT_FOUND);
     }
 }

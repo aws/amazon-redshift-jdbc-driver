@@ -194,7 +194,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public static final List<String> NON_IAM_PLUGINS_LIST = Collections.unmodifiableList(Arrays.asList(
           RedshiftConstants.NATIVE_IDP_AZUREAD_BROWSER_PLUGIN,
           RedshiftConstants.NATIVE_IDP_OKTA_BROWSER_PLUGIN,
-          RedshiftConstants.IDP_TOKEN_PLUGIN));
+          RedshiftConstants.IDP_TOKEN_PLUGIN,
+          RedshiftConstants.IDC_PKCE_BROWSER_PLUGIN));
 
   final CachedQuery borrowQuery(String sql) throws SQLException {
     return queryExecutor.borrowQuery(sql);
@@ -259,8 +260,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
     {
         String iamCredentialProvider = RedshiftConnectionImpl.getOptionalConnSetting(
             RedshiftProperty.CREDENTIALS_PROVIDER.getName(), info);
-        if(iamCredentialProvider != null && iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN)) {
-          throw new RedshiftException(GT.tr("You can not use this authentication plugin with IAM enabled."),
+        if(iamCredentialProvider != null &&
+          (iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_PLUGIN) ||
+           iamCredentialProvider.equalsIgnoreCase(RedshiftConstants.IDC_PKCE_BROWSER_PLUGIN))) {
+            throw new RedshiftException(GT.tr("You can not use this authentication plugin with IAM enabled."),
                 RedshiftState.UNEXPECTED_ERROR);
         }
 

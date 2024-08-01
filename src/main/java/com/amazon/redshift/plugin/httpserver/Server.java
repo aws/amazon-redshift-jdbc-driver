@@ -210,7 +210,6 @@ public class Server
             {
                // Signal listener thread started
                 m_startSignal.countDown();
-                
                 final Socket socket = serverSocket.accept();
                 socket.setKeepAlive(m_defaultSocketConfig.isSoKeepAlive());
                 socket.setTcpNoDelay(m_defaultSocketConfig.isTcpNoDelay());
@@ -230,7 +229,13 @@ public class Server
                 conn = m_connectionFactory.createConnection(socket);
                 final BasicHttpContext localContext = new BasicHttpContext();
                 final HttpCoreContext context = HttpCoreContext.adapt(localContext);
-                m_httpService.handleRequest(conn, context);
+
+                long startTime = System.currentTimeMillis();
+                // Timeout added here as a precaution to make sure the connection is always closed
+                while (!m_handler.hasValidResult() && System.currentTimeMillis() - startTime < m_defaultSocketConfig.getSoTimeout()) {
+                    m_httpService.handleRequest(conn, context);
+                }
+
                 localContext.clear();
                 conn.close();
                 conn = null;
@@ -251,6 +256,7 @@ public class Server
             }
             finally
             {
+                m_handler.resetValidResult();
                 try
                 {
                     if (conn != null)

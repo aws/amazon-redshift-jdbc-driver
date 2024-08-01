@@ -910,6 +910,13 @@ public enum RedshiftProperty {
   				 "Indicates to disable credential cache. Enable cache gives protection against throttling API calls"),
 
   /**
+   * Indicates the display name to be used for the client that is using IdC browser auth plugin.
+   */
+  IDC_CLIENT_DISPLAY_NAME("idc_client_display_name",
+          "Amazon Redshift JDBC driver",
+           "Indicates the display name to be used for the client that is using IdC browser auth plugin"),
+
+  /**
    * Indicates the identity namespace to be used for connection.
    * It is used by Redshift server to decide which IdC instance to use.
    */

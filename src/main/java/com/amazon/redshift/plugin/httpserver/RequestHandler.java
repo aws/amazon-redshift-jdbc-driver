@@ -22,9 +22,19 @@ public class RequestHandler implements HttpRequestHandler
     public static final String REDSHIFT_PATH = "/redshift/";
 
     /**
-     * String containing the supported Rest API.
+     * String containing the path for IdC browser authentication.
      */
-    private static final String SUPPORTED_METHOD = "POST";
+    public static final String REDSHIFT_IDC_PATH = "/?code=";
+
+    /**
+     * String containing the supported POST Rest API.
+     */
+    private static final String SUPPORTED_METHOD_POST = "POST";
+
+    /**
+     * String containing the supported GET Rest API.
+     */
+    private static final String SUPPORTED_METHOD_GET = "GET";
 
     /**
      * Instance of Function.
@@ -47,6 +57,11 @@ public class RequestHandler implements HttpRequestHandler
     private Object m_result;
 
     /**
+     * Result object.
+     */
+    private boolean is_valid_result = false;
+
+    /**
      * Constructor.
      *
      * @param requestProcessLogic  Function with List of NameValuePair.
@@ -66,10 +81,16 @@ public class RequestHandler implements HttpRequestHandler
         {
             m_result = m_requestProcessLogic.apply(
                 URLEncodedUtils.parse(((BasicHttpEntityEnclosingRequest) request).getEntity()));
+            is_valid_result = true;
             m_validRequestHandler.handle(request, response, context);
-        }
-        else
-        {
+        } else if (isIdcRequestValid(request)) {
+            String query = extractQuery(request.toString());
+            m_result = m_requestProcessLogic.apply(
+                URLEncodedUtils.parse(query, java.nio.charset.StandardCharsets.UTF_8));
+            is_valid_result = true;
+            m_validRequestHandler.handle(request, response, context);
+        } else {
+            is_valid_result = false;
             m_invalidRequestHandler.handle(request, response, context);
         }
     }
@@ -82,12 +103,48 @@ public class RequestHandler implements HttpRequestHandler
     private boolean isRequestValid(HttpRequest request)
     {
         RequestLine requestLine = request.getRequestLine();
-        if (!SUPPORTED_METHOD.equalsIgnoreCase(requestLine.getMethod()))
+        if (!SUPPORTED_METHOD_POST.equalsIgnoreCase(requestLine.getMethod()))
         {
             return false;
         }
         return requestLine.getUri().startsWith(REDSHIFT_PATH);
     }
+
+    /**
+     * Check METHOD and path.
+     *
+     * @param request {@linkplain HttpRequest}
+     */
+    private boolean isIdcRequestValid(HttpRequest request)
+    {
+        RequestLine requestLine = request.getRequestLine();
+        if (!SUPPORTED_METHOD_GET.equalsIgnoreCase(requestLine.getMethod()))
+        {
+            return false;
+        }
+        return requestLine.getUri().startsWith(REDSHIFT_IDC_PATH);        
+    }
+
+    /**
+	 * Used to extract the substring from the authorization server HttpRequest request so that we can parse for the authorization code and CSRF state
+	 * Custom query parsing message is needed because the returned response is unique from other plugins.
+     * 
+	 * @param target Entire HttpRequest request from the authorization server
+	 * @return Substring of the parameter target that contains the authorization code and CSRF string
+	 */
+    private static String extractQuery(String target) {
+		// Extracts the substring after the first question mark
+		int queryIndex = target.indexOf('?');
+		if (queryIndex != -1) {
+			target = target.substring(queryIndex + 1);
+		}
+		// Extracts the substring up to the first space
+		int spaceIndex = target.indexOf(' ');
+		if (spaceIndex != -1) {
+			return target.substring(0, spaceIndex + 1);
+		}
+		return "";
+	}
 
     /**
      * @return the result object.
@@ -103,5 +160,21 @@ public class RequestHandler implements HttpRequestHandler
     public boolean hasResult()
     {
         return m_result != null;
+    }
+
+    /**
+     * @return true if result was found.
+     */
+    public boolean hasValidResult()
+    {
+        return is_valid_result;
+    }
+
+    /**
+     * @return reset is_valid_result to false.
+     */
+    public void resetValidResult()
+    {
+        is_valid_result = false;
     }
 }
