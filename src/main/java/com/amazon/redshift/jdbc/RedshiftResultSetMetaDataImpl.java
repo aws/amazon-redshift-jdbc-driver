@@ -355,13 +355,6 @@ public class RedshiftResultSetMetaDataImpl implements ResultSetMetaData, Redshif
     	connection.getLogger().logFunction(true, column);
   	
     String type = getRSType(column);
-    if (isAutoIncrement(column)) {
-      if ("int4".equals(type)) {
-        return "serial";
-      } else if ("int8".equals(type)) {
-        return "bigserial";
-      }
-    }
 
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(false, type);
