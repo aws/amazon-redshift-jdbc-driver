@@ -31,11 +31,11 @@ public class AssumeChainedRolesCredentialsProvider implements IPlugin {
 
     @Override
     public void addParameter(String key, String value) {
-        if (key.equals("role_arn")) {
+        if ("role_arn".equals(key)) {
             roleArn = value;
         }
 
-        if (key.equals("session_name")) {
+        if ("session_name".equals(key)) {
             sessionName = value;
         }
     }
