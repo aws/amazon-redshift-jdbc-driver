@@ -8,9 +8,7 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import org.apache.commons.codec.binary.StringUtils;
 
 import static com.amazon.redshift.logger.LogLevel.INFO;
 
