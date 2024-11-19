@@ -15,6 +15,7 @@ import com.amazon.redshift.util.RedshiftState;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Poor man's Statement &amp; ResultSet, used for initial queries while we're still initializing the
@@ -24,6 +25,12 @@ public class SetupQueryRunner {
 
   private static class SimpleResultHandler extends ResultHandlerBase {
     private List<Tuple> tuples;
+
+    SimpleResultHandler() {
+      // This class overrided the handleWarning method and ignore warnings.
+      // No need to handle property value
+      super(new Properties());
+    }
 
     List<Tuple> getResults() {
       return tuples;

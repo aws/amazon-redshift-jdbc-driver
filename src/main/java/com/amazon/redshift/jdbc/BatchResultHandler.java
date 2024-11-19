@@ -47,6 +47,7 @@ public class BatchResultHandler extends ResultHandlerBase {
 
   BatchResultHandler(RedshiftStatementImpl rsStatement, Query[] queries, ParameterList[] parameterLists,
       boolean expectGeneratedKeys) {
+    super(rsStatement.getConnectionProperties());
     this.rsStatement = rsStatement;
     this.queries = queries;
     this.parameterLists = parameterLists;

@@ -89,6 +89,7 @@ import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Executor;
+import java.util.Properties;
 
 public class RedshiftConnectionImpl implements BaseConnection {
 
@@ -134,6 +135,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   private boolean disableIsValidQuery = false;
   
+  protected Properties props;
   // Default statement prepare threshold.
   protected int prepareThreshold;
 
@@ -164,7 +166,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private final boolean bindStringAsVarchar;
 
   // Current warnings; there might be more on queryExecutor too.
-  private SQLWarning firstWarning = null;
+  private RedshiftWarningWrapper warningChain;
 
   // Timer for scheduling TimerTasks for this connection.
   // Only instantiated if a task is actually scheduled.
@@ -243,7 +245,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       logger.log(LogLevel.DEBUG, com.amazon.redshift.util.DriverInfo.DRIVER_FULL_NAME);
       logger.log(LogLevel.DEBUG, "JVM architecture is " + (RedshiftConnectionImpl.IS_64_BIT_JVM ? "64-bit" : "32-bit"));
     }
-
+    this.props = info;
     RedshiftProperties.evaluateProperties(info);
 
     m_settings = new RedshiftJDBCSettings();
@@ -617,10 +619,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
    */
   public void addWarning(SQLWarning warn) {
     // Add the warning to the chain
-    if (firstWarning != null) {
-      firstWarning.setNextWarning(warn);
+    if (warningChain != null) {
+      warningChain.appendWarning(warn);
     } else {
-      firstWarning = warn;
+      warningChain = new RedshiftWarningWrapper(warn, props);
     }
 
   }
@@ -863,6 +865,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
     return typeCache;
   }
 
+  public Properties getConnectionProperties() {
+    return props;
+  }
+
   @Override
   public void addDataType(String type, String name) {
     try {
@@ -961,20 +967,20 @@ public class RedshiftConnectionImpl implements BaseConnection {
   public synchronized SQLWarning getWarnings() throws SQLException {
     checkClosed();
     SQLWarning newWarnings = queryExecutor.getWarnings(); // NB: also clears them.
-    if (firstWarning == null) {
-      firstWarning = newWarnings;
+    if (warningChain == null) {
+      warningChain = new RedshiftWarningWrapper(newWarnings, props);
     } else {
-      firstWarning.setNextWarning(newWarnings); // Chain them on.
+      warningChain.appendWarning(newWarnings); // Chain them on.
     }
 
-    return firstWarning;
+    return warningChain.getFirstWarning();
   }
 
   @Override
   public synchronized void clearWarnings() throws SQLException {
     checkClosed();
     queryExecutor.getWarnings(); // Clear and discard.
-    firstWarning = null;
+    warningChain = null;
   }
 
   public void setDatabaseMetadataCurrentDbOnly(boolean databaseMetadataCurrentDbOnly) throws SQLException {
@@ -1088,7 +1094,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
     }
 
     try {
-      getQueryExecutor().execute(query, null, new TransactionCommandHandler(), 0, 0, flags);
+      getQueryExecutor().execute(query, null, new TransactionCommandHandler(props), 0, 0, flags);
     } catch (SQLException e) {
       // Don't retry composite queries as it might get partially executed
       if (query.getSubqueries() != null || !queryExecutor.willHealOnRetry(e)) {
@@ -1096,7 +1102,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       }
       query.close();
       // retry
-      getQueryExecutor().execute(query, null, new TransactionCommandHandler(), 0, 0, flags);
+      getQueryExecutor().execute(query, null, new TransactionCommandHandler(props), 0, 0, flags);
     }
   }
 
@@ -1353,6 +1359,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
    * Handler for transaction queries.
    */
   private class TransactionCommandHandler extends ResultHandlerBase {
+    TransactionCommandHandler(Properties inProps) {
+      super(inProps);
+    }
+
     public void handleCompletion() throws SQLException {
       SQLWarning warning = getWarning();
       if (warning != null) {

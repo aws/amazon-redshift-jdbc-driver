@@ -295,6 +295,15 @@ public enum RedshiftProperty {
     "Specifies size of ring buffer during fetching result set. Can be specified as specified size or percent of heap memory."),
   
   /**
+   * Specifies size of buffer during fetching result set. Can be specified as specified size or
+   * percent of heap memory.
+   */
+  MAX_WARNING_COUNT(
+    "maxwarningcount",
+    "100",
+    "Specifies the maximum number warning objects allowed to be kept in memory per connection, statement, and result set. (\"-1\" being unlimited)"),
+
+    /**
    * Force one of
    * <ul>
    * <li>SSPI (Windows transparent single-sign-on)</li>

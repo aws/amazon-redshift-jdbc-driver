@@ -9,7 +9,9 @@ package com.amazon.redshift.core;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.List;
-
+import java.util.Properties;
+import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.jdbc.RedshiftWarningWrapper;
 import com.amazon.redshift.core.v3.MessageLoopState;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 
@@ -24,8 +26,12 @@ public class ResultHandlerBase implements ResultHandler {
   private SQLException firstException;
   private SQLException lastException;
 
-  private SQLWarning firstWarning;
-  private SQLWarning lastWarning;
+  private RedshiftWarningWrapper warningChain;
+  Properties props;
+
+  public ResultHandlerBase(Properties inProps) {
+    this.props = inProps;
+  }
 
   @Override
   public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
@@ -43,12 +49,11 @@ public class ResultHandlerBase implements ResultHandler {
 
   @Override
   public void handleWarning(SQLWarning warning) {
-    if (firstWarning == null) {
-      firstWarning = lastWarning = warning;
-      return;
+    if (warningChain == null) {
+      warningChain = new RedshiftWarningWrapper(warning, props);
+    } else {
+      warningChain.appendWarning(warning);
     }
-    lastWarning.setNextException(warning);
-    lastWarning = warning;
   }
 
   @Override
@@ -75,7 +80,10 @@ public class ResultHandlerBase implements ResultHandler {
 
   @Override
   public SQLWarning getWarning() {
-    return firstWarning;
+    if (warningChain == null) {
+      return null;
+    }
+    return warningChain.getFirstWarning();
   }
   
   @Override

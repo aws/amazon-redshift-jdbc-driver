@@ -83,6 +83,7 @@ import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.Properties;
 
 public class RedshiftResultSet implements ResultSet, com.amazon.redshift.RedshiftRefCursorResultSet {
 
@@ -118,7 +119,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   protected int currentRow = -1; // Index into 'rows' of our currrent row (0-based)
   protected int rowOffset; // Offset of row 0 in the actual resultset
   protected Tuple thisRow; // copy of the current result row
-  protected SQLWarning warnings = null; // The warning chain
+  protected RedshiftWarningWrapper warningChain; // The warning chain
   /**
    * True if the last obtained column value was SQL NULL as specified by {@link #wasNull}. The value
    * is always updated by the {@link #checkResultSet} method.
@@ -902,8 +903,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	      }
 	    }
 	
+      Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
 	    // Do the actual fetch.
-	    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows, 0);
+	    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
 	
 	    // Now prepend our one saved row and move to it.
 	    rows.add(0, thisRow);
@@ -1969,12 +1971,13 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   	int resultsettype;
 
-  	public CursorResultHandler() {
-  		this(0);
+  	public CursorResultHandler(Properties inProps) {
+  		this(0, inProps);
   	}
   	
-  	public CursorResultHandler(int resultsettype) {
-  		this.resultsettype = resultsettype;
+  	public CursorResultHandler(int resultsettype, Properties inProps) {
+      super(inProps);
+      this.resultsettype = resultsettype;
   	}
   	
     @Override
@@ -2113,9 +2116,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	          fetchRows = maxRows - rowOffset;
 	        }
 	      }
-	
+        Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
 	      // Execute the fetch and update this resultset.
-	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(), fetchRows, 0);
+	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
 	
 	      currentRow = 0;
 	
@@ -2163,7 +2166,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   	((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IDLE, StatementCancelState.IN_QUERY);
     
     // Execute the fetch and update this resultset.
-    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(resultsettype), fetchRows, (int)rowCount);
+    Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
+    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(resultsettype, inProps), fetchRows, (int)rowCount);
     
     // We should get a new queue
     if (queueRows != null) {
@@ -3088,19 +3092,22 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 
   public SQLWarning getWarnings() throws SQLException {
     checkClosed();
-    return warnings;
+    if (warningChain == null) {
+      return null;
+    }
+    return warningChain.getFirstWarning();
   }
 
   public void clearWarnings() throws SQLException {
     checkClosed();
-    warnings = null;
+    warningChain = null;
   }
 
-  protected void addWarning(SQLWarning warnings) {
-    if (this.warnings != null) {
-      this.warnings.setNextWarning(warnings);
+  protected void addWarning(SQLWarning warnings) throws RedshiftException {
+    if (this.warningChain != null) {
+      this.warningChain.appendWarning(warnings);
     } else {
-      this.warnings = warnings;
+      this.warningChain = new RedshiftWarningWrapper(warnings, ((RedshiftConnectionImpl) this.connection).getConnectionProperties());
     }
   }
 

@@ -715,7 +715,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     	if(RedshiftLogger.isEnable())    	
       	logger.log(LogLevel.DEBUG, "Issuing BEGIN before fastpath or copy call.");
 
-      ResultHandler handler = new ResultHandlerBase() {
+      ResultHandler handler = new ResultHandlerBase(properties) {
         private boolean sawBegin = false;
 
         @Override

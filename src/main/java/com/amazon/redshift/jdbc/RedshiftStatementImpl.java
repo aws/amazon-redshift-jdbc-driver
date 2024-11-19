@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.Properties;
 
 public class RedshiftStatementImpl implements Statement, BaseStatement {
   private static final String[] NO_RETURNING_COLUMNS = new String[0];
@@ -105,7 +106,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   /**
    * The warnings chain.
    */
-  protected volatile RedshiftWarningWrapper warnings = null;
+  protected volatile RedshiftWarningWrapper warningChain;
 
   /**
    * Maximum number of rows to return, 0 = unlimited.
@@ -205,6 +206,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     private Statement stmt;
     
     public StatementResultHandler(Statement stmt) {
+      super(((RedshiftConnectionImpl) connection).getConnectionProperties());
     	this.stmt = stmt;
     }
     
@@ -658,6 +660,10 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     timeout = millis;
   }
 
+  public Properties getConnectionProperties() {
+    return ((RedshiftConnectionImpl) connection).getConnectionProperties();
+  }
+  
   /**
    * <p>Either initializes new warning wrapper, or adds warning onto the chain.</p>
    *
@@ -669,18 +675,18 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
    */
   public void addWarning(SQLWarning warn) {
     //copy reference to avoid NPE from concurrent modification of this.warnings
-    final RedshiftWarningWrapper warnWrap = this.warnings;
+    final RedshiftWarningWrapper warnWrap = this.warningChain;
     if (warnWrap == null) {
-      this.warnings = new RedshiftWarningWrapper(warn);
+      this.warningChain = new RedshiftWarningWrapper(warn, ((RedshiftConnectionImpl) connection).getConnectionProperties());
     } else {
-      warnWrap.addWarning(warn);
+      warnWrap.appendWarning(warn);
     }
   }
 
   public SQLWarning getWarnings() throws SQLException {
     checkClosed();
     //copy reference to avoid NPE from concurrent modification of this.warnings
-    final RedshiftWarningWrapper warnWrap = this.warnings;
+    final RedshiftWarningWrapper warnWrap = this.warningChain;
     return warnWrap != null ? warnWrap.getFirstWarning() : null;
   }
 
@@ -712,7 +718,7 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
    * and verify if its {@link SQLWarning#getNextWarning()} value is holds any new value.</p>
    */
   public void clearWarnings() throws SQLException {
-    warnings = null;
+    warningChain = null;
   }
 
   public ResultSet getResultSet() throws SQLException {

@@ -10,6 +10,7 @@ import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.EscapeSyntaxCallMode;
+import com.amazon.redshift.jdbc.RedshiftWarningWrapper;
 import com.amazon.redshift.jdbc.PreferQueryMode;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
@@ -54,7 +55,7 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   // default value for server versions that don't report standard_conforming_strings
   private boolean standardConformingStrings = false;
 
-  private SQLWarning warnings;
+  private RedshiftWarningWrapper warningChain;
   private final ArrayList<RedshiftNotification> notifications = new ArrayList<RedshiftNotification>();
 
   private final LruCache<Object, CachedQuery> statementCache;
@@ -230,10 +231,10 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   }
 
   public synchronized void addWarning(SQLWarning newWarning) {
-    if (warnings == null) {
-      warnings = newWarning;
+    if (warningChain == null) {
+      warningChain = new RedshiftWarningWrapper(newWarning, properties);
     } else {
-      warnings.setNextWarning(newWarning);
+      warningChain.appendWarning(newWarning);
     }
   }
 
@@ -254,8 +255,11 @@ public abstract class QueryExecutorBase implements QueryExecutor {
 
   @Override
   public synchronized SQLWarning getWarnings() {
-    SQLWarning chain = warnings;
-    warnings = null;
+    if (warningChain == null) {
+      return null;
+    }
+    SQLWarning chain = warningChain.getFirstWarning();
+    warningChain = null;
     return chain;
   }
 
