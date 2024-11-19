@@ -1,6 +1,15 @@
 Changelog
 =========
 
+v2.1.0.31 (2024-11-19)
+----------------------
+- Added support for an adjustable maximum cap on the total memory allocated for warning notifications from the server, ensuring the driver does not exhaust available memory resources. [Ruei Yang Huang]
+- Updated the logic for retrieving database metadata through the getCatalogs(), getSchemas(), getTables(), getColumns() API methods [Tim Hsu]
+- Updated the SQL data type representation for timetz/timestamptz from Types.TIME/Types.TIMESTAMP to Types.TIME_WITH_TIMEZONE/Types.TIMESTAMP_WITH_TIMEZONE [Tim Hsu]
+- Fixed an issue in the Driver API's getTime() method, which previously disregarded the second fraction when attempting to retrieve timestamp/timestamptz data with a second fraction in Binary mode [Tim Hsu]
+- Fixed an issue in the Driver API's getTimestamp() method, which previously truncated the last three digits of the second fraction when attempting to retrieve time/timetz data with six digits of second fraction, affecting both Binary and Text modes [Tim Hsu]
+
+
 v2.1.0.30 (2024-07-31)
 ----------------------
 - Fixed a data type conversion issue for Redshift, where BigInt was mapped to Big Serial instead of int8 and Integer was mapped to Serial instead of int4, within the getColumnTypeName function. [Tim Hsu]
