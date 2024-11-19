@@ -168,6 +168,26 @@ public class TimestampUtils {
     return calCache;
   }
 
+  public int getNanos(byte[] bytes){
+    int nanos = 0;
+    if (!usesDouble) {
+      long time = ByteConverter.int8(bytes, 0);
+      if ((time % 1000) > 0) {
+        // There is a microsec fraction. Server sends precision upto Micro only.
+        nanos = (int)(time % 1000000)*1000;
+      }
+    }
+    return nanos;
+  }
+
+  public int getNanos(String s) throws SQLException {
+    if (s == null) {
+      return 0;
+    }
+    ParsedTimestamp ts = parseBackendTimestamp(s);
+    return ts.nanos;
+  }
+
   private static class ParsedTimestamp {
     boolean hasDate = false;
     int era = GregorianCalendar.AD;
@@ -625,8 +645,7 @@ public class TimestampUtils {
     }
 
     // 2) Truncate date part so in given time zone the date would be formatted as 01/01/1970
-    Time timeObj = convertToTime(timeMillis, useCal.getTimeZone());
-    return (ts.nanos > 0) ? new RedshiftTime(timeObj, ts.nanos) : timeObj;
+    return convertToTime(timeMillis, useCal.getTimeZone(), ts.nanos);
   }
 
   public synchronized Date toDate(Calendar cal, String s) throws SQLException {
@@ -1127,9 +1146,7 @@ public class TimestampUtils {
     // time
     millis = guessTimestamp(millis, tz);
 
-    timeObj = convertToTime(millis, tz); // Ensure date part is 1970-01-01
-    
-    return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
+    return convertToTime(millis, tz, nanos); // Ensure date part is 1970-01-01
   }
 
   //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
@@ -1554,9 +1571,10 @@ public class TimestampUtils {
    *
    * @param millis The timestamp from which to extract the time.
    * @param tz timezone to use.
+   * @param nanos nanosecond to use
    * @return The extracted time.
    */
-  public Time convertToTime(long millis, TimeZone tz) {
+  public Time convertToTime(long millis, TimeZone tz, int nanos) {
     if (tz == null) {
       tz = getDefaultTz();
     }
@@ -1573,7 +1591,8 @@ public class TimestampUtils {
       // offset
       millis -= offset;
       // Now we have brand-new 1970 1 Jan 15:40 GMT+02:00
-      return new Time(millis);
+      Time timeObj = new Time(millis);
+      return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
     }
     Calendar cal = calendarWithUserTz;
     cal.setTimeZone(tz);
@@ -1583,9 +1602,32 @@ public class TimestampUtils {
     cal.set(Calendar.MONTH, 0);
     cal.set(Calendar.DAY_OF_MONTH, 1);
 
-    return new Time(cal.getTimeInMillis());
+    Time timeObj = new Time(cal.getTimeInMillis());
+    return (nanos > 0) ? new RedshiftTime(timeObj, nanos) : timeObj;
   }
 
+  /**
+   * Build the timestamp object from millisecond. This method ensures the date part of output timestamp
+   * looks like 1970-01-01 in given timezone.
+   *
+   * @param millis time value
+   * @param hasTimeZone whether timezone should be added
+   * @param nanos nanosecond to use
+   * @param cal Calendar to use
+   * @return timestamp object
+   */
+  public Timestamp convertToTimestamp(long millis, boolean hasTimeZone, int nanos, java.util.Calendar cal){
+    Timestamp ts;
+
+    if(hasTimeZone) {
+      ts = new RedshiftTimestamp(millis, cal);
+    } else {
+      ts = new Timestamp(millis);
+    }
+
+    ts.setNanos(nanos);
+    return ts;
+  }
   /**
    * Returns the given time value as String matching what the current Redshift server would send
    * in text mode.

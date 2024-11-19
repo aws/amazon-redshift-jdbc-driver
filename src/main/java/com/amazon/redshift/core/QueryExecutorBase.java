@@ -557,5 +557,5 @@ public abstract class QueryExecutorBase implements QueryExecutor {
   public void closeStatementAndPortal() {
   	// Do nothing
   }
-  
+
 }

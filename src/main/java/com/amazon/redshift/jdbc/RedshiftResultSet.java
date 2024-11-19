@@ -237,8 +237,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       case Types.DATE:
         return getDate(columnIndex);
       case Types.TIME:
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      case Types.TIME_WITH_TIMEZONE:
+      //JCP! endif
         return getTime(columnIndex);
       case Types.TIMESTAMP:
+      //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      case Types.TIMESTAMP_WITH_TIMEZONE:
+      //JCP! endif
         return getTimestamp(columnIndex, null);
       case Types.BINARY:
       case Types.VARBINARY:
@@ -553,13 +559,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         // If backend provides TIMESTAMPTZ, we ignore "cal" as we know true instant value
         Timestamp timestamp = getTimestamp(i, cal);
         long timeMillis = timestamp.getTime();
-        if (oid == Oid.TIMESTAMPTZ) {
-          // time zone == UTC since BINARY "timestamp with time zone" is always sent in UTC
-          // So we truncate days
-          return new Time(timeMillis % TimeUnit.DAYS.toMillis(1));
-        }
-        // Here we just truncate date part
-        return connection.getTimestampUtils().convertToTime(timeMillis, tz);
+        return connection.getTimestampUtils().convertToTime(timeMillis, tz, timestamp.getNanos());
       } else {
         throw new RedshiftException(
             GT.tr("Cannot convert the column of type {0} to requested type {1}.",
@@ -621,8 +621,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         // JDBC spec says getTimestamp of Time and Date must be supported
         long millis;
         if (oid == Oid.TIME || oid == Oid.TIMETZ) {
-          millis = getTime(i, cal).getTime();
-          return new Timestamp(millis);
+          boolean hasTimeZone = oid == Oid.TIMETZ;
+          return connection.getTimestampUtils().convertToTimestamp(getTime(i, cal).getTime(), hasTimeZone, connection.getTimestampUtils().getNanos(thisRow.get(col)), cal);
         } else if (oid == Oid.DATE) {
           millis = getDate(i, cal).getTime();
           return new Timestamp(millis);
@@ -636,7 +636,8 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     String string = getString(i);
     if (oid == Oid.TIME || oid == Oid.TIMETZ) {
       // If server sends us a TIME, we ensure java counterpart has date of 1970-01-01
-      return new Timestamp(connection.getTimestampUtils().toTime(cal, string).getTime());
+      boolean hasTimeZone = oid == Oid.TIMETZ;
+      return connection.getTimestampUtils().convertToTimestamp(connection.getTimestampUtils().toTime(cal, string).getTime(), hasTimeZone, connection.getTimestampUtils().getNanos(string), cal);
     }
     return connection.getTimestampUtils().toTimestamp(cal, string);
   }
@@ -1821,6 +1822,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
             break;
 
           case Types.TIME:
+          //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+          case Types.TIME_WITH_TIMEZONE:
+          //JCP! endif
             rowBuffer.set(columnIndex, connection
                 .encodeString(
                     connection.getTimestampUtils().toString(
@@ -1828,6 +1832,9 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
             break;
 
           case Types.TIMESTAMP:
+          //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+          case Types.TIMESTAMP_WITH_TIMEZONE:
+          //JCP! endif
             if (isBinary(columnIndex + 1)
             		&& valueObject != null) {
 	            byte[] val = new byte[8];
@@ -3824,7 +3831,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
       if (sqlType == Types.DATE 
       		|| sqlType == Types.TIME
       		|| sqlType == Types.TIMESTAMP
+      		//JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+      		|| sqlType == Types.TIME_WITH_TIMEZONE
       		|| sqlType == Types.TIMESTAMP_WITH_TIMEZONE
+      		//JCP! endif
       		|| sqlType == Types.BINARY) {
         if (wasNull()) {
           return null;
@@ -3916,7 +3926,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
                 RedshiftState.INVALID_PARAMETER_VALUE);
       }
     } else if (type == Time.class) {
-      if (sqlType == Types.TIME) {
+      if (sqlType == Types.TIME
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+            || sqlType == Types.TIME_WITH_TIMEZONE
+            //JCP! endif
+      ) {
         return type.cast(getTime(columnIndex));
       } else {
         throw new RedshiftException(GT.tr("conversion to {0} from {1} not supported", type, getRSType(columnIndex)),
@@ -3965,7 +3979,11 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
                 RedshiftState.INVALID_PARAMETER_VALUE);
       }
     } else if (type == java.util.Date.class) {
-      if (sqlType == Types.TIMESTAMP) {
+      if (sqlType == Types.TIMESTAMP
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.2"
+              || sqlType == Types.TIMESTAMP_WITH_TIMEZONE
+              //JCP! endif
+      ) {
         Timestamp timestamp = getTimestamp(columnIndex);
         if (wasNull()) {
           return null;
