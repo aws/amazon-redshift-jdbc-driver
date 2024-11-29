@@ -356,6 +356,14 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
                 principal = entry.getValue();
             }
 
+            // Set STS Regional Endpoint from SAML Assertion
+            List<String> attributeValues = GetSAMLAttributeValues(xPath, doc,
+                    "https://redshift.amazon.com/SAML/Attributes/StsEndpointUrl");
+            if (!attributeValues.isEmpty() && m_stsEndpoint == null)
+            {
+                m_stsEndpoint = attributeValues.get(0);
+            }
+
             AssumeRoleWithSAMLRequest samlRequest = new AssumeRoleWithSAMLRequest();
             samlRequest.setSAMLAssertion(samlAssertion);
             samlRequest.setRoleArn(roleArn);
