@@ -238,13 +238,13 @@ public class MetadataAPIHelper {
 
   // Define SQL query for normal statement
   protected final String SQL_SHOWDATABASES = "SHOW DATABASES;";
-  protected final String SQL_SHOWDATABASESLIKE = "SHOW DATABASES LIKE ''{0}'';";
+  protected final String SQL_SHOWDATABASESLIKE = "SHOW DATABASES LIKE {0};";
   protected final String SQL_SHOWSCHEMAS = "SHOW SCHEMAS FROM DATABASE {0};";
-  protected final String SQL_SHOWSCHEMASLIKE = "SHOW SCHEMAS FROM DATABASE {0} LIKE ''{1}'';";
+  protected final String SQL_SHOWSCHEMASLIKE = "SHOW SCHEMAS FROM DATABASE {0} LIKE {1};";
   protected final String SQL_SHOWTABLES = "SHOW TABLES FROM SCHEMA {0}.{1};";
-  protected final String SQL_SHOWTABLESLIKE = "SHOW TABLES FROM SCHEMA {0}.{1} LIKE ''{2}'';";
+  protected final String SQL_SHOWTABLESLIKE = "SHOW TABLES FROM SCHEMA {0}.{1} LIKE {2};";
   protected final String SQL_SHOWCOLUMNS = "SHOW COLUMNS FROM TABLE {0}.{1}.{2};";
-  protected final String SQL_SHOWCOLUMNSLIKE = "SHOW COLUMNS FROM TABLE {0}.{1}.{2} LIKE ''{3}'';";
+  protected final String SQL_SHOWCOLUMNSLIKE = "SHOW COLUMNS FROM TABLE {0}.{1}.{2} LIKE {3};";
 
   // Define SQL query for prepare statement
   protected final String SQL_PREP_SHOWDATABASES = "SHOW DATABASES;";
@@ -253,6 +253,16 @@ public class MetadataAPIHelper {
   protected final String SQL_PREP_SHOWSCHEMASLIKE = "SHOW SCHEMAS FROM DATABASE $1 LIKE '$2';";
   protected final String SQL_PREP_SHOWTABLES = "SHOW TABLES FROM SCHEMA $1.$2 LIKE '$3';";
   protected final String SQL_PREP_SHOWCOLUMNS = "SHOW COLUMNS FROM TABLE $1.$2.$3 LIKE '$4';";
+
+  // Define SQL query and constant for QUOTE_IDENT()
+  protected final String prepare_QUOTE_IDENT = "select pg_catalog.QUOTE_IDENT($1);";
+  protected final int QUOTE_IDENT_parameter_index = 1;
+  protected final int QUOTE_IDENT_result_col_index = 1;
+
+  // Define SQL query and constant for QUOTE_LITERAL()
+  protected final String prepare_QUOTE_LITERAL = "select pg_catalog.QUOTE_LITERAL($1);";
+  protected final int QUOTE_LITERAL_parameter_index = 1;
+  protected final int QUOTE_LITERAL_result_col_index = 1;
 
   // Create statement for executing query
   protected Statement createMetaDataStatement() throws SQLException {
@@ -450,17 +460,5 @@ public class MetadataAPIHelper {
     else{
       return "NO";
     }
-  }
-
-  // Helper function to check if name was null/wildcard/empty string to determine
-  // if we want to specify LIKE in SHOW command
-  protected boolean checkNameIsNotPattern(String name){
-    return name == null || name.isEmpty() || name.equals("%");
-  }
-
-  // Helper function to check if name was exact name to determine
-  // if we can skip corresponding SHOW API call
-  protected boolean checkNameIsExactName(String name){
-    return name != null && !name.isEmpty() && !name.contains("%");
   }
 }

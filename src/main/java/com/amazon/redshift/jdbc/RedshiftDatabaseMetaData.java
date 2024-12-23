@@ -23,8 +23,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
@@ -32,8 +30,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	private final  int NO_SCHEMA_UNIVERSAL_QUERY = 0;
 	private final  int LOCAL_SCHEMA_QUERY = 1;
 	private final  int EXTERNAL_SCHEMA_QUERY = 2;
+
+    // The minimum show discovery version for the following metadata api was version 2:
+    // getCatalogs, getSchemas, getTables, getColumns
+    private final int MIN_SHOW_DISCOVERY_VERSION = 2;
 	
-  public RedshiftDatabaseMetaData(RedshiftConnectionImpl conn) {
+  public RedshiftDatabaseMetaData(RedshiftConnectionImpl conn) throws SQLException {
     this.connection = conn;
     this.metadataServerAPIHelper = new MetadataServerAPIHelper(conn);
     this.metadataAPIPostProcessing = new MetadataAPIPostProcessing(conn);
@@ -45,9 +47,6 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
   protected final MetadataServerAPIHelper metadataServerAPIHelper;
   protected final MetadataAPIPostProcessing metadataAPIPostProcessing;
-
-  // Check if the user input meet the requirement here(https://docs.aws.amazon.com/redshift/latest/dg/r_names.html) and also doesn't include any suspicious character
-  protected final Pattern WHITELIST = Pattern.compile("^[a-zA-Z0-9_%^*+?{},$]{0,126}$");
 
   private int nameDataLength = 0; // length for name datatype
   private int indexMaxKeys = 0; // maximum number of keys in an index.
@@ -1586,56 +1585,25 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   @Override
   public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern,
                              String[] types) throws SQLException {
-    String sql = null;
     ResultSet rs = null;
-    
+
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
 
-    // Since the prepare support for SHOW command is not ready yet, it's
-    // necessary to check the user input
-    catalog = sanitizeParameter(catalog);
-    schemaPattern = sanitizeParameter(schemaPattern);
-    tableNamePattern = sanitizeParameter(tableNamePattern);
 
-
-    if(supportSHOWDiscovery() >= 1){
+    if (supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
       if (RedshiftLogger.isEnable())
         connection.getLogger().logInfo("Support SHOW command. getTables with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}", catalog, schemaPattern, tableNamePattern);
 
-      // Parameter validation check
-      if(tableNamePattern == null){
-        throw new RedshiftException("Invalid arguments provided to RedshiftDatabaseMetadata.getTables(): The tableNamePattern parameter can't be null");
-      }
-
       // Return Empty ResultSet if catalog or schemaPattern or tableNamePattern is empty string
-      boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern);
+      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern);
+      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
+      boolean retEmpty = false;
 
       rs = metadataAPIPostProcessing.getTablesPostProcessing(metadataServerAPIHelper.getTablesServerAPI(catalog, schemaPattern, tableNamePattern, retEmpty, isSingleDatabaseMetaData()), retEmpty, types);
     }
-    else {
-      int schemaPatternType = Optional.ofNullable(connection.getOverrideSchemaPatternType()).orElse(getExtSchemaPatternMatch(schemaPattern));
-
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
-
-      if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
-        // Join on pg_catalog
-        sql = buildLocalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
-      } else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
-        if (isSingleDatabaseMetaData()) {
-          // svv_tables
-          sql = buildUniversalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
-        } else {
-          // svv_all_tables
-          sql = buildUniversalAllSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
-        }
-      } else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
-        // svv_external_tables
-        sql = buildExternalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
-      }
-
-      rs = createMetaDataStatement().executeQuery(sql);
+    else{
+      rs = getTablesLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, types);
     }
 
     if (RedshiftLogger.isEnable())
@@ -1643,6 +1611,33 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
     return rs;
   }
+
+  private ResultSet getTablesLegacyHardcodedQuery(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
+    String sql = null;
+    int schemaPatternType = Optional.ofNullable(connection.getOverrideSchemaPatternType()).orElse(getExtSchemaPatternMatch(schemaPattern));
+
+    if (RedshiftLogger.isEnable())
+      connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
+
+    if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
+      // Join on pg_catalog
+      sql = buildLocalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+    } else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
+      if (isSingleDatabaseMetaData()) {
+        // svv_tables
+        sql = buildUniversalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+      } else {
+        // svv_all_tables
+        sql = buildUniversalAllSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+      }
+    } else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
+      // svv_external_tables
+      sql = buildExternalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
+    }
+
+    return createMetaDataStatement().executeQuery(sql);
+  }
+
   private String buildLocalSchemaTablesQuery(String catalog,
   												String schemaPattern, 
   												String tableNamePattern,
@@ -1976,67 +1971,67 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-    String sql = null;
     ResultSet rs = null;
-    
+
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern);
 
-    // Since the prepare support for SHOW command is not ready yet, it's
-    // necessary to check the user input
-    catalog = sanitizeParameter(catalog);
-    schemaPattern = sanitizeParameter(schemaPattern);
-
-    if(supportSHOWDiscovery() >= 1){
+    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
       if (RedshiftLogger.isEnable())
         connection.getLogger().logInfo("Support SHOW command. getSchemas with catalog = {0}, schemaPattern = {1}", catalog, schemaPattern);
 
 
-      // Parameter validation check
       // Return Empty ResultSet if catalog or schemaPattern is empty string
-      boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern);
+      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern);
+      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
+      boolean retEmpty = false;
 
       rs = metadataAPIPostProcessing.getSchemasPostProcessing(metadataServerAPIHelper.getSchemasServerAPI(catalog, schemaPattern, retEmpty, isSingleDatabaseMetaData()), retEmpty);
-
     }
-    else {
-      if (isSingleDatabaseMetaData()) {
-        sql = "SELECT nspname AS TABLE_SCHEM, current_database() AS TABLE_CATALOG FROM pg_catalog.pg_namespace "
-                + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
-                + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
-                + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ";
-
-        sql += getCatalogFilterCondition(catalog);
-
-        if (schemaPattern != null && !schemaPattern.isEmpty()) {
-          sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
-        }
-        if (connection.getHideUnprivilegedObjects()) {
-          sql += " AND has_schema_privilege(nspname, 'USAGE, CREATE')";
-        }
-
-        sql += " ORDER BY TABLE_SCHEM";
-      } else {
-        sql = "SELECT CAST(schema_name AS varchar(124)) AS TABLE_SCHEM, "
-                + " CAST(database_name AS varchar(124)) AS TABLE_CATALOG "
-                + " FROM PG_CATALOG.SVV_ALL_SCHEMAS "
-                + " WHERE TRUE ";
-
-        sql += getCatalogFilterCondition(catalog, false, null);
-
-        if (schemaPattern != null && !schemaPattern.isEmpty()) {
-          sql += " AND schema_name LIKE " + escapeQuotes(schemaPattern);
-        }
-
-        sql += " ORDER BY TABLE_CATALOG, TABLE_SCHEM";
-      }
-
-      rs = createMetaDataStatement().executeQuery(sql);
+    else{
+      rs = getSchemasLegacyHardcodedQuery(catalog, schemaPattern);
     }
+
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(false, rs);
     
     return rs;
+  }
+
+  private ResultSet getSchemasLegacyHardcodedQuery(String catalog, String schemaPattern) throws SQLException {
+    String sql;
+    if (isSingleDatabaseMetaData()) {
+      sql = "SELECT nspname AS TABLE_SCHEM, current_database() AS TABLE_CATALOG FROM pg_catalog.pg_namespace "
+              + " WHERE nspname <> 'pg_toast' AND (nspname !~ '^pg_temp_' "
+              + " OR nspname = (pg_catalog.current_schemas(true))[1]) AND (nspname !~ '^pg_toast_temp_' "
+              + " OR nspname = replace((pg_catalog.current_schemas(true))[1], 'pg_temp_', 'pg_toast_temp_')) ";
+
+      sql += getCatalogFilterCondition(catalog);
+
+      if (schemaPattern != null && !schemaPattern.isEmpty()) {
+        sql += " AND nspname LIKE " + escapeQuotes(schemaPattern);
+      }
+      if (connection.getHideUnprivilegedObjects()) {
+        sql += " AND has_schema_privilege(nspname, 'USAGE, CREATE')";
+      }
+
+      sql += " ORDER BY TABLE_SCHEM";
+    } else {
+      sql = "SELECT CAST(schema_name AS varchar(124)) AS TABLE_SCHEM, "
+              + " CAST(database_name AS varchar(124)) AS TABLE_CATALOG "
+              + " FROM PG_CATALOG.SVV_ALL_SCHEMAS "
+              + " WHERE TRUE ";
+
+      sql += getCatalogFilterCondition(catalog, false, null);
+
+      if (schemaPattern != null && !schemaPattern.isEmpty()) {
+        sql += " AND schema_name LIKE " + escapeQuotes(schemaPattern);
+      }
+
+      sql += " ORDER BY TABLE_CATALOG, TABLE_SCHEM";
+    }
+
+    return createMetaDataStatement().executeQuery(sql);
   }
 
   /**
@@ -2045,40 +2040,45 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
    */
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true);
-  	
-  	String sql;
     ResultSet rs = null;
 
-    if(supportSHOWDiscovery() >= 1){
+    if (RedshiftLogger.isEnable())
+    	connection.getLogger().logFunction(true);
+
+    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
       if (RedshiftLogger.isEnable())
         connection.getLogger().logInfo("Support SHOW command. getCatalog");
 
       if (isSingleDatabaseMetaData()) {
-        return getCurrentDB();
+        rs = getCurrentDB();
       }
       else{
-        rs = metadataAPIPostProcessing.getCatalogsPostProcessing(metadataServerAPIHelper.getCatalogsServerAPI(null));
+        rs = metadataAPIPostProcessing.getCatalogsPostProcessing(metadataServerAPIHelper.getCatalogsServerAPI());
       }
     }
-    else{
-      if (isSingleDatabaseMetaData()) {
-        // Behavious same as before i.e. returns only single database.
-        return getCurrentDB();
-      } else {
-        // Datasharing/federation support enable, so get databases using the new view.
-        sql = "SELECT CAST(database_name AS varchar(124)) AS TABLE_CAT FROM PG_CATALOG.SVV_REDSHIFT_DATABASES ";
-      }
-      sql += " ORDER BY TABLE_CAT";
-
-      rs = createMetaDataStatement().executeQuery(sql);
+    else {
+      rs = getCatalogsLegacyHardcodedQuery();
     }
 
     if (RedshiftLogger.isEnable())
       connection.getLogger().logFunction(false, rs);
+
     return rs;
   	
+  }
+
+  private ResultSet getCatalogsLegacyHardcodedQuery() throws SQLException {
+    String sql;
+    if (isSingleDatabaseMetaData()) {
+      // Behavious same as before i.e. returns only single database.
+      return getCurrentDB();
+    } else {
+      // Datasharing/federation support enable, so get databases using the new view.
+      sql = "SELECT CAST(database_name AS varchar(124)) AS TABLE_CAT FROM PG_CATALOG.SVV_REDSHIFT_DATABASES ";
+    }
+    sql += " ORDER BY TABLE_CAT";
+
+    return createMetaDataStatement().executeQuery(sql);
   }
 
   @Override
@@ -2101,61 +2101,56 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
                               String columnNamePattern) throws SQLException 
   {
-    String sql = null;
     ResultSet rs = null;
 
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, columnNamePattern);
 
-    // Since the prepare support for SHOW command is not ready yet, it's
-    // necessary to check the user input
-    catalog = sanitizeParameter(catalog);
-    schemaPattern = sanitizeParameter(schemaPattern);
-    tableNamePattern = sanitizeParameter(tableNamePattern);
-    columnNamePattern = sanitizeParameter(columnNamePattern);
-
-    if(supportSHOWDiscovery() >= 1){
+    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
       if (RedshiftLogger.isEnable())
         connection.getLogger().logInfo("Support SHOW command. getColumns with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}, columnNamePattern = {3}", catalog, schemaPattern, tableNamePattern, columnNamePattern);
 
-      // Parameter validation check
-      if(tableNamePattern == null || columnNamePattern == null){
-        throw new RedshiftException("Invalid arguments provided to RedshiftDatabaseMetadata.getColumns(): The tableNamePattern or columnNamePattern parameter can't be null");
-      }
-
       // Return Empty ResultSet if catalog or schemaPattern or tableNamePattern or columnNamePattern is empty string
-      boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern) || isEmpty(columnNamePattern);
+      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern) || isEmpty(columnNamePattern);
+      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
+      boolean retEmpty = false;
 
       rs = metadataAPIPostProcessing.getColumnsPostProcessing(metadataServerAPIHelper.getColumnsServerAPI(catalog, schemaPattern, tableNamePattern, columnNamePattern, retEmpty, isSingleDatabaseMetaData()), retEmpty);
     }
-    else {
-      int schemaPatternType = getExtSchemaPatternMatch(schemaPattern);
-
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
-
-      if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
-        // Join on pg_catalog union with pg_late_binding_view
-        sql = buildLocalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
-      } else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
-        if (isSingleDatabaseMetaData()) {
-          // svv_columns
-          sql = buildUniversalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
-        } else {
-          // svv_all_columns
-          sql = buildUniversalAllSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
-        }
-      } else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
-        // svv_external_columns
-        sql = buildExternalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
-      }
-
-      rs = createMetaDataStatement().executeQuery(sql);
+    else{
+      rs = getColumnsLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
     }
+
     if (RedshiftLogger.isEnable())
     	connection.getLogger().logFunction(false, rs);
     
     return rs;
+  }
+
+  private ResultSet getColumnsLegacyHardcodedQuery(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
+    String sql = null;
+    int schemaPatternType = getExtSchemaPatternMatch(schemaPattern);
+
+    if (RedshiftLogger.isEnable())
+      connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
+
+    if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
+      // Join on pg_catalog union with pg_late_binding_view
+      sql = buildLocalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    } else if (schemaPatternType == NO_SCHEMA_UNIVERSAL_QUERY) {
+      if (isSingleDatabaseMetaData()) {
+        // svv_columns
+        sql = buildUniversalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+      } else {
+        // svv_all_columns
+        sql = buildUniversalAllSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+      }
+    } else if (schemaPatternType == EXTERNAL_SCHEMA_QUERY) {
+      // svv_external_columns
+      sql = buildExternalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    }
+
+    return createMetaDataStatement().executeQuery(sql);
   }
   
   private String buildLocalSchemaColumnsQuery(String catalog,
@@ -5499,13 +5494,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 		  if (isSingleDatabaseMetaData()
 		  		 || apiSupportedOnlyForConnectedDatabase) {
 		    	// Catalog parameter is not a pattern.
-		    	catalogFilter = " AND current_database() LIKE " + escapeOnlyQuotes(catalog);
+		    	catalogFilter = " AND current_database() = " + escapeOnlyQuotes(catalog);
 		    }
 		  else {
 		  	if (databaseColName == null)
 		  		databaseColName = "database_name";
 		  	
-	    	catalogFilter = " AND " + databaseColName + " LIKE " + escapeOnlyQuotes(catalog);
+	    	catalogFilter = " AND " + databaseColName + " = " + escapeOnlyQuotes(catalog);
 		  }
     }
     
@@ -5522,46 +5517,26 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
 
-  // Helper function to check if a string is not null but empty
-  public boolean isEmpty(String str) {
-    return str != null && str.isEmpty();
-  }
-
-  // Helper function to check if current connected cluster support latest SHOW DATABASES, SHOW SCHEMAS, SHOW TABLES and SHOW COLUMNS
+  // Helper function to check the show discovery version of current connected cluster
   public int supportSHOWDiscovery() throws RedshiftException{
     String show_version = connection.getQueryExecutor().getParameterStatus("show_discovery");
-    if (RedshiftLogger.isEnable())
-      connection.getLogger().logInfo("SHOW support version: {0}", show_version);
-    if(show_version != null && show_version.equals("2")){
-      // show discovery version 2 indicates the cluster has full support for all SHOW command
-      return 2;
-    }
-    else if(show_version != null && show_version.equals("1")){
-      /*
-      * show discovery version 1 indicates the cluster has full support for the following SHOW command:
-      * 1. SHOW DATABASES
-      * 2. SHOW SCHEMAS
-      * 3. SHOW TABLES
-      * 4. SHOW COLUMNS
-      * */
-      return 1;
-    }
-    else{
+
+    if(show_version == null){
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logInfo("SHOW support version: 0");
+      }
       return 0;
     }
-  }
-
-  public String sanitizeParameter(String input) throws RedshiftException{
-    if(input == null || input.equals("")){
-      //return input;
-      return "%"; // User should not pass null as name pattern and empty string as any parameters because they will be unsupported in the near future and are in violation with the spec
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("SHOW support version: {0}", show_version);
     }
-    Matcher matcher = WHITELIST.matcher(input);
-    if(matcher.matches()){
-      return input;
-    }
-    else{
-      throw new RedshiftException("Invalid parameter input");
+    try {
+      return Integer.parseInt(show_version);
+    } catch (NumberFormatException e) {
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logInfo("SHOW support version unclear: {0}, will fall back to version 0", show_version);
+      }
+      return 0;
     }
   }
 }

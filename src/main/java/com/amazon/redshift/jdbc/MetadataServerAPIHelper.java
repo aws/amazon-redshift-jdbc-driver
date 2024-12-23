@@ -11,11 +11,14 @@ import com.amazon.redshift.util.RedshiftException;
 import java.sql.*;
 import java.util.*;
 import java.text.MessageFormat;
+import com.amazonaws.util.StringUtils;
 
 public class MetadataServerAPIHelper extends MetadataAPIHelper{
 
-    public MetadataServerAPIHelper(RedshiftConnectionImpl connection) {
+    public MetadataServerAPIHelper(RedshiftConnectionImpl connection) throws SQLException {
         super(connection);
+        prst_QUOTE_LITERAL = createMetaDataPreparedStatement(prepare_QUOTE_LITERAL);
+        prst_QUOTE_IDENT = createMetaDataPreparedStatement(prepare_QUOTE_IDENT);
     }
 
     // TODO: Support for prepare not ready yet
@@ -25,22 +28,26 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
     PreparedStatement prst_SHOWSCHEMASLIKE = null;
     PreparedStatement prst_SHOWTABLES = null;
     PreparedStatement prst_SHOWCOLUMNS = null;*/
+    PreparedStatement prst_QUOTE_LITERAL = null;
+    PreparedStatement prst_QUOTE_IDENT = null;
 
-    protected ResultSet getCatalogsServerAPI(String catalog) throws SQLException {
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Calling Server API SHOW DATABASES");
 
-        String sql = null;
+    /**
+    * Returns a Result set for SHOW DATABASES
+    *
+    * @return the result set for SHOW DATABASES
+    */
+    protected ResultSet getCatalogsServerAPI() throws SQLException {
         ResultSet rs = null;
+        try {
+            if (RedshiftLogger.isEnable()){
+                connection.getLogger().logDebug("Calling Server API SHOW DATABASES");
+            }
 
-        if(catalog == null){
-            sql = SQL_SHOWDATABASES;
+            rs = runQuery(SQL_SHOWDATABASES);
+        } catch (SQLException e) {
+            throw new RedshiftException("MetadataServerAPIHelper.getCatalogsServerAPI: " + e.getMessage());
         }
-        else{
-            sql = MessageFormat.format(SQL_SHOWDATABASESLIKE, catalog);
-        }
-
-        rs = runQuery(sql);
 
         // TODO: Support for prepare not ready yet
         /*try {
@@ -63,17 +70,20 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
             throw new RedshiftException("MetadataServerAPIHelper.getCatalogsServerAPI prepare statement error: " + e.getMessage());
         }*/
 
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Successfully executed SHOW DATABASE for catalog = {0}", catalog);
-
         return rs;
     }
 
+    /**
+     * Returns a list of intermediate result set for SHOW SCHEMAS
+     *
+     * @param catalog a catalog name; must match the catalog name as it is stored in the database; null means that the catalog name should not be used to narrow the search
+     * @param schemaPattern a schema name pattern; must match the schema name as it is stored in the database; null means that the schema name should not be used to narrow the search
+     * @param retEmpty boolean to determine if we want to directly return empty result without calling any SHOW command
+     * @param isSingleDatabaseMetaData boolean to determine if we want to retrieve metadata information only from current connected database
+     * @return the list of intermediate result set for SHOW SCHEMAS
+     */
     protected List<ResultSet> getSchemasServerAPI(String catalog, String schemaPattern,
-                                            boolean retEmpty, boolean isSingleDatabaseMetaData) throws SQLException {
-
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Calling Server API SHOW SCHEMAS");
+                                                  boolean retEmpty, boolean isSingleDatabaseMetaData) throws SQLException {
 
         List<ResultSet> intermediateRs = new ArrayList<>();
 
@@ -93,41 +103,36 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
             throw new RedshiftException("MetadataServerAPIHelper.getSchemasServerAPI.createMetaDataPreparedStatement" + e.getMessage());
         }*/
 
-
         if(!retEmpty){
-            List<String> catalogList;
-
             try {
                 // Get Catalog list
-                if(checkNameIsExactName(catalog)){
-                    catalogList = new ArrayList<>();
-                    catalogList.add(catalog);
+                List<String> catalogList = callGetCatalogList(catalog, isSingleDatabaseMetaData);
+
+                for (String curCatalog : catalogList) {
+                    intermediateRs.add(callShowSchemas(curCatalog, schemaPattern));
                 }
-                else{
-                    catalogList = getCatalogList(catalog, isSingleDatabaseMetaData);
-                }
-
-            } catch(Exception e){
-                throw new RedshiftException("MetadataServerAPIHelper.getSchemasServerAPI.getCatalogList " + e.getMessage());
+            } catch (SQLException e) {
+                throw new RedshiftException("MetadataServerAPIHelper.getSchemasServerAPI: " + e.getMessage());
             }
-
-            if(catalogList == null){
-                throw new RedshiftException("Error when creating catalogList ... ");
-            }
-
-            for (String curCatalog : catalogList) {
-                intermediateRs.add(callShowSchemas(curCatalog, schemaPattern));
-            }
-            if (RedshiftLogger.isEnable())
-                connection.getLogger().logDebug("Successfully executed SHOW SCHEMAS for catalog = {0}, schemaPattern = {1}", catalog, schemaPattern);
+        }
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Return intermediate result set for catalog: {0}, schemaPattern: {1}", catalog, schemaPattern);
         }
         return intermediateRs;
     }
 
+    /**
+     * Returns a list of intermediate result set for SHOW TABLES
+     *
+     * @param catalog a catalog name; must match the catalog name as it is stored in the database; null means that the catalog name should not be used to narrow the search
+     * @param schemaPattern a schema name pattern; must match the schema name as it is stored in the database; null means that the schema name should not be used to narrow the search
+     * @param tableNamePattern a table name pattern; must match the table name as it is stored in the database
+     * @param retEmpty boolean to determine if we want to directly return empty result without calling any SHOW command
+     * @param isSingleDatabaseMetaData boolean to determine if we want to retrieve metadata information only from current connected database
+     * @return the list of intermediate result set for SHOW TABLES
+     */
     protected List<ResultSet> getTablesServerAPI(String catalog, String schemaPattern, String tableNamePattern,
-                                         boolean retEmpty, boolean isSingleDatabaseMetaData) throws SQLException {
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Calling Server API SHOW TABLES");
+                                                 boolean retEmpty, boolean isSingleDatabaseMetaData) throws SQLException {
 
         List<ResultSet> intermediateRs = new ArrayList<>();
 
@@ -144,51 +149,42 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
         }*/
 
         if(!retEmpty) {
-            List<String> catalogList;
-
             try {
                 // Get Catalog list
-                if(checkNameIsExactName(catalog)){
-                    catalogList = new ArrayList<>();
-                    catalogList.add(catalog);
-                }
-                else{
-                    catalogList = getCatalogList(catalog, isSingleDatabaseMetaData);
-                }
+                List<String> catalogList = callGetCatalogList(catalog, isSingleDatabaseMetaData);
 
-            } catch (Exception e) {
-                throw new RedshiftException("MetadataServerAPIHelper.getTablesServerAPI.getCatalogList " + e.getMessage());
-            }
-
-            if(catalogList == null){
-                throw new RedshiftException("Error when creating catalogList ... ");
-            }
-
-            for(String curCat : catalogList) {
-                // Skip SHOW SCHEMAS API call if catalog name and schema name is exact name instead of pattern
-                // TODO: the logic is confusing. Need  a follow up to address this
-                if (checkNameIsExactName(schemaPattern) && catalogList.size() == 1) {
-                    intermediateRs.add(callShowTables(curCat, schemaPattern, tableNamePattern));
-                } else {
+                for(String curCat : catalogList) {
                     ResultSet schemasRs = callShowSchemas(curCat, schemaPattern);
                     while (schemasRs.next()) {
                         intermediateRs.add(callShowTables(curCat, schemasRs.getString(SHOW_SCHEMAS_SCHEMA_NAME), tableNamePattern));
                     }
+
                 }
+            } catch (SQLException e) {
+                throw new RedshiftException("MetadataServerAPIHelper.getTablesServerAPI: " + e.getMessage());
             }
-            if (RedshiftLogger.isEnable()) {
-                connection.getLogger().logDebug("Successfully executed SHOW TABLES for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}",
-                        catalog, schemaPattern, tableNamePattern);
-            }
+        }
+        if (RedshiftLogger.isEnable()) {
+            connection.getLogger().logDebug("Return intermediate result set for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}",
+                    catalog, schemaPattern, tableNamePattern);
         }
         return intermediateRs;
     }
 
+    /**
+     * Returns a list of intermediate result set for SHOW COLUMNS
+     *
+     * @param catalog a catalog name; must match the catalog name as it is stored in the database; null means that the catalog name should not be used to narrow the search
+     * @param schemaPattern a schema name pattern; must match the schema name as it is stored in the database; null means that the schema name should not be used to narrow the search
+     * @param tableNamePattern a table name pattern; must match the table name as it is stored in the database
+     * @param columnNamePattern a column name pattern; must match the column name as it is stored in the database
+     * @param retEmpty boolean to determine if we want to directly return empty result without calling any SHOW command
+     * @param isSingleDatabaseMetaData boolean to determine if we want to retrieve metadata information only from current connected database
+     * @return the list of intermediate result set for SHOW COLUMNS
+     */
     protected List<ResultSet> getColumnsServerAPI(String catalog, String schemaPattern, String tableNamePattern,
                                                   String columnNamePattern, boolean retEmpty,
                                                   boolean isSingleDatabaseMetaData) throws SQLException {
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Calling Server API SHOW COLUMNS");
 
         List<ResultSet> intermediateRs = new ArrayList<>();
 
@@ -208,152 +204,262 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
         }*/
 
         if(!retEmpty) {
-            List<String> catalogList;
-
             try {
                 // Get Catalog list
-                if(checkNameIsExactName(catalog)){
-                    catalogList = new ArrayList<>();
-                    catalogList.add(catalog);
-                }
-                else{
-                    catalogList = getCatalogList(catalog, isSingleDatabaseMetaData);
-                }
+                List<String> catalogList = callGetCatalogList(catalog, isSingleDatabaseMetaData);
 
-            } catch(Exception e){
-                throw new RedshiftException("MetadataServerAPIHelper.getColumnsServerAPI.getCatalogList " + e.getMessage());
-            }
-
-            if(catalogList == null){
-                throw new RedshiftException("Error when creating catalogList ... ");
-            }
-
-            for(String curCat : catalogList){
-                // Skip SHOW SCHEMAS API call if catalog name and schema name is exact name instead of pattern
-                // TODO: the logic is confusing. Need  a follow up to address this
-                if (checkNameIsExactName(schemaPattern) && catalogList.size() == 1) {
-                    // Skip SHOW TABLES API call if table name is not a pattern
-                    if (checkNameIsExactName(tableNamePattern)) {
-                        intermediateRs.add(callShowColumns(curCat, schemaPattern, tableNamePattern, columnNamePattern));
-                    }
-                    else{
-                        ResultSet tablesRs = callShowTables(curCat, schemaPattern, tableNamePattern);
-                        while (tablesRs.next()) {
-                            intermediateRs.add(callShowColumns(curCat, schemaPattern, tablesRs.getString(SHOW_TABLES_TABLE_NAME), columnNamePattern));
-                        }
-                    }
-                }
-                else{
+                for(String curCat : catalogList){
                     ResultSet schemasRs = callShowSchemas(curCat, schemaPattern);
                     while (schemasRs.next()) {
-                        // Skip SHOW TABLES API call if table name is not a pattern
-                        if (checkNameIsExactName(tableNamePattern)) {
-                            intermediateRs.add(callShowColumns(curCat, schemasRs.getString(SHOW_SCHEMAS_SCHEMA_NAME), tableNamePattern, columnNamePattern));
+                        String curSchema = schemasRs.getString(SHOW_SCHEMAS_SCHEMA_NAME);
+                        ResultSet tablesRs = callShowTables(curCat, curSchema, tableNamePattern);
+                        while (tablesRs.next()) {
+                            intermediateRs.add(callShowColumns(curCat, curSchema, tablesRs.getString(SHOW_TABLES_TABLE_NAME), columnNamePattern));
                         }
-                        else{
-                            ResultSet tablesRs = callShowTables(curCat, schemasRs.getString(SHOW_SCHEMAS_SCHEMA_NAME), tableNamePattern);
-                            while (tablesRs.next()) {
-                                intermediateRs.add(callShowColumns(curCat, schemasRs.getString(SHOW_SCHEMAS_SCHEMA_NAME), tablesRs.getString(SHOW_TABLES_TABLE_NAME), columnNamePattern));
-                            }
-                        }
-
                     }
                 }
+            } catch (SQLException e) {
+                throw new RedshiftException("MetadataServerAPIHelper.getColumnsServerAPI: " + e.getMessage());
             }
-
-            if (RedshiftLogger.isEnable()){
-                connection.getLogger().logDebug("Successfully executed SHOW COLUMNS for catalog = {0}, schema = {1}, tableName = {2}, columnNamePattern = {3}",
-                        catalog, schemaPattern, tableNamePattern, columnNamePattern);
-            }
+        }
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Return intermediate result set for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}, columnNamePattern = {3}",
+                    catalog, schemaPattern, tableNamePattern, columnNamePattern);
         }
         return intermediateRs;
     }
 
-    protected List<String> getCatalogList(String catalog, boolean isSingleDatabaseMetaData) throws SQLException {
-        if (RedshiftLogger.isEnable())
-            connection.getLogger().logDebug("Create catalog list for catalog = {0}", catalog);
-
-        String curConnectedCatalog = connection.getCatalog();
-        List<String> catalogList = new ArrayList<>();
-        ResultSet catalogRs = getCatalogsServerAPI(catalog);
-        while (catalogRs.next()) {
-            if(isSingleDatabaseMetaData){
-                String curCatalog = catalogRs.getString(SHOW_DATABASES_DATABASE_NAME);
-                if(curCatalog.equals(curConnectedCatalog)){
-                    catalogList.add(curCatalog);
-                }
+    /**
+     * Helper function to get a list of catalog name
+     *
+     * @param catalog a catalog name; must match the catalog name as it is stored in the database; null means that the catalog name should not be used to narrow the search
+     * @param isSingleDatabaseMetaData boolean to determine if we want to retrieve metadata information only from current connected database
+     * @return the list of catalog name
+     */
+    protected List<String> callGetCatalogList(String catalog, boolean isSingleDatabaseMetaData) throws SQLException {
+        List<String> catalogList = null;
+        try {
+            if(StringUtils.isNullOrEmpty(catalog)){
+                catalogList = getCatalogList(isSingleDatabaseMetaData);
             }
             else{
-                catalogList.add(catalogRs.getString(SHOW_DATABASES_DATABASE_NAME));
+                catalogList = new ArrayList<>();
+                if (isSingleDatabaseMetaData) {
+                    if (catalog.equals(connection.getCatalog())) {
+                        catalogList.add(catalog);
+                    }
+                } else {
+                    catalogList.add(catalog);
+                }
             }
+        } catch (Exception e) {
+            throw new RedshiftException("callGetCatalogList: " + e.getMessage());
+        }
+
+        if(catalogList == null){
+            throw new RedshiftException("Error when getting catalogList ... ");
+        }
+
+        return catalogList;
+    }
+
+    /**
+     * Helper function to retrieve a list of catalog name from SHOW DATABASES
+     *
+     * @param isSingleDatabaseMetaData boolean to determine if we want to retrieve metadata information only from current connected database
+     * @return the list of catalog name from SHOW DATABASES
+     */
+    protected List<String> getCatalogList(boolean isSingleDatabaseMetaData) throws SQLException {
+        List<String> catalogList = null;
+        try {
+            String curConnectedCatalog = connection.getCatalog();
+            catalogList = new ArrayList<>();
+            ResultSet catalogRs = getCatalogsServerAPI();
+            while (catalogRs.next()) {
+                if (isSingleDatabaseMetaData) {
+                    String curCatalog = catalogRs.getString(SHOW_DATABASES_DATABASE_NAME);
+                    if (curCatalog.equals(curConnectedCatalog)) {
+                        catalogList.add(curCatalog);
+                    }
+                } else {
+                    catalogList.add(catalogRs.getString(SHOW_DATABASES_DATABASE_NAME));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RedshiftException("getCatalogList: " + e.getMessage());
         }
         return catalogList;
     }
 
+    /**
+     * Helper function to determine whether calling SHOW SCHEMAS with LIKE or not
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name pattern; must match the schema name as it is stored in the database; null means that the schema name should not be used to narrow the search
+     * @return result set for SHOW SCHEMAS
+     */
     protected ResultSet callShowSchemas(String catalog, String schema) throws SQLException {
-        String sqlSCHEMA;
-        if (checkNameIsNotPattern(schema)) {
-            sqlSCHEMA = MessageFormat.format(SQL_SHOWSCHEMAS, catalog);
-        } else {
-            sqlSCHEMA = MessageFormat.format(SQL_SHOWSCHEMASLIKE, catalog, schema);
+        if(StringUtils.isNullOrEmpty(schema)){
+            return callShowSchemasWithOUTLike(catalog);
         }
-        return runQuery(sqlSCHEMA);
-
-        // TODO: Support for prepare not ready yet
-        /*try{
-            prst_SHOWSCHEMASLIKE.setObject(1,curCat);
-            prst_SHOWSCHEMASLIKE.setObject(2,schemaPattern);
-            prst_SHOWSCHEMASLIKE.execute();
-            return prst_SHOWSCHEMASLIKE.getResultSet();
-        } catch (SQLException e){
-            throw new RedshiftException("MetadataServerAPIHelper.getTablesServerAPI prepare statement error: " + e.getMessage());
-        }*/
+        else{
+            return callShowSchemasWithLike(catalog, schema);
+        }
     }
 
+    /**
+     * Helper function to call SHOW SCHEMAS
+     *
+     * @param catalog a catalog name (can't be null)
+     * @return result set for SHOW SCHEMAS
+     */
+    protected ResultSet callShowSchemasWithOUTLike(String catalog) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW SCHEMAS on catalog: {0}", catalog);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWSCHEMAS, callQuoteIdent(catalog)));
+    }
+
+    /**
+     * Helper function to call SHOW SCHEMAS with LIKE
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name pattern (can't be null)
+     * @return result set for SHOW SCHEMAS with LIKE
+     */
+    protected ResultSet callShowSchemasWithLike(String catalog, String schema) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW SCHEMAS on catalog: {0}, schemaPattern: {1}", catalog, schema);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWSCHEMASLIKE, callQuoteIdent(catalog), callQuoteLiteral(schema)));
+    }
+
+    /**
+     * Helper function to determine whether calling SHOW TABLES with LIKE or not
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @param table a table name pattern; must match the table name as it is stored in the database
+     * @return result set for SHOW TABLES
+     */
     protected ResultSet callShowTables(String catalog, String schema, String table) throws SQLException {
-        String sqlTABLE;
-        if(checkNameIsNotPattern(table)){
-            sqlTABLE = MessageFormat.format(SQL_SHOWTABLES, catalog, schema);
+        if(StringUtils.isNullOrEmpty(table)){
+            return callShowTablesWithOUTLike(catalog, schema);
         }
         else{
-            sqlTABLE = MessageFormat.format(SQL_SHOWTABLESLIKE, catalog, schema, table);
+            return callShowTablesWithLike(catalog, schema, table);
         }
-        return runQuery(sqlTABLE);
-
-        //TODO: Support for prepare not ready yet
-        /*try {
-            prst_SHOWTABLES.setObject(1,curCat);
-            prst_SHOWTABLES.setObject(2,curSchema);
-            prst_SHOWTABLES.setObject(3,tableNamePattern);
-            prst_SHOWTABLES.execute();
-
-            return prst_SHOWTABLES.getResultSet();
-        } catch (SQLException e){
-            throw new RedshiftException("MetadataServerAPIHelper.getTablesServerAPI prepare statement error: " + e.getMessage());
-        }*/
     }
 
+    /**
+     * Helper function to call SHOW TABLES
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @return result set for SHOW TABLES
+     */
+    protected ResultSet callShowTablesWithOUTLike(String catalog, String schema) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW TABLES on catalog: {0}, schema: {1}", catalog, schema);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWTABLES, callQuoteIdent(catalog), callQuoteIdent(schema)));
+    }
+
+    /**
+     * Helper function to call SHOW TABLES with LIKE
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @param table a table name pattern (can't be null)
+     * @return result set for SHOW TABLES with LIKE
+     */
+    protected ResultSet callShowTablesWithLike(String catalog, String schema, String table) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW TABLES on catalog: {0}, schema: {1}, tablePattern: {2}", catalog, schema, table);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWTABLESLIKE, callQuoteIdent(catalog), callQuoteIdent(schema), callQuoteLiteral(table)));
+    }
+
+    /**
+     * Helper function to determine whether calling SHOW COLUMNS with LIKE or not
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @param table a table name (can't be null or pattern)
+     * @param column a column name pattern; must match the column name as it is stored in the database
+     * @return result set for SHOW COLUMNS
+     */
     protected ResultSet callShowColumns(String catalog, String schema, String table, String column) throws SQLException {
-        String sqlCOLUMN;
-        if(checkNameIsNotPattern(column)){
-            sqlCOLUMN = MessageFormat.format(SQL_SHOWCOLUMNS, catalog, schema, table);
+        if(StringUtils.isNullOrEmpty(column)){
+            return callShowColumnsWithOUTLike(catalog, schema, table);
         }
         else{
-            sqlCOLUMN = MessageFormat.format(SQL_SHOWCOLUMNSLIKE, catalog, schema, table, column);
+            return callShowColumnsWithLike(catalog, schema, table, column);
         }
-        return runQuery(sqlCOLUMN);
+    }
 
-        //TODO: Support for prepare not ready yet
-        /*try {
-            prst_SHOWCOLUMNS.setObject(1,curCat);
-            prst_SHOWCOLUMNS.setObject(2,curSchema);
-            prst_SHOWCOLUMNS.setObject(3,tableNamePattern);
-            prst_SHOWCOLUMNS.setObject(4,columnNamePattern);
-            prst_SHOWCOLUMNS.execute();
+    /**
+     * Helper function to call SHOW COLUMNS
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @param table a table name (can't be null or pattern)
+     * @return result set for SHOW COLUMNS
+     */
+    protected ResultSet callShowColumnsWithOUTLike(String catalog, String schema, String table) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW COLUMNS on catalog: {0}, schema: {1}, table: {2}", catalog, schema, table);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWCOLUMNS, callQuoteIdent(catalog), callQuoteIdent(schema), callQuoteIdent(table)));
+    }
 
-            return prst_SHOWCOLUMNS.getResultSet();
-        } catch (SQLException e){
-            throw new RedshiftException("MetadataServerAPIHelper.getTablesServerAPI prepare statement error: " + e.getMessage());
-        }*/
+    /**
+     * Helper function to call SHOW COLUMNS with LIKE
+     *
+     * @param catalog a catalog name (can't be null)
+     * @param schema a schema name (can't be null or pattern)
+     * @param table a table name pattern (can't be null or pattern)
+     * @param column a column name pattern (can't be null)
+     * @return result set for SHOW COLUMNS with LIKE
+     */
+    protected ResultSet callShowColumnsWithLike(String catalog, String schema, String table, String column) throws SQLException {
+        if (RedshiftLogger.isEnable()){
+            connection.getLogger().logDebug("Calling Server API SHOW COLUMNS on catalog: {0}, schema: {1}, table: {2}, columnPattern: {3}", catalog, schema, table, column);
+        }
+        return runQuery(MessageFormat.format(SQL_SHOWCOLUMNSLIKE, callQuoteIdent(catalog), callQuoteIdent(schema), callQuoteIdent(table), callQuoteLiteral(column)));
+    }
+
+    /**
+     * Helper function to call QUOTE_LITERAL and return result as string
+     *
+     * @param input the input string we want to parse into QUOTE_LITERAL
+     * @return the input string with proper quoting
+     */
+    protected String callQuoteLiteral(String input) throws SQLException {
+        prst_QUOTE_LITERAL.setString(QUOTE_LITERAL_parameter_index,input);
+        prst_QUOTE_LITERAL.execute();
+        ResultSet rs = prst_QUOTE_LITERAL.getResultSet();
+        if(rs == null){
+            throw new RedshiftException("callQuoteLiteral: Fail to quote literal: " + input);
+        }
+        rs.next();
+        return rs.getString(QUOTE_LITERAL_result_col_index);
+    }
+
+    /**
+     * Helper function to call QUOTE_IDENT and return result as string
+     *
+     * @param input the input string we want to parse into QUOTE_IDENT
+     * @return the input string with proper quoting
+     */
+    protected String callQuoteIdent(String input) throws SQLException {
+        prst_QUOTE_IDENT.setString(QUOTE_IDENT_parameter_index,input);
+        prst_QUOTE_IDENT.execute();
+        ResultSet rs = prst_QUOTE_IDENT.getResultSet();
+        if(rs == null){
+            throw new RedshiftException("callQuoteIdent: Fail to quote identifier: " + input);
+        }
+        rs.next();
+        return rs.getString(QUOTE_IDENT_result_col_index);
     }
 }
