@@ -14,8 +14,6 @@ The driver supports JDBC 4.2 specification.
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42)
 [![javadoc](https://javadoc.io/badge2/com.amazon.redshift/redshift-jdbc42/javadoc.svg)](https://javadoc.io/doc/com.amazon.redshift/redshift-jdbc42)
 
-⚠️ JDBC Driver version 2.1.0.31 has been recalled. JDBC Driver version 2.1.0.30 is recommended for use.
-
 ## Build Driver
 ### Prerequisites
 * JDK8
@@ -36,8 +34,8 @@ See [Amazon Redshift JDBC Driver Installation and Configuration Guide](https://d
 
 Here are download links for the latest release:
 
-* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.30/redshift-jdbc42-2.1.0.30.jar
-* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.30/redshift-jdbc42-2.1.0.30.zip
+* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.32/redshift-jdbc42-2.1.0.32.jar
+* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.32/redshift-jdbc42-2.1.0.32.zip
 
 It also available on Maven Central, groupId: com.amazon.redshift and artifactId: redshift-jdbc42.
 
