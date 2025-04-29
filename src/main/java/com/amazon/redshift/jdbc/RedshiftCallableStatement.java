@@ -231,7 +231,7 @@ public class RedshiftCallableStatement extends RedshiftPreparedStatement impleme
     if (callResult[parameterIndex - 1] == null) {
       return 0;
     }
-    return ((Integer) callResult[parameterIndex - 1]).shortValue();
+    return (Short) callResult[parameterIndex - 1];
   }
 
   public int getInt(int parameterIndex) throws SQLException {

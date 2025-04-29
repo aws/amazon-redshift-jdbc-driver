@@ -215,8 +215,10 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
         return getBoolean(columnIndex);
       case Types.SQLXML:
         return getSQLXML(columnIndex);
-      case Types.TINYINT:
       case Types.SMALLINT:
+        return getShort(columnIndex);
+      case Types.TINYINT:
+        return getByte(columnIndex);
       case Types.INTEGER:
         return getInt(columnIndex);
       case Types.BIGINT:
@@ -3646,15 +3648,22 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
    */
   private long readLongValue(byte[] bytes, int oid, long minVal, long maxVal, String targetType, int columnIndex)
       throws RedshiftException {
-    long val;
+    long val = 0;
     // currently implemented binary encoded fields
     switch (oid) {
       case Oid.INT2:
         val = ByteConverter.int2(bytes, 0);
         break;
       case Oid.INT4:
-      case Oid.OID:
         val = ByteConverter.int4(bytes, 0);
+        break;
+      case Oid.OID:
+        if(bytes.length == 4){
+          val = ByteConverter.int4(bytes, 0);
+        }
+        else if(bytes.length == 8){
+          val = ByteConverter.int8(bytes, 0);
+        }
         break;
       case Oid.INT8:
       case Oid.XIDOID:
