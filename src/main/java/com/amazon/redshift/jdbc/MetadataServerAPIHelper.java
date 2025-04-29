@@ -11,7 +11,7 @@ import com.amazon.redshift.util.RedshiftException;
 import java.sql.*;
 import java.util.*;
 import java.text.MessageFormat;
-import com.amazonaws.util.StringUtils;
+import com.amazon.redshift.core.Utils;
 
 public class MetadataServerAPIHelper extends MetadataAPIHelper{
 
@@ -239,7 +239,7 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
     protected List<String> callGetCatalogList(String catalog, boolean isSingleDatabaseMetaData) throws SQLException {
         List<String> catalogList = null;
         try {
-            if(StringUtils.isNullOrEmpty(catalog)){
+            if(Utils.isNullOrEmpty(catalog)){
                 catalogList = getCatalogList(isSingleDatabaseMetaData);
             }
             else{
@@ -299,7 +299,7 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
      * @return result set for SHOW SCHEMAS
      */
     protected ResultSet callShowSchemas(String catalog, String schema) throws SQLException {
-        if(StringUtils.isNullOrEmpty(schema)){
+        if(Utils.isNullOrEmpty(schema)){
             return callShowSchemasWithOUTLike(catalog);
         }
         else{
@@ -343,7 +343,7 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
      * @return result set for SHOW TABLES
      */
     protected ResultSet callShowTables(String catalog, String schema, String table) throws SQLException {
-        if(StringUtils.isNullOrEmpty(table)){
+        if(Utils.isNullOrEmpty(table)){
             return callShowTablesWithOUTLike(catalog, schema);
         }
         else{
@@ -390,7 +390,7 @@ public class MetadataServerAPIHelper extends MetadataAPIHelper{
      * @return result set for SHOW COLUMNS
      */
     protected ResultSet callShowColumns(String catalog, String schema, String table, String column) throws SQLException {
-        if(StringUtils.isNullOrEmpty(column)){
+        if(Utils.isNullOrEmpty(column)){
             return callShowColumnsWithOUTLike(catalog, schema, table);
         }
         else{

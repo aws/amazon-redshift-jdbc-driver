@@ -208,4 +208,8 @@ public class Utils {
   public static int parseServerVersionStr(String serverVersion) throws NumberFormatException {
     return ServerVersion.parseServerVersionStr(serverVersion);
   }
+
+  public static boolean isNullOrEmpty(String value) {
+    return value == null || value.isEmpty();
+  }
 }
