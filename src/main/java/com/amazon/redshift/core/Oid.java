@@ -181,6 +181,8 @@ public class Oid {
   public static final int SQL_IDENTIFIER_ARRAY = 0; // UNSPECIFIED
   public static final int TIME_STAMP = 17336;
   public static final int TIME_STAMP_ARRAY = 0; // UNSPECIFIED
+  public static final int INFORMATION_SCHEMA_CATALOG_NAME = 17347;
+  public static final int INFORMATION_SCHEMA_CATALOG_NAME_ARRAY = 0; // UNSPECIFIED
 
   // Keep this as last field to log correctly. As we have many UNSPECIFIED values.
   public static final int UNSPECIFIED = 0;
