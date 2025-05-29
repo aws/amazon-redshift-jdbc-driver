@@ -1,6 +1,16 @@
 Changelog
 =========
 
+v2.1.0.33 (2025-05-29)
+----------------------
+- Removed aws-java-sdk dependency from metadata APIs
+- Improved Redshift OID data type handling to support variable byte lengths.
+- Corrected SMALLINT reference type cast to return a Java Short instead of Integer 
+- Corrected TINYINT reference type cast to return a Java Byte instead of Integer  
+- Added memory allocation limits for multi-SQL statement execution to prevent Out of Memory (OOM) errors when processing large batched queries
+- Added Object Identifier (OID) mapping for information_schema_catalog_name type
+
+
 v2.1.0.32 (2024-12-23)
 ----------------------
 - Added support for an adjustable maximum cap on the total memory allocated for warning notifications from the server, ensuring the driver does not exhaust available memory resources. [Ruei Yang Huang]
