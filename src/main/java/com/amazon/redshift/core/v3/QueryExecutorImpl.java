@@ -7,9 +7,7 @@
 package com.amazon.redshift.core.v3;
 
 import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.copy.CopyIn;
 import com.amazon.redshift.copy.CopyOperation;
-import com.amazon.redshift.copy.CopyOut;
 import com.amazon.redshift.core.CommandCompleteParser;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.EncodingPredictor;
@@ -71,7 +69,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -157,6 +154,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   
   // Query or some execution on a socket in process
   private final Lock m_executingLock = new ReentrantLock();
+
+  private static final long INVALID_TUPLE_SIZE = -1L;
 
   /**
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
@@ -1900,6 +1899,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     												&& (!bothRowsAndStatus); // RETURNING clause 
 
     List<Tuple> tuples = null;
+    long totalTupleSize = 0;
 
     int c;
     boolean endQuery = false;
@@ -2269,8 +2269,15 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                                 tuples = new ArrayList<Tuple>();
                             }
 
-                            if(!skipRow)
+                            if (!skipRow) {
+                                if (enableFetchRingBuffer) {
+                                    totalTupleSize = checkAndUpdateTupleSize(tuple, totalTupleSize, handler);
+                                    if (handler.getException() != null || totalTupleSize == INVALID_TUPLE_SIZE) {
+                                        return;
+                                    }
+                                }
                                 tuples.add(tuple);
+                            }
                         }
                     }
 
@@ -2490,6 +2497,40 @@ public class QueryExecutorImpl extends QueryExecutorBase {
         throw e;
     }
 
+  }
+
+  /**
+   * Checks and updates the tuple size ensuring it doesn't exceed buffer limits.
+   *
+   * @param tuple The tuple to check
+   * @param totalTupleSize Current total size of tuples
+   * @param handler Error handler for reporting issues
+   * @return Updated total size or `INVALID_TUPLE_SIZE` if an error occurred
+  */
+  private long checkAndUpdateTupleSize(Tuple tuple, long totalTupleSize, ResultHandler handler) {
+    int nodeSize = RedshiftMemoryUtils.calculateNodeSize(tuple);
+
+    // Check for potential overflow before addition
+    if (Long.MAX_VALUE - totalTupleSize < nodeSize) {
+        handler.handleError(
+                new RedshiftException(
+                        GT.tr("Buffer size calculation overflow. Current size: {0}, Adding: {1}",
+                                totalTupleSize, nodeSize),
+                        RedshiftState.OUT_OF_MEMORY));
+        return INVALID_TUPLE_SIZE;
+    }
+
+    long newTotalSize = totalTupleSize + nodeSize;
+    if (newTotalSize > this.fetchRingBufferSize) {
+        handler.handleError(
+                new RedshiftException(
+                        GT.tr("Total result set size of {0} bytes would exceed maximum allowed size of {1} bytes",
+                                newTotalSize, this.fetchRingBufferSize),
+                        RedshiftState.OUT_OF_MEMORY));
+        return INVALID_TUPLE_SIZE;
+    }
+
+    return newTotalSize;
   }
 
   /**
