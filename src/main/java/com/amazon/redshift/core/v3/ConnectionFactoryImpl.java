@@ -119,13 +119,18 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     {
         newStream = constructNewStream(socketFactory, hostSpec, connectTimeout, logger, true, info);
 
-	    // Construct and send an ssl startup packet if requested.
-	    newStream = enableSSL(newStream, sslMode, info, connectTimeout);
-	    List<String[]> paramList = getParametersForStartup(user, database, info, true);
-	    sendStartupPacket(newStream, paramList);
+        // Construct and send an ssl startup packet if requested.
+        newStream = enableSSL(newStream, sslMode, info, connectTimeout);
+        List<String[]> paramList = getParametersForStartup(user, database, info, true);
+        sendStartupPacket(newStream, paramList);
         newStream.changeStream(false, info);
-	    // Do authentication (until AuthenticationOk).
-	    doAuthentication(newStream, hostSpec.getHost(), user, info);
+        // Set the socket timeout if the "socketTimeout" property has been set.
+        int socketTimeout = RedshiftProperty.SOCKET_TIMEOUT.getInt(info);
+        if (socketTimeout > 0) {
+          newStream.setNetworkTimeout(socketTimeout * 1000);
+        }
+        // Do authentication (until AuthenticationOk).
+        doAuthentication(newStream, hostSpec.getHost(), user, info);
     }
     catch(Exception ex) {
       closeStream(newStream);
