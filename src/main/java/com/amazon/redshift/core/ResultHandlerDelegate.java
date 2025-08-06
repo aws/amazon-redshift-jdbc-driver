@@ -98,6 +98,14 @@ public class ResultHandlerDelegate implements ResultHandler {
     	delegate.setStatementStateInQueryFromIdle();
     }
   }
+
+  @Override
+  public boolean setStatementStateInQuerySuspendedFromInQuery() {
+    if (delegate != null) {
+      return delegate.setStatementStateInQuerySuspendedFromInQuery();
+    }
+    return false;
+  }
   
   
   @Override

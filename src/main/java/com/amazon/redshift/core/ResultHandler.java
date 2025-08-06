@@ -108,7 +108,13 @@ public interface ResultHandler {
    * Set statement state on start from IDLE to IN_QUERY,
    * in case Ring Buffer thread reset the new query state as IDLE.
    */
-  void setStatementStateInQueryFromIdle();  
+  void setStatementStateInQueryFromIdle();
+
+  /**
+   * Set statement state from IN_QUERY to IN_QUERY_SUSPENDED,
+   * to indicate that driver received a portal suspended state
+   */
+  boolean setStatementStateInQuerySuspendedFromInQuery();
   
   /** Check the statement type
    * 

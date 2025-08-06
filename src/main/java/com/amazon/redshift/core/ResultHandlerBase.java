@@ -95,7 +95,12 @@ public class ResultHandlerBase implements ResultHandler {
   public void setStatementStateInQueryFromIdle() {
   	// Do nothing
   }
-  
+
+  @Override
+  public boolean setStatementStateInQuerySuspendedFromInQuery() {
+    return false;
+  }
+
   @Override
   public boolean wantsScrollableResultSet() {
   	return false;

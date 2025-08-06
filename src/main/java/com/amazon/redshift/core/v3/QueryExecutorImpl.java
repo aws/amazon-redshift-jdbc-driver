@@ -2016,6 +2016,18 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                     if(RedshiftLogger.isEnable())
                         logger.log(LogLevel.DEBUG, " <=BE PortalSuspended");
 
+                    // Transition from IN_QUERY to IN_QUERY_SUSPENDED to prevent the statement state being
+                    // reset to IDLE ensuring that suspended queries remain cancellable
+                    if (handler != null && !handler.setStatementStateInQuerySuspendedFromInQuery()) {
+                        String errorMessage = "Failed to transition statement state to IN_QUERY_SUSPENDED";
+                        if (RedshiftLogger.isEnable()) {
+                            logger.log(LogLevel.ERROR, errorMessage);
+                        }
+                        handler.handleError(
+                                new RedshiftException(errorMessage)
+                        );
+                    }
+
                     ExecuteRequest executeData = pendingExecuteQueue.removeFirst();
                     SimpleQuery currentQuery = executeData.query;
                     Portal currentPortal = executeData.portal;

@@ -905,11 +905,19 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	        fetchRows = maxRows - rowOffset;
 	      }
 	    }
-	
+
       Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
-	    // Do the actual fetch.
-	    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
-	
+	    if (statement != null && statement instanceof RedshiftStatementImpl) {
+	      ((RedshiftStatementImpl)statement).setStatementState(StatementCancelState.IN_QUERY);
+	    }
+	    try {
+	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
+	    } finally {
+	      if (statement != null && statement instanceof RedshiftStatementImpl) {
+	        ((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IN_QUERY, StatementCancelState.IDLE);
+	      }
+	    }
+
 	    // Now prepend our one saved row and move to it.
 	    rows.add(0, thisRow);
 	    currentRow = 0;
@@ -1983,12 +1991,12 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
   	public CursorResultHandler(Properties inProps) {
   		this(0, inProps);
   	}
-  	
+
   	public CursorResultHandler(int resultsettype, Properties inProps) {
       super(inProps);
       this.resultsettype = resultsettype;
   	}
-  	
+
     @Override
     public void handleResultRows(Query fromQuery, Field[] fields, List<Tuple> tuples,
         ResultCursor cursor, RedshiftRowsBlockingQueue<Tuple> queueTuples,
@@ -2021,6 +2029,14 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     		return resultsettype != ResultSet.TYPE_FORWARD_ONLY;
     	else
     		return true; // Used in isLast() method.
+    }
+
+    @Override
+    public boolean setStatementStateInQuerySuspendedFromInQuery() {
+      if (statement == null || !(statement instanceof RedshiftStatementImpl)) {
+        return false;
+      }
+      return ((RedshiftStatementImpl)statement).validateAndUpdateStatementCancelState(StatementCancelState.IN_QUERY, StatementCancelState.IN_QUERY_SUSPENDED);
     }
   }
 
@@ -2126,8 +2142,18 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 	        }
 	      }
         Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
+
+	      if (statement != null && statement instanceof RedshiftStatementImpl) {
+	        ((RedshiftStatementImpl)statement).setStatementState(StatementCancelState.IN_QUERY);
+	      }
 	      // Execute the fetch and update this resultset.
-	      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
+	      try {
+	        connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(inProps), fetchRows, 0);
+	      } finally {
+	        if (statement != null && statement instanceof RedshiftStatementImpl) {
+	          ((RedshiftStatementImpl) statement).updateStatementCancleState(StatementCancelState.IN_QUERY, StatementCancelState.IDLE);
+	        }
+	      }
 	
 	      currentRow = 0;
 	
@@ -2172,11 +2198,20 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
     }
   	
     // Update statement state, so one can cancel the result fetch.
-  	((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IDLE, StatementCancelState.IN_QUERY);
+    if (statement != null && statement instanceof RedshiftStatementImpl) {
+      ((RedshiftStatementImpl)statement).setStatementState(StatementCancelState.IN_QUERY);
+    }
     
     // Execute the fetch and update this resultset.
     Properties inProps = ((RedshiftConnectionImpl) connection).getConnectionProperties();
-    connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(resultsettype, inProps), fetchRows, (int)rowCount);
+    try {
+      connection.getQueryExecutor().fetch(cursor, new CursorResultHandler(resultsettype, inProps), fetchRows, (int)rowCount);
+    } finally {
+      // Update statement state.
+      if (statement != null && statement instanceof RedshiftStatementImpl) {
+        ((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IN_QUERY, StatementCancelState.IDLE);
+      }
+    }
     
     // We should get a new queue
     if (queueRows != null) {
@@ -2186,9 +2221,7 @@ public class RedshiftResultSet implements ResultSet, com.amazon.redshift.Redshif
 				if (thisRow == null
 						|| thisRow.fieldCount() == 0) {
 					// End of result
-					
-			    // Update statement state.
-			  	((RedshiftStatementImpl)statement).updateStatementCancleState(StatementCancelState.IN_QUERY, StatementCancelState.IDLE);
+
 					
 					// Check for any error
 					resetBufAndCheckForAnyErrorInQueue();	  	  					

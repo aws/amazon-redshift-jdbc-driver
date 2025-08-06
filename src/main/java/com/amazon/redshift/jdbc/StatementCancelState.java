@@ -11,6 +11,7 @@ package com.amazon.redshift.jdbc;
 enum StatementCancelState {
     IDLE,
     IN_QUERY,
+    IN_QUERY_SUSPENDED,
     CANCELING,
     CANCELLED
 }

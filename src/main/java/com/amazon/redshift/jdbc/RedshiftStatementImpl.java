@@ -198,6 +198,26 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
   }
 
   /**
+   * Validate the current state and update the statement cancel state
+   *
+   * @param oldState old state of the statement
+   * @param newState new state of the statement
+   * @return true if the current state equal to oldState and the current state was updated to newState
+   */
+  public boolean validateAndUpdateStatementCancelState(StatementCancelState oldState, StatementCancelState newState) {
+    return STATE_UPDATER.compareAndSet(this, oldState, newState);
+  }
+
+  /**
+   * Set the Statement cancel state to a specific state
+   *
+   * @param state old state of the statement
+   */
+  public void setStatementState(StatementCancelState state) {
+    STATE_UPDATER.set(this, state);
+  }
+
+  /**
    * ResultHandler implementations for updates, queries, and either-or.
    */
   public class StatementResultHandler extends ResultHandlerBase {
@@ -218,6 +238,11 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     @Override
     public void setStatementStateInQueryFromIdle() {
     	((RedshiftStatementImpl)stmt).updateStatementCancleState(StatementCancelState.IDLE, StatementCancelState.IN_QUERY);
+    }
+
+    @Override
+    public boolean setStatementStateInQuerySuspendedFromInQuery() {
+      return ((RedshiftStatementImpl)stmt).validateAndUpdateStatementCancelState(StatementCancelState.IN_QUERY, StatementCancelState.IN_QUERY_SUSPENDED);
     }
     
     @Override
@@ -1036,13 +1061,15 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
     	
       return;
     }
-    if (!STATE_UPDATER.compareAndSet(this, StatementCancelState.IN_QUERY,
-        StatementCancelState.CANCELING)) {
-      // Not in query, there's nothing to cancel
+
+    // Return without sending cancel request if the statement state is not IN_QUERY or IN_QUERY_SUSPENDED since
+    // there's nothig to cancel in ths case
+    if (!(STATE_UPDATER.compareAndSet(this, StatementCancelState.IN_QUERY, StatementCancelState.CANCELING)
+            || STATE_UPDATER.compareAndSet(this, StatementCancelState.IN_QUERY_SUSPENDED, StatementCancelState.CANCELING))) {
     	
       if (RedshiftLogger.isEnable()) {
-      	connection.getLogger().logError("statementState is not StatementCancelState.IN_QUERY");
-      	connection.getLogger().logFunction(false);
+        connection.getLogger().logError("statementState is neither StatementCancelState.IN_QUERY nor StatementCancelState.IN_QUERY_SUSPENDED");
+        connection.getLogger().logFunction(false);
       }
     	
       return;
@@ -1183,9 +1210,11 @@ public class RedshiftStatementImpl implements Statement, BaseStatement {
       return;
     }
     
-    if (timerTaskIsClear && (STATE_UPDATER.get(this) == StatementCancelState.IDLE))
-    	return;
-    
+    if (timerTaskIsClear && (STATE_UPDATER.get(this) == StatementCancelState.IDLE ||
+            STATE_UPDATER.get(this) == StatementCancelState.IN_QUERY_SUSPENDED)) {
+      // Return early if the statement cancel state is IDLE or IN_QUERY_SUSPENDED
+      return;
+    }
 
     // Being here means someone managed to call .cancel() and our connection did not receive
     // "timeout error"
