@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.1.0.34 (2025-08-07)
+----------------------
+- Added a new statement cancel state IN_QUERY_SUSPENDED to accurately track query suspension status ensuring that suspended queries remain cancellable
+- Fixed an issue where socket timeouts were not being enforced after the initial connection
+
+
 v2.1.0.33 (2025-05-29)
 ----------------------
 - Removed aws-java-sdk dependency from metadata APIs
