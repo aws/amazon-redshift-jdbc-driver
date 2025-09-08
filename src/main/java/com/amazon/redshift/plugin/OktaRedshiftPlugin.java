@@ -356,7 +356,6 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                     String stateErrorMessage = "Incoming state" + incomingState + " does not match the outgoing state" + state;
                     if (RedshiftLogger.isEnable())
                         m_log.log(LogLevel.DEBUG, stateErrorMessage);
-
                     throw new InternalPluginException(stateErrorMessage);
                 }
                 String code = findParameter(authCodeParameterName, nameValuePairs);
@@ -364,7 +363,6 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                     String stateErrorMessage = "No Valid code found";
                     if (RedshiftLogger.isEnable())
                         m_log.log(LogLevel.DEBUG, stateErrorMessage);
-
                     throw new InternalPluginException(stateErrorMessage);
                 }
                 return code;
@@ -392,15 +390,14 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
         if (result instanceof InternalPluginException) {
             if (RedshiftLogger.isEnable()) {
                 m_log.logDebug("Error while fetching authorization token");
-                throw (InternalPluginException) result;
             }
+            throw (InternalPluginException) result;
         }
         if (result instanceof String) {
             if (RedshiftLogger.isEnable()) {
                 m_log.logInfo("Fetched authorization token");
-
-                return (String) result;
             }
+            return (String) result;
         }
         throw new InternalPluginException("Error fetching authentication code from browser. Failed to login during timeout.");
     }
@@ -462,6 +459,23 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
             default:
                 super.addParameter(key, value);
         }
+    }
+
+    //todo remove below
+
+    public static void main(String[] args) throws Exception {
+        String profileName = "aws-sso-LunarWay-Development-Data-OktaDataLogin";
+        // why is this not set in .aws/config
+        // "aws-sso-LunarWay-Production-Data-OktaDataViewer";
+
+        OktaRedshiftPlugin plugin = new OktaRedshiftPlugin();
+        plugin.addParameter("ssoProfile", profileName);
+        plugin.addParameter("region", "eu-north-1");
+        plugin.addParameter("ssoStartUrl", "https://d-c3672deb5f.awsapps.com/start");
+        plugin.addParameter("finalProfile", "lw-data-viewer");
+
+        NativeTokenHolder token = plugin.getCredentials(); // getAuthToken();
+        System.out.println("Got token: " + token.getAccessToken());
     }
 }
 
