@@ -82,7 +82,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     /**
      * Main entry point for obtaining authentication tokens for Redshift connection.
      * Orchestrates the OAuth flow and role assumption process.
-     * 
+     *
      * @return NativeTokenHolder containing the final credentials for Redshift
      * @throws IOException if authentication fails
      */
@@ -102,15 +102,15 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
     /**
      * Executes the complete OAuth 2.0 authorization code flow with PKCE to obtain an IdC access token.
-     * 
+     *
      * @return NativeTokenHolder containing the IdC access token
-     * @throws IOException if the OAuth flow fails
+     * @throws IOException        if the OAuth flow fails
      * @throws URISyntaxException if URL construction fails
      */
     private NativeTokenHolder getIdcToken() throws IOException, URISyntaxException {
         // Validate all required parameters before starting OAuth flow
         checkRequiredParameters();
-        
+
         // Initialize SSO OIDC client for the specified region
         ssoOidcClient = AWSSSOOIDCClientBuilder.standard().withRegion(ssoRegion).build();
         redirectUri = redirectUriBase + ":" + listenPort;
@@ -214,7 +214,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
         int pollingIntervalInSec = 1;
 
-        while(System.currentTimeMillis() < pollingEndtime) {
+        while (System.currentTimeMillis() < pollingEndtime) {
             try {
                 CreateTokenRequest createTokenRequest = new CreateTokenRequest();
                 createTokenRequest.withClientId(registerClientResult.getClientId())
@@ -232,13 +232,11 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                 if (createTokenResult != null && createTokenResult.getAccessToken() != null) {
                     return createTokenResult;
                 } else {
-                    if (RedshiftLogger.isEnable())
-                        m_log.logError("Failed to get IdC Token");
+                    if (RedshiftLogger.isEnable()) m_log.logError("Failed to get IdC Token");
                     throw new IOException("IdC authentication failed: Failed to get IdC Token");
                 }
             } catch (AuthorizationPendingException ex) {
-                if (RedshiftLogger.isEnable())
-                    m_log.logDebug("Browser authorization pending from user");
+                if (RedshiftLogger.isEnable()) m_log.logDebug("Browser authorization pending from user");
             } catch (SlowDownException ex) {
                 if (RedshiftLogger.isEnable())
                     m_log.log(LogLevel.ERROR, ex, "Error: Too frequent createToken requests made by client;");
@@ -248,8 +246,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                     m_log.log(LogLevel.ERROR, ex, "Error: Access denied, please ensure app assignment is done for the user;");
                 throw new IOException("IdC authentication failed : You don't have sufficient permission to perform the action. Please ensure app assignment is done for the user.", ex);
             } catch (InternalServerException ex) {
-                if (RedshiftLogger.isEnable())
-                    m_log.log(LogLevel.ERROR, ex, "Error: Server error in creating token;");
+                if (RedshiftLogger.isEnable()) m_log.log(LogLevel.ERROR, ex, "Error: Server error in creating token;");
                 throw new IOException("IdC authentication failed : An error occurred during the request.", ex);
             } catch (Exception ex) {
                 if (RedshiftLogger.isEnable())
@@ -258,12 +255,10 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
             }
         }
 
-        try
-        {
+        try {
             Thread.sleep(pollingIntervalInSec * milliSecondMultiplier);
         } catch (InterruptedException e) {
-            if (RedshiftLogger.isEnable())
-                m_log.log(LogLevel.ERROR, e, "Thread interrupted during sleep");
+            if (RedshiftLogger.isEnable()) m_log.log(LogLevel.ERROR, e, "Thread interrupted during sleep");
         }
 
         if (RedshiftLogger.isEnable())
@@ -274,7 +269,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     private NativeTokenHolder processCreateTokenResult(CreateTokenResult createTokenResult) {
         String idcToken = createTokenResult.getAccessToken();
 
-        if (StringUtils.isNullOrEmpty((idcToken))){
+        if (StringUtils.isNullOrEmpty((idcToken))) {
             throw new InternalPluginException("Returned token result is null or empty");
         }
 
@@ -283,54 +278,42 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
         if (createTokenResult.getExpiresIn() != null && createTokenResult.getExpiresIn() > 0) {
             expiresInSec = createTokenResult.getExpiresIn();
         }
-        Date expiresInDate =  new Date(System.currentTimeMillis() + expiresInSec * milliSecondMultiplier);
-        if (RedshiftLogger.isEnable())
-            m_log.logDebug("Token expires at {0}", expiresInDate);
+        Date expiresInDate = new Date(System.currentTimeMillis() + expiresInSec * milliSecondMultiplier);
+        if (RedshiftLogger.isEnable()) m_log.logDebug("Token expires at {0}", expiresInDate);
 
         return NativeTokenHolder.newInstance(idcToken, expiresInDate);
     }
 
 
     private NativeTokenHolder assumeRedshiftRole(NativeTokenHolder idcToken) throws IOException {
-        String roleArn = redshiftRoleArn;
-        if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
-            roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
-        }
+        try {
+            String roleArn = redshiftRoleArn;
+            if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
+                roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
+            }
 
             // use sso to get credentials
             AWSSSO sso = AWSSSOClientBuilder.standard().withRegion(ssoRegion).build();
-            GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest()
-                    .withAccessToken(idcToken.getAccessToken())
-                    .withAccountId(ssoAccountId)
-                    .withRoleName(ssoRoleName);
+            GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest().withAccessToken(idcToken.getAccessToken()).withAccountId(ssoAccountId).withRoleName(ssoRoleName);
 
             GetRoleCredentialsResult roleCredentialsResult = sso.getRoleCredentials(getRoleRequest);
             RoleCredentials roleCredentials = roleCredentialsResult.getRoleCredentials();
 
             // use credentials to assume the redshift role
-            BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(
-                    roleCredentials.getAccessKeyId(),
-                    roleCredentials.getSecretAccessKey(),
-                    roleCredentials.getSessionToken()
-            );
+            BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(roleCredentials.getAccessKeyId(), roleCredentials.getSecretAccessKey(), roleCredentials.getSessionToken());
 
-            AWSSecurityTokenService awsSTS = AWSSecurityTokenServiceClientBuilder.standard()
-                    .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
-                    .withRegion(ssoRegion)
-                    .build();
+            AWSSecurityTokenService awsSTS = AWSSecurityTokenServiceClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(sessionCredentials)).withRegion(ssoRegion).build();
 
-            AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
-                    .withRoleArn(roleArn)
-                    .withRoleSessionName("redshift-okta-" + UUID.randomUUID())
-                    .withDurationSeconds(3600);
+            AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest().withRoleArn(roleArn).withRoleSessionName("redshift-okta-" + UUID.randomUUID()).withDurationSeconds(3600);
 
             AssumeRoleResult result = awsSTS.assumeRole(assumeRoleRequest);
             Credentials stsCredential = result.getCredentials();
 
-            return NativeTokenHolder.newInstance(
-                    stsCredential.getSessionToken(),
-                    Date.from(stsCredential.getExpiration().toInstant())
-            );
+            return NativeTokenHolder.newInstance(stsCredential.getSessionToken(), Date.from(stsCredential.getExpiration().toInstant()));
+
+        } catch (Exception e) {
+            throw new IOException("Failed to assume Redshift role");
+        }
     }
 
     protected String generateCodeVerifier() {
@@ -352,8 +335,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return digest.digest(input);
         } catch (NoSuchAlgorithmException e) {
-            if (RedshiftLogger.isEnable())
-                m_log.log(LogLevel.ERROR, e, "Thread interrupted during sleep");
+            if (RedshiftLogger.isEnable()) m_log.log(LogLevel.ERROR, e, "Thread interrupted during sleep");
             return null;
         }
     }
@@ -366,15 +348,13 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
                 if (!state.equals(incomingState)) {
                     String stateErrorMessage = "Incoming state" + incomingState + " does not match the outgoing state" + state;
-                    if (RedshiftLogger.isEnable())
-                        m_log.log(LogLevel.DEBUG, stateErrorMessage);
+                    if (RedshiftLogger.isEnable()) m_log.log(LogLevel.DEBUG, stateErrorMessage);
                     throw new InternalPluginException(stateErrorMessage);
                 }
                 String code = findParameter(authCodeParameterName, nameValuePairs);
                 if (StringUtils.isNullOrEmpty(code)) {
                     String stateErrorMessage = "No Valid code found";
-                    if (RedshiftLogger.isEnable())
-                        m_log.log(LogLevel.DEBUG, stateErrorMessage);
+                    if (RedshiftLogger.isEnable()) m_log.log(LogLevel.DEBUG, stateErrorMessage);
                     throw new InternalPluginException(stateErrorMessage);
                 }
                 return code;
@@ -384,14 +364,12 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
         Server server = new Server(listenPort, requestHandler, Duration.ofSeconds(idcResponseTimeout), m_log);
         try {
             server.listen();
-            if (RedshiftLogger.isEnable())
-                m_log.log(LogLevel.DEBUG, "Listening for connection on port " + listenPort);
+            if (RedshiftLogger.isEnable()) m_log.log(LogLevel.DEBUG, "Listening for connection on port " + listenPort);
 
             openBrowser(state, codeChallenge, registerClientResult);
             server.waitForResult();
         } catch (URISyntaxException | IOException ex) {
-            if (RedshiftLogger.isEnable())
-                m_log.logError(ex);
+            if (RedshiftLogger.isEnable()) m_log.logError(ex);
 
             server.stop();
             throw ex;
@@ -481,21 +459,5 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
         }
     }
 
-    //todo remove below
-
-    public static void main(String[] args) throws Exception {
-        // String profileName = "aws-sso-LunarWay-Development-Data-OktaAdminLogin";
-        // why is this not set in .aws/config
-        // "aws-sso-LunarWay-Production-Data-OktaDataViewer";
-        OktaRedshiftPlugin plugin = new OktaRedshiftPlugin();
-        plugin.addParameter("ssoRoleName", "OktaAdminLogin");
-        plugin.addParameter("region", "eu-north-1");
-        plugin.addParameter("ssoStartUrl", "https://d-c3672deb5f.awsapps.com/start");
-        plugin.addParameter("finalProfile", "aws-sso-LunarWay-Development-Data-OktaDataLogin");
-        plugin.addParameter("ssoAccountID", "899945594626");
-
-        NativeTokenHolder token = plugin.getCredentials(); // getAuthToken();
-        System.out.println("Got token: " + token.getAccessToken());
-    }
 }
 
