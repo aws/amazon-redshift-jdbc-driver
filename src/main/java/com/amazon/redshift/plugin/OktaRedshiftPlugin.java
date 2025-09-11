@@ -50,7 +50,7 @@ import java.util.function.Function;
 public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
     // Variables for SSO authentication configuration
-    private String ssoProfile;           // AWS SSO profile name for role credentials
+    private String ssoRoleName;          // AWS SSO role name (e.g., "OktaAdminLogin")
     private String redshiftRoleArn;      // ARN of the Redshift role to assume
     private String ssoRegion;            // AWS region for SSO operations
     private String ssoStartUrl;          // SSO start URL for authentication
@@ -61,7 +61,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     private final int listenPort = 7890;                                        // Local port for OAuth callback
     private final String idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.getDefaultValue(); // Client display name
     private static final String idcClientType = "public";                       // OAuth client type (public for PKCE)
-    private static final String idcClientScope = "redshift:connect";             // OAuth scope for Redshift access
+    private static final String idcClientScope = "sso:account:access";           // OAuth scope for SSO account access
     private static final String authCodeGrantType = "authorization_code";       // OAuth 2.0 grant type
     public final int codeVerifierByteLength = 60;                              // PKCE code verifier length in bytes
     public static final String oauthCsrfStateParameterName = "state";           // OAuth state parameter name
@@ -148,6 +148,16 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
             if (RedshiftLogger.isEnable())
                 m_log.logDebug("IdC authentication failed: redshift_role_arn needs to be provided in connection params");
             throw new InternalPluginException("redshift_role_arn is required");
+        }
+        if (StringUtils.isNullOrEmpty(ssoAccountId)) {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("IdC authentication failed: ssoAccountID needs to be provided in connection params");
+            throw new InternalPluginException("IdC authentication failed: The SSO account ID must be included in the connection parameters.");
+        }
+        if (StringUtils.isNullOrEmpty(ssoRoleName)) {
+            if (RedshiftLogger.isEnable())
+                m_log.logDebug("IdC authentication failed: ssoRoleName needs to be provided in connection params");
+            throw new InternalPluginException("IdC authentication failed: The SSO role name must be included in the connection parameters.");
         }
     }
 
@@ -280,14 +290,19 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
         return NativeTokenHolder.newInstance(idcToken, expiresInDate);
     }
 
+
     private NativeTokenHolder assumeRedshiftRole(NativeTokenHolder idcToken) throws IOException {
-        try {
+        String roleArn = redshiftRoleArn;
+        if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
+            roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
+        }
+
             // use sso to get credentials
             AWSSSO sso = AWSSSOClientBuilder.standard().withRegion(ssoRegion).build();
             GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest()
                     .withAccessToken(idcToken.getAccessToken())
                     .withAccountId(ssoAccountId)
-                    .withRoleName(ssoProfile);
+                    .withRoleName(ssoRoleName);
 
             GetRoleCredentialsResult roleCredentialsResult = sso.getRoleCredentials(getRoleRequest);
             RoleCredentials roleCredentials = roleCredentialsResult.getRoleCredentials();
@@ -305,7 +320,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                     .build();
 
             AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
-                    .withRoleArn(redshiftRoleArn)
+                    .withRoleArn(roleArn)
                     .withRoleSessionName("redshift-okta-" + UUID.randomUUID())
                     .withDurationSeconds(3600);
 
@@ -316,9 +331,6 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                     stsCredential.getSessionToken(),
                     Date.from(stsCredential.getExpiration().toInstant())
             );
-        } catch (Exception e) {
-            throw new IOException("Failed to assume Redshift role");
-        }
     }
 
     protected String generateCodeVerifier() {
@@ -415,6 +427,11 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                 .addParameter(oauthCsrfStateParameterName, state)
                 .addParameter("code_challenge", codeChallenge)
                 .addParameter("code_challenge_method", "S256");
+        
+        // Add account ID to scope the token to the specific account
+        if (!StringUtils.isNullOrEmpty(ssoAccountId)) {
+            builder.addParameter("account_id", ssoAccountId);
+        }
 
         URI authorizeRequestUrl;
         authorizeRequestUrl = builder.build();
@@ -443,8 +460,8 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     @Override
     public void addParameter(String key, String value) {
         switch (key) {
-            case "ssoProfile":
-                this.ssoProfile = value;
+            case "ssoRoleName":
+                this.ssoRoleName = value;
                 break;
             case "finalProfile":
                 this.redshiftRoleArn = value;
@@ -455,6 +472,9 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
             case "ssoStartUrl":
                 this.ssoStartUrl = value;
                 break;
+            case "ssoAccountID":
+                this.ssoAccountId = value;
+                break;
 
             default:
                 super.addParameter(key, value);
@@ -464,15 +484,15 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     //todo remove below
 
     public static void main(String[] args) throws Exception {
-        String profileName = "aws-sso-LunarWay-Development-Data-OktaDataLogin";
+        // String profileName = "aws-sso-LunarWay-Development-Data-OktaAdminLogin";
         // why is this not set in .aws/config
         // "aws-sso-LunarWay-Production-Data-OktaDataViewer";
-
         OktaRedshiftPlugin plugin = new OktaRedshiftPlugin();
-        plugin.addParameter("ssoProfile", profileName);
+        plugin.addParameter("ssoRoleName", "OktaAdminLogin");
         plugin.addParameter("region", "eu-north-1");
         plugin.addParameter("ssoStartUrl", "https://d-c3672deb5f.awsapps.com/start");
-        plugin.addParameter("finalProfile", "lw-data-viewer");
+        plugin.addParameter("finalProfile", "aws-sso-LunarWay-Development-Data-OktaDataLogin");
+        plugin.addParameter("ssoAccountID", "899945594626");
 
         NativeTokenHolder token = plugin.getCredentials(); // getAuthToken();
         System.out.println("Got token: " + token.getAccessToken());
