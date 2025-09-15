@@ -36,6 +36,7 @@ import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
+import com.amazon.redshift.plugin.OktaRedshiftPlugin;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -65,6 +66,7 @@ public final class IamHelper extends IdpAuthHelper {
   public static final int GET_CLUSTER_CREDENTIALS_SAML_V2_API = 3;
   public static final int GET_CLUSTER_CREDENTIALS_JWT_V2_API = 4;
   public static final int GET_SERVERLESS_CREDENTIALS_V1_API = 5;
+  public static final int GET_CLUSTER_CREDENTIALS_PLUGIN_DIRECT = 6;
 
   private static final Pattern HOST_PATTERN =
           Pattern.compile("(.+)\\.(.+)\\.(.+).redshift(-dev)?\\.amazonaws\\.com(.)*");
@@ -684,6 +686,29 @@ public final class IamHelper extends IdpAuthHelper {
           }
 
           break;
+
+        case GET_CLUSTER_CREDENTIALS_PLUGIN_DIRECT:
+          // Plugin directly provides database credentials
+          if (RedshiftLogger.isEnable())
+            log.log(LogLevel.DEBUG, "Using plugin-provided database credentials directly");
+          
+          // Get the credentials from the provider
+          AWSCredentials pluginCredentials = credProvider.getCredentials();
+          if (pluginCredentials instanceof OktaRedshiftPlugin.DatabaseCredentials) {
+            OktaRedshiftPlugin.DatabaseCredentials dbCreds = (OktaRedshiftPlugin.DatabaseCredentials) pluginCredentials;
+            settings.m_username = dbCreds.getAWSAccessKeyId(); // username stored in access key field
+            settings.m_password = dbCreds.getAWSSecretKey(); // password stored in secret key field
+            
+            if (RedshiftLogger.isEnable()) {
+              Date now = new Date();
+              log.logInfo(now + ": Using plugin database credentials with expiration " + dbCreds.getExpiration());
+            }
+          } else {
+            throw new RedshiftException("Expected DatabaseCredentials from plugin but got: " + 
+                pluginCredentials.getClass().getSimpleName(), RedshiftState.UNEXPECTED_ERROR);
+          }
+          
+          break;
       }
     }
     catch (AmazonClientException e)
@@ -1212,6 +1237,13 @@ public final class IamHelper extends IdpAuthHelper {
 
   private static int findTypeOfGetClusterCredentialsAPI(RedshiftJDBCSettings settings,
       CredentialProviderType providerType, AWSCredentialsProvider provider) {
+
+    // set the GET_CLUSTER_CREDENTIALS_PLUGIN_DIRECT for OktaRedshiftPlugin that returns DatabaseCredentials directly
+    if (providerType == CredentialProviderType.PLUGIN && 
+        settings.m_credentialsProvider != null &&
+        settings.m_credentialsProvider.contains("OktaRedshiftPlugin")) {
+      return GET_CLUSTER_CREDENTIALS_PLUGIN_DIRECT;
+    }
 
     if (!settings.m_isServerless)
     {

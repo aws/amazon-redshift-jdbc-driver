@@ -1,6 +1,6 @@
 package com.amazon.redshift.plugin;
 
-import com.amazon.redshift.CredentialsHolder;
+import java.util.Date;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.NativeTokenHolder;
 import com.amazon.redshift.RedshiftProperty;
@@ -17,6 +17,10 @@ import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
 import com.amazonaws.services.securitytoken.model.Credentials;
+import com.amazonaws.services.redshift.AmazonRedshift;
+import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
+import com.amazonaws.services.redshift.model.GetClusterCredentialsRequest;
+import com.amazonaws.services.redshift.model.GetClusterCredentialsResult;
 import com.amazonaws.services.sso.AWSSSO;
 import com.amazonaws.services.sso.model.GetRoleCredentialsRequest;
 import com.amazonaws.services.sso.model.GetRoleCredentialsResult;
@@ -57,6 +61,11 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
     private String ssoRegion;            // AWS region for SSO operations
     private String ssoStartUrl;          // SSO start URL for authentication
     private String ssoAccountId;         // AWS account ID for SSO operations
+    
+    // Variables for Redshift cluster connection
+    private String clusterId;            // Redshift cluster identifier
+    private String dbName;               // Database name
+    private String dbUser;               // Database user name
 
     // OAuth 2.0 and OIDC configuration constants
     private static final String redirectUriBase = "http://127.0.0.1";           // Base URL for OAuth redirect
@@ -335,13 +344,7 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
 
 
     private AWSCredentials getAwsCredentials(NativeTokenHolder idcToken) throws IOException {
-        String roleArn = redshiftRoleArn;
-        if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
-            roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
-        }
-
-        try {
-            // use sso to get credentials
+            // Get SSO role credentials
             AWSSSO sso = AWSSSOClientBuilder.standard().withRegion(ssoRegion).build();
             GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest()
                     .withAccessToken(idcToken.getAccessToken())
@@ -351,12 +354,18 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
             GetRoleCredentialsResult roleCredentialsResult = sso.getRoleCredentials(getRoleRequest);
             RoleCredentials roleCredentials = roleCredentialsResult.getRoleCredentials();
 
-            // use credentials to assume the redshift role
+            // Create session credentials from SSO role
             BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(
                     roleCredentials.getAccessKeyId(),
                     roleCredentials.getSecretAccessKey(),
                     roleCredentials.getSessionToken());
-            
+
+            // Assume the preferred role using SSO credentials
+            String roleArn = redshiftRoleArn;
+            if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
+                roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
+            }
+
             AWSSecurityTokenService awsSTS = AWSSecurityTokenServiceClientBuilder.standard()
                     .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
                     .withRegion(ssoRegion)
@@ -364,46 +373,52 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
 
             AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
                     .withRoleArn(roleArn)
-                    .withRoleSessionName("redshift-okta-" + UUID.randomUUID())
+                    .withRoleSessionName("redshift-okta-" + java.util.UUID.randomUUID())
                     .withDurationSeconds(3600);
 
             AssumeRoleResult assumeRoleResult = awsSTS.assumeRole(assumeRoleRequest);
             Credentials stsCredential = assumeRoleResult.getCredentials();
 
-            // Create BasicSessionCredentials
+            // Create credentials for the assumed role
             BasicSessionCredentials redshiftRoleCredentials = new BasicSessionCredentials(
                     stsCredential.getAccessKeyId(),
                     stsCredential.getSecretAccessKey(),
                     stsCredential.getSessionToken());
-            
 
-            // Wrap in CredentialsHolder with metadata
-            CredentialsHolder credentialsHolder = CredentialsHolder.newInstance(redshiftRoleCredentials);
-            
-            // Set metadata for IAM database user configuration
-            CredentialsHolder.IamMetadata metadata = new CredentialsHolder.IamMetadata();
+            // Call GetClusterCredentials using the assumed role credentials
+            AmazonRedshift redshiftClient = AmazonRedshiftClientBuilder.standard()
+                    .withCredentials(new AWSStaticCredentialsProvider(redshiftRoleCredentials))
+                    .withRegion("eu-west-1")
+                    .build();
 
-            String dbUser = this.redshiftRoleArn;
-
-            if (dbUser != null && dbUser.contains("/")) {
-                // todo check if this is okay to extract the role part after "/" (e.g., "hubble-rbac/DataViewer" -> "DataViewer")
-                dbUser = dbUser.substring(dbUser.lastIndexOf("/") + 1).toLowerCase();
+            // Extract database user from preferred_role
+            String dbUserName = this.redshiftRoleArn;
+            if (dbUserName != null && dbUserName.contains("/")) {
+                dbUserName = dbUserName.substring(dbUserName.lastIndexOf("/") + 1).toLowerCase();
             }
-            if (dbUser == null || dbUser.isEmpty()) {
-                dbUser = "redshift_user"; // fallback
+            if (dbUserName == null || dbUserName.isEmpty()) {
+                dbUserName = "redshift_user"; // fallback
             }
 
-            metadata.setDbUser(dbUser);
-            metadata.setAutoCreate(true); // Allow user creation if it doesn't exist
-            credentialsHolder.setMetadata(metadata);
-            credentialsHolder.setRefresh(true); // Mark as newly created credentials
+            GetClusterCredentialsRequest clusterCredentialsRequest = new GetClusterCredentialsRequest()
+                    .withClusterIdentifier(clusterId)
+                    .withDbName(dbName)
+                    .withDbUser(dbUserName)
+                    .withDurationSeconds(3600);
 
-            return credentialsHolder;
-        } catch (Exception e) {
-            if (RedshiftLogger.isEnable())
-                m_log.log(LogLevel.ERROR, e, "Error assuming Redshift role");
-            throw new IOException("Failed to assume Redshift role", e);
-        }
+            if (RedshiftLogger.isEnable()) {
+                m_log.log(LogLevel.DEBUG, "Calling GetClusterCredentials for cluster: {0}, db: {1}, user: {2}", 
+                         clusterId, dbName, dbUserName);
+            }
+
+            GetClusterCredentialsResult clusterCredentialsResult = redshiftClient.getClusterCredentials(clusterCredentialsRequest);
+            
+            // Return database credentials
+            return new DatabaseCredentials(
+                    clusterCredentialsResult.getDbUser(),
+                    clusterCredentialsResult.getDbPassword(),
+                    clusterCredentialsResult.getExpiration()
+            );
     }
 
     protected String generateCodeVerifier() {
@@ -537,6 +552,12 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
             this.ssoStartUrl = value;
         } else if ("ssoaccountid".equalsIgnoreCase(key)) {
             this.ssoAccountId = value;
+        } else if ("clusterid".equalsIgnoreCase(key)) {
+            this.clusterId = value;
+        } else if ("dbname".equalsIgnoreCase(key)) {
+            this.dbName = value;
+        } else if ("dbuser".equalsIgnoreCase(key)) {
+            this.dbUser = value;
         }
     }
     public static void main(String[] args) throws Exception {
@@ -556,6 +577,29 @@ public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugi
         AWSCredentials  creds = plugin.getCredentials();
 
         System.out.println(creds.getAWSAccessKeyId());
+    }
+    
+    /**
+     * Simple holder for database credentials (username/password)
+     */
+    public static class DatabaseCredentials implements AWSCredentials {
+        private final String username;
+        private final String password;
+        private final Date expiration;
+        
+        public DatabaseCredentials(String username, String password, Date expiration) {
+            this.username = username;
+            this.password = password;
+            this.expiration = expiration;
+        }
+        
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
+        public Date getExpiration() { return expiration; }
+        
+        // AWSCredentials interface - store username/password in these fields
+        @Override public String getAWSAccessKeyId() { return username; }
+        @Override public String getAWSSecretKey() { return password; }
     }
 
 }
