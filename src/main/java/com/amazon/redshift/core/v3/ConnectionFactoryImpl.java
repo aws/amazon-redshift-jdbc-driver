@@ -405,12 +405,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
         redshiftNativeAuth = true;
         idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.get(info);
       }
-      else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDC_PKCE_BROWSER_OKTA_PLUGIN)) {
-        idpType = IDP_TYPE_AWS_IDC;
-        tokenType = TOKEN_TYPE_ACCESS_TOKEN;
-        redshiftNativeAuth = true;
-        idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.get(info);
-      }
     }
     
     if(!redshiftNativeAuth)

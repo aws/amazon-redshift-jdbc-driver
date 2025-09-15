@@ -480,7 +480,11 @@ public class Driver implements java.sql.Driver {
    * @throws SQLException if the connection could not be made
    */
   private static Connection makeConnection(String url, RedshiftProperties props, RedshiftLogger logger) throws SQLException {
-    return new RedshiftConnectionImpl(hostSpecs(props), user(props), database(props), props, url, logger);
+
+      String iamauth = props.getProperty("iamauth");
+      System.out.println(iamauth);
+
+      return new RedshiftConnectionImpl(hostSpecs(props), user(props), database(props), props, url, logger);
   }
 
   /**
@@ -645,7 +649,10 @@ public class Driver implements java.sql.Driver {
       	urlArgs = queryString;
     } // IAM
     else {
-    	urlProps.setProperty(RedshiftProperty.IAM_AUTH.getName(), String.valueOf(iamAuth));
+    	// Only set iamAuth to false if it's not already explicitly set by the user
+    	if (urlProps.getProperty(RedshiftProperty.IAM_AUTH.getName()) == null) {
+    		urlProps.setProperty(RedshiftProperty.IAM_AUTH.getName(), String.valueOf(iamAuth));
+    	}
     	
 	    if (urlServer.startsWith("//")) {
 	      urlServer = urlServer.substring(2);

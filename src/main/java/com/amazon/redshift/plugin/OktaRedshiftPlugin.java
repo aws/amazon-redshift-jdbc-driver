@@ -1,6 +1,7 @@
 package com.amazon.redshift.plugin;
 
-
+import com.amazon.redshift.CredentialsHolder;
+import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.NativeTokenHolder;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.LogLevel;
@@ -8,6 +9,7 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
 import com.amazon.redshift.plugin.httpserver.Server;
 import com.amazon.redshift.plugin.utils.RandomStateUtil;
+import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
@@ -45,9 +47,9 @@ import java.util.function.Function;
 /**
  * OktaRedshiftPlugin - Handles Okta-based authentication for Amazon Redshift connections
  * This plugin implements OAuth 2.0 authorization code flow with PKCE for secure authentication
- * through AWS SSO OIDC, followed by role assumption to obtain Redshift database credentials.
+ * through AWS SSO OIDC, followed by role assumption to obtain AWS credentials for Redshift access.
  */
-public class OktaRedshiftPlugin extends CommonCredentialsProvider {
+public class OktaRedshiftPlugin extends IdpCredentialsProvider implements IPlugin {
 
     // Variables for SSO authentication configuration
     private String ssoRoleName;          // AWS SSO role name (e.g., "OktaAdminLogin")
@@ -80,24 +82,71 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
 
     /**
-     * Main entry point for obtaining authentication tokens for Redshift connection.
+     * Main entry point for obtaining AWS credentials for Redshift connection.
      * Orchestrates the OAuth flow and role assumption process.
      *
-     * @return NativeTokenHolder containing the final credentials for Redshift
-     * @throws IOException if authentication fails
+     * @return AWSCredentials that can be used to call GetClusterCredentials
      */
     @Override
-    protected NativeTokenHolder getAuthToken() throws IOException, URISyntaxException {
-        // Step 1: Get IdC access token through OAuth flow
-        NativeTokenHolder idcToken = getIdcToken();
+    public AWSCredentials getCredentials() {
+        try {
+            // Step 1: Get IdC access token through OAuth flow
+            NativeTokenHolder idcToken = getIdcToken();
 
-        // Step 2: Always require role assumption for this plugin
-        if (StringUtils.isNullOrEmpty(redshiftRoleArn)) {
-            throw new IOException("Redshift role ARN is required but not provided");
+            // Step 2: Always require role assumption for this plugin
+            if (StringUtils.isNullOrEmpty(redshiftRoleArn)) {
+                throw new IOException("Redshift role ARN is required but not provided");
+            }
+
+            // Step 3: Use IdC token to assume Redshift role and get AWS credentials
+            return getAwsCredentials(idcToken);
+        } catch (Exception e) {
+            if (RedshiftLogger.isEnable())
+                m_log.log(LogLevel.ERROR, e, "Error getting AWS credentials");
+            throw new RuntimeException("Failed to get AWS credentials", e);
         }
+    }
 
-        // Step 3: Use IdC token to assume Redshift role and get final credentials
-        return assumeRedshiftRole(idcToken);
+    @Override
+    public void refresh() {
+        // Credentials will be refreshed automatically when getCredentials() is called
+    }
+
+    // IPlugin interface methods
+    @Override
+    public void setLogger(RedshiftLogger log) {
+        m_log = log;
+    }
+
+    @Override
+    public void setGroupFederation(boolean groupFederation) {
+        // Not used by this plugin
+    }
+
+    @Override
+    public String getIdpToken() {
+        // Not used by regular credential providers
+        return null;
+    }
+
+    @Override
+    public String getCacheKey() {
+        return getPluginSpecificCacheKey();
+    }
+
+    @Override
+    public int getSubType() {
+        return 0; // Default subtype
+    }
+
+    @Override
+    public String getPluginSpecificCacheKey() {
+        return String.format("OktaRedshift_%s_%s_%s_%s_%s",
+                ssoStartUrl != null ? ssoStartUrl : "",
+                ssoRegion != null ? ssoRegion : "",
+                ssoAccountId != null ? ssoAccountId : "",
+                ssoRoleName != null ? ssoRoleName : "",
+                redshiftRoleArn != null ? redshiftRoleArn : "");
     }
 
     /**
@@ -285,34 +334,75 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
     }
 
 
-    private NativeTokenHolder assumeRedshiftRole(NativeTokenHolder idcToken) throws IOException {
-        try {
-            String roleArn = redshiftRoleArn;
-            if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
-                roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
-            }
+    private AWSCredentials getAwsCredentials(NativeTokenHolder idcToken) throws IOException {
+        String roleArn = redshiftRoleArn;
+        if (!redshiftRoleArn.startsWith("arn:aws:iam::")) {
+            roleArn = "arn:aws:iam::" + ssoAccountId + ":role/" + redshiftRoleArn;
+        }
 
+        try {
             // use sso to get credentials
             AWSSSO sso = AWSSSOClientBuilder.standard().withRegion(ssoRegion).build();
-            GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest().withAccessToken(idcToken.getAccessToken()).withAccountId(ssoAccountId).withRoleName(ssoRoleName);
+            GetRoleCredentialsRequest getRoleRequest = new GetRoleCredentialsRequest()
+                    .withAccessToken(idcToken.getAccessToken())
+                    .withAccountId(ssoAccountId)
+                    .withRoleName(ssoRoleName);
 
             GetRoleCredentialsResult roleCredentialsResult = sso.getRoleCredentials(getRoleRequest);
             RoleCredentials roleCredentials = roleCredentialsResult.getRoleCredentials();
 
             // use credentials to assume the redshift role
-            BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(roleCredentials.getAccessKeyId(), roleCredentials.getSecretAccessKey(), roleCredentials.getSessionToken());
+            BasicSessionCredentials sessionCredentials = new BasicSessionCredentials(
+                    roleCredentials.getAccessKeyId(),
+                    roleCredentials.getSecretAccessKey(),
+                    roleCredentials.getSessionToken());
+            
+            AWSSecurityTokenService awsSTS = AWSSecurityTokenServiceClientBuilder.standard()
+                    .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
+                    .withRegion(ssoRegion)
+                    .build();
 
-            AWSSecurityTokenService awsSTS = AWSSecurityTokenServiceClientBuilder.standard().withCredentials(new AWSStaticCredentialsProvider(sessionCredentials)).withRegion(ssoRegion).build();
+            AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest()
+                    .withRoleArn(roleArn)
+                    .withRoleSessionName("redshift-okta-" + UUID.randomUUID())
+                    .withDurationSeconds(3600);
 
-            AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest().withRoleArn(roleArn).withRoleSessionName("redshift-okta-" + UUID.randomUUID()).withDurationSeconds(3600);
+            AssumeRoleResult assumeRoleResult = awsSTS.assumeRole(assumeRoleRequest);
+            Credentials stsCredential = assumeRoleResult.getCredentials();
 
-            AssumeRoleResult result = awsSTS.assumeRole(assumeRoleRequest);
-            Credentials stsCredential = result.getCredentials();
+            // Create BasicSessionCredentials
+            BasicSessionCredentials redshiftRoleCredentials = new BasicSessionCredentials(
+                    stsCredential.getAccessKeyId(),
+                    stsCredential.getSecretAccessKey(),
+                    stsCredential.getSessionToken());
+            
 
-            return NativeTokenHolder.newInstance(stsCredential.getSessionToken(), Date.from(stsCredential.getExpiration().toInstant()));
+            // Wrap in CredentialsHolder with metadata
+            CredentialsHolder credentialsHolder = CredentialsHolder.newInstance(redshiftRoleCredentials);
+            
+            // Set metadata for IAM database user configuration
+            CredentialsHolder.IamMetadata metadata = new CredentialsHolder.IamMetadata();
 
+            String dbUser = this.redshiftRoleArn;
+
+            if (dbUser != null && dbUser.contains("/")) {
+                // todo check if this is okay to extract the role part after "/" (e.g., "hubble-rbac/DataViewer" -> "DataViewer")
+                dbUser = dbUser.substring(dbUser.lastIndexOf("/") + 1).toLowerCase();
+            }
+            if (dbUser == null || dbUser.isEmpty()) {
+                dbUser = "redshift_user"; // fallback
+            }
+
+            metadata.setDbUser(dbUser);
+            metadata.setAutoCreate(true); // Allow user creation if it doesn't exist
+            credentialsHolder.setMetadata(metadata);
+            credentialsHolder.setRefresh(true); // Mark as newly created credentials
+
+            return credentialsHolder;
         } catch (Exception e) {
-            throw new IOException("Failed to assume Redshift role");
+            if (RedshiftLogger.isEnable())
+                m_log.log(LogLevel.ERROR, e, "Error assuming Redshift role");
+            throw new IOException("Failed to assume Redshift role", e);
         }
     }
 
@@ -405,7 +495,7 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
                 .addParameter(oauthCsrfStateParameterName, state)
                 .addParameter("code_challenge", codeChallenge)
                 .addParameter("code_challenge_method", "S256");
-        
+
         // Add account ID to scope the token to the specific account
         if (!StringUtils.isNullOrEmpty(ssoAccountId)) {
             builder.addParameter("account_id", ssoAccountId);
@@ -437,26 +527,35 @@ public class OktaRedshiftPlugin extends CommonCredentialsProvider {
 
     @Override
     public void addParameter(String key, String value) {
-        switch (key) {
-            case "ssoRoleName":
-                this.ssoRoleName = value;
-                break;
-            case "finalProfile":
-                this.redshiftRoleArn = value;
-                break;
-            case "region":
-                this.ssoRegion = value;
-                break;
-            case "ssoStartUrl":
-                this.ssoStartUrl = value;
-                break;
-            case "ssoAccountID":
-                this.ssoAccountId = value;
-                break;
-
-            default:
-                super.addParameter(key, value);
+        if ("ssorolename".equalsIgnoreCase(key)) {
+            this.ssoRoleName = value;
+        } else if ("preferred_role".equalsIgnoreCase(key)) {
+            this.redshiftRoleArn = value;
+        } else if ("region".equalsIgnoreCase(key)) {
+            this.ssoRegion = value;
+        } else if ("ssostarturl".equalsIgnoreCase(key)) {
+            this.ssoStartUrl = value;
+        } else if ("ssoaccountid".equalsIgnoreCase(key)) {
+            this.ssoAccountId = value;
         }
+    }
+    public static void main(String[] args) throws Exception {
+        // String profileName = "aws-sso-LunarWay-Development-Data-OktaDataLogin";
+        // String profileName = "aws-sso-LunarWay-Development-Data-OktaAdminLogin";
+        // why is this not set in .aws/config
+        // "aws-sso-LunarWay-Production-Data-OktaDataViewer";
+
+        OktaRedshiftPlugin plugin = new OktaRedshiftPlugin();
+        plugin.addParameter("ssoRoleName", "OktaDataViewer");
+        plugin.addParameter("region", "eu-north-1");
+        plugin.addParameter("ssoStartUrl", "https://d-c3672deb5f.awsapps.com/start");
+        plugin.addParameter("preferred_role", "hubble-rbac/DataViewer");
+        // arn:aws:iam::899945594626:role/hubble-rbac/DataViewer
+        plugin.addParameter("ssoAccountID", "899945594626");
+
+        AWSCredentials  creds = plugin.getCredentials();
+
+        System.out.println(creds.getAWSAccessKeyId());
     }
 
 }

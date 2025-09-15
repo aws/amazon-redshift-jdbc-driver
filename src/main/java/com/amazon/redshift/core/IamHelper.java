@@ -598,6 +598,7 @@ public final class IamHelper extends IdpAuthHelper {
 
         settings.m_idpToken = idpToken;
       }
+
     } // Group federation API for plugin
 
     setClusterCredentials(provider, settings, log, providerType, idpCredentialsRefresh, getClusterCredentialApiType);
