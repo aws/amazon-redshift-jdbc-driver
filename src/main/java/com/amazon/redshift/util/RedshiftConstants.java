@@ -31,5 +31,6 @@ public final class RedshiftConstants {
     public static final String NATIVE_IDP_OKTA_NON_BROWSER_PLUGIN = "com.amazon.redshift.plugin.BasicNativeSamlCredentialsProvider";
     public static final String IDP_TOKEN_PLUGIN = "com.amazon.redshift.plugin.IdpTokenAuthPlugin";
     public static final String IDC_PKCE_BROWSER_PLUGIN = "com.amazon.redshift.plugin.BrowserIdcAuthPlugin";
+    public static final String IDC_PKCE_BROWSER_OKTA_PLUGIN = "com.amazon.redshift.plugin.OktaRedshiftPlugin";
 
 }

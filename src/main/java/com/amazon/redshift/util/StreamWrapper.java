@@ -112,13 +112,6 @@ public class StreamWrapper {
               closed = true;
             }
           }
-
-          protected void finalize() throws IOException {
-            // forcibly close it because super.finalize() may keep the FD open, which may prevent
-            // file deletion
-            close();
-            super.finalize();
-          }
         };
       } else {
         this.rawData = rawData;

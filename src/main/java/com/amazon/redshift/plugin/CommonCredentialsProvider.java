@@ -22,6 +22,7 @@ import com.amazon.redshift.util.RedshiftException;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -129,7 +130,7 @@ public abstract class CommonCredentialsProvider extends IdpCredentialsProvider i
         return credentials;
     }
 
-    protected abstract NativeTokenHolder getAuthToken() throws IOException;
+    protected abstract NativeTokenHolder getAuthToken() throws IOException, URISyntaxException;
 
     @Override
     public void refresh() throws RedshiftException {
