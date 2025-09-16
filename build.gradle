@@ -32,6 +32,7 @@ dependencies {
     }
     def withoutslf4jSupport = { exclude group: 'org.slf4j', module: 'slf4j-api' }
     
+    implementation 'com.amazonaws:aws-java-sdk-core:1.12.731', withoutjmespathSupport
     implementation 'com.amazonaws:aws-java-sdk-redshift:1.12.731', withoutjmespathSupport
     implementation 'com.amazonaws:aws-java-sdk-sts:1.12.731', withoutjmespathSupport
     implementation 'com.amazonaws:aws-java-sdk-redshiftserverless:1.12.731', withoutjmespathSupport
@@ -74,13 +75,16 @@ processResources {
 }
 
 jar {
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes("Automatic-Module-Name": 'com.amazon.redshift.jdbc')
         attributes("Main-Class": "com.amazon.redshift.util.RedshiftJDBCMain")
         attributes("Specification-Title": "JDBC")
         attributes("Specification-Version": "4.2")
         attributes("Specification-Vendor": "Oracle Corporation")
-        attributes("Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' '))
     }
 }
 
