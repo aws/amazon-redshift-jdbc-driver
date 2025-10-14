@@ -122,33 +122,28 @@ javadoc {
     exclude 'com/amazon/redshift/hostchooser/**'
     exclude 'com/amazon/redshift/httpclient/log/**'
     exclude 'com/amazon/redshift/logger/**'
-		exclude 'com/amazon/redshift/sspi/**'    
-		exclude 'com/amazon/redshift/ssl/**'    
-		exclude 'com/amazon/redshift/jdbc2/**'    
-		exclude 'com/amazon/redshift/jdbc3/**'    
+    exclude 'com/amazon/redshift/sspi/**'
+    exclude 'com/amazon/redshift/ssl/**'
+    exclude 'com/amazon/redshift/jdbc2/**'
+    exclude 'com/amazon/redshift/jdbc3/**'
     
     // Exclude internal public interfaces/classes
     exclude 'com/amazon/redshift/CredentialsHolder*'
     exclude 'com/amazon/redshift/IPlugin*'
     exclude 'com/amazon/redshift/INativePlugin*'
-		exclude 'com/amazon/redshift/jdbc/AbstractBlobClob*'
-		exclude 'com/amazon/redshift/jdbc/BatchResultHandler*'    
-		exclude 'com/amazon/redshift/jdbc/EscapedFunctions*'    
-		exclude 'com/amazon/redshift/jdbc/EscapedFunctions2*'    
-		exclude 'com/amazon/redshift/jdbc/FieldMetadata*'    
-		exclude 'com/amazon/redshift/jdbc/RedshiftBlob*'    
-		exclude 'com/amazon/redshift/jdbc/RedshiftClob*'    
-		exclude 'com/amazon/redshift/jdbc/RedshiftArray*'    
-		exclude 'com/amazon/redshift/jdbc/TypeInfoCache*'    
-		exclude 'com/amazon/redshift/jdbc/UUIDArrayAssistant*'    
-		exclude 'com/amazon/redshift/jdbc/RedshiftSQLXML*'    
+    exclude 'com/amazon/redshift/jdbc/AbstractBlobClob*'
+    exclude 'com/amazon/redshift/jdbc/BatchResultHandler*'
+    exclude 'com/amazon/redshift/jdbc/EscapedFunctions*'
+    exclude 'com/amazon/redshift/jdbc/EscapedFunctions2*'
+    exclude 'com/amazon/redshift/jdbc/FieldMetadata*'
+    exclude 'com/amazon/redshift/jdbc/RedshiftBlob*'
+    exclude 'com/amazon/redshift/jdbc/RedshiftClob*'
+    exclude 'com/amazon/redshift/jdbc/RedshiftArray*'
+    exclude 'com/amazon/redshift/jdbc/TypeInfoCache*'
+    exclude 'com/amazon/redshift/jdbc/UUIDArrayAssistant*'
+    exclude 'com/amazon/redshift/jdbc/RedshiftSQLXML*'
     
-    failOnError = false
+    failOnError = true
     maxMemory = "2G"
     options.encoding = "UTF-8"
 }
-
-
-
-
-

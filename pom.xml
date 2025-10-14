@@ -609,7 +609,7 @@
                         <subpackages>com.amazon.redshift</subpackages>
                         <maxmemory>2g</maxmemory>
                         <failOnWarnings>false</failOnWarnings>
-                        <failOnError>false</failOnError>
+                        <failOnError>true</failOnError>
                         <tags>
                             <tag>
                                 <!-- @jls appears in the java.lang.Object, so we just ignore it -->
