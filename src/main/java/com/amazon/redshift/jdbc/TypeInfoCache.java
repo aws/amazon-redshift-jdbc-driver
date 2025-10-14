@@ -177,8 +177,7 @@ public class TypeInfoCache implements TypeInfo {
       {"cardinal_number", Oid.CARDINAL_NUMBER, Types.OTHER, "java.lang.String", Oid.CARDINAL_NUMBER_ARRAY},
       {"character_data", Oid.CHARACTER_DATA, Types.OTHER, "java.lang.String", Oid.CHARACTER_DATA_ARRAY},
       {"sql_identifier", Oid.SQL_IDENTIFIER, Types.OTHER, "java.lang.String", Oid.SQL_IDENTIFIER_ARRAY},
-      {"time_stamp", Oid.TIME_STAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIME_STAMP_ARRAY},
-      {"information_schema_catalog_name", Oid.INFORMATION_SCHEMA_CATALOG_NAME, Types.VARCHAR, "java.lang.String", Oid.INFORMATION_SCHEMA_CATALOG_NAME_ARRAY}
+      {"time_stamp", Oid.TIME_STAMP, Types.TIMESTAMP, "java.sql.Timestamp", Oid.TIME_STAMP_ARRAY}
   };
 
   /**
