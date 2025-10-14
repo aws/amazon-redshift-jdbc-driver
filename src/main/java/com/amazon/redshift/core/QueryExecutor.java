@@ -7,7 +7,6 @@
 package com.amazon.redshift.core;
 
 import com.amazon.redshift.RedshiftNotification;
-import com.amazon.redshift.copy.CopyOperation;
 import com.amazon.redshift.core.v3.RedshiftRowsBlockingQueue;
 import com.amazon.redshift.core.v3.TypeTransferModeRegistry;
 import com.amazon.redshift.jdbc.AutoSave;
@@ -274,17 +273,6 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
   @Deprecated
   byte[] fastpathCall(int fnid, ParameterList params, boolean suppressBegin) throws SQLException;
 
-  /**
-   * Issues a COPY FROM STDIN / COPY TO STDOUT statement and returns handler for associated
-   * operation. Until the copy operation completes, no other database operation may be performed.
-   * Implemented for protocol version 3 only.
-   *
-   * @param sql input sql
-   * @param suppressBegin if begin should be suppressed
-   * @return handler for associated operation
-   * @throws SQLException when initializing the given query fails
-   */
-  CopyOperation startCopy(String sql, boolean suppressBegin) throws SQLException;
 
   /**
    * @return the version of the implementation

@@ -7,7 +7,6 @@
 package com.amazon.redshift.core.v3;
 
 import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.copy.CopyOperation;
 import com.amazon.redshift.core.CommandCompleteParser;
 import com.amazon.redshift.core.Encoding;
 import com.amazon.redshift.core.EncodingPredictor;
@@ -31,7 +30,6 @@ import com.amazon.redshift.core.SqlCommandType;
 import com.amazon.redshift.core.TransactionState;
 import com.amazon.redshift.core.Tuple;
 import com.amazon.redshift.core.Utils;
-import com.amazon.redshift.core.v3.replication.V3ReplicationProtocol;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.BatchResultHandler;
 import com.amazon.redshift.jdbc.FieldMetadata;
@@ -77,7 +75,6 @@ import java.util.regex.Pattern;
  * QueryExecutor implementation for the V3 protocol.
  */
 public class QueryExecutorImpl extends QueryExecutorBase {
-  private static final String COPY_ERROR_MESSAGE = "COPY commands are only supported using the CopyManager API.";
   private static final Pattern ROLLBACK_PATTERN = Pattern.compile("\\brollback\\b", Pattern.CASE_INSENSITIVE);
   private static final Pattern COMMIT_PATTERN = Pattern.compile("\\bcommit\\b", Pattern.CASE_INSENSITIVE);
   private static final Pattern PREPARE_PATTERN = Pattern.compile("\\bprepare ++transaction\\b", Pattern.CASE_INSENSITIVE);
@@ -140,8 +137,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * The exception that caused the last transaction to fail.
    */
   private SQLException transactionFailCause;
-
-  private final ReplicationProtocol replicationProtocol;
   
   private boolean enableFetchRingBuffer;
   
@@ -161,7 +156,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
    * {@code CommandComplete(B)} messages are quite common, so we reuse instance to parse those
    */
   private final CommandCompleteParser commandCompleteParser = new CommandCompleteParser();
-  private final CopyQueryExecutor copyQueryExecutor;
   
   public QueryExecutorImpl(RedshiftStream pgStream, String user, String database,
       int cancelSignalTimeout, Properties info, RedshiftLogger logger) throws SQLException, IOException {
@@ -169,7 +163,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
     this.allowEncodingChanges = RedshiftProperty.ALLOW_ENCODING_CHANGES.getBoolean(info);
     this.cleanupSavePoints = RedshiftProperty.CLEANUP_SAVEPOINTS.getBoolean(info);
-    this.replicationProtocol = new V3ReplicationProtocol(this, pgStream);
     this.enableFetchRingBuffer = RedshiftProperty.ENABLE_FETCH_RING_BUFFER.getBoolean(info);
     String fetchRingBufferSizeStr = RedshiftProperty.FETCH_RING_BUFFER_SIZE.get(info);
     this.fetchRingBufferSize = (fetchRingBufferSizeStr != null ) 
@@ -177,7 +170,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     															: 0;
 
     this.enableStatementCache = RedshiftProperty.ENABLE_STATEMENT_CACHE.getBoolean(info);
-    this.copyQueryExecutor = new CopyQueryExecutor(this, logger, pgStream);
     this.serverProtocolVersion = 0;
     readStartupMessages();
   }
@@ -195,8 +187,8 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   /**
    * <p>Supplement to synchronization of public methods on current QueryExecutor.</p>
    *
-   * <p>Necessary for keeping the connection intact between calls to public methods sharing a state
-   * such as COPY subprotocol. waitOnLock() must be called at beginning of each connection access
+   * <p>Necessary for keeping the connection intact between calls to public methods sharing a state.
+   *  waitOnLock() must be called at beginning of each connection access
    * point.</p>
    *
    * <p>Public methods sharing that state must then be synchronized among themselves. Normal method
@@ -966,88 +958,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return returnValue;
   }
 */ 
-
-  //
-  // Copy subprotocol implementation
-  //
-
-  /**
-   * Sends given query to BE to start, initialize and lock connection for a CopyOperation.
-   *
-   * @param sql COPY FROM STDIN / COPY TO STDOUT statement
-   * @return CopyIn or CopyOut operation object
-   * @throws SQLException on failure
-   */
-  public  CopyOperation startCopy(String sql, boolean suppressBegin)
-      throws SQLException {
-  	
-  	return copyQueryExecutor.startCopy(sql, suppressBegin);
-  }
-
-  /**
-   * Finishes a copy operation and unlocks connection discarding any exchanged data.
-   *
-   * @param op the copy operation presumably currently holding lock on this connection
-   * @throws SQLException on any additional failure
-   */
-  public void cancelCopy(CopyOperationImpl op) throws SQLException {
-  	copyQueryExecutor.cancelCopy(op);
-  }
-
-  /**
-   * Finishes writing to copy and unlocks connection.
-   *
-   * @param op the copy operation presumably currently holding lock on this connection
-   * @return number of rows updated for server versions 8.2 or newer
-   * @throws SQLException on failure
-   */
-  public synchronized long endCopy(CopyOperationImpl op) throws SQLException {
-  	return copyQueryExecutor.endCopy(op);
-  }
-
-  /**
-   * Sends data during a live COPY IN operation. Only unlocks the connection if server suddenly
-   * returns CommandComplete, which should not happen
-   *
-   * @param op the CopyIn operation presumably currently holding lock on this connection
-   * @param data bytes to send
-   * @param off index of first byte to send (usually 0)
-   * @param siz number of bytes to send (usually data.length)
-   * @throws SQLException on failure
-   */
-  public synchronized void writeToCopy(CopyOperationImpl op, byte[] data, int off, int siz)
-      throws SQLException {
-  	copyQueryExecutor.writeToCopy(op, data, off, siz);
-  }
-
-  /**
-   * Sends data during a live COPY IN operation. Only unlocks the connection if server suddenly
-   * returns CommandComplete, which should not happen
-   *
-   * @param op   the CopyIn operation presumably currently holding lock on this connection
-   * @param from the source of bytes, e.g. a ByteBufferByteStreamWriter
-   * @throws SQLException on failure
-   */
-  public synchronized void writeToCopy(CopyOperationImpl op, ByteStreamWriter from)
-      throws SQLException {
-  	copyQueryExecutor.writeToCopy(op, from);
-  }
-
-  public synchronized void flushCopy(CopyOperationImpl op) throws SQLException {
-  	copyQueryExecutor.flushCopy(op);
-  }
-
-  /**
-   * Wait for a row of data to be received from server on an active copy operation
-   * Connection gets unlocked by processCopyResults() at end of operation.
-   *
-   * @param op the copy operation presumably currently holding lock on this connection
-   * @param block whether to block waiting for input
-   * @throws SQLException on any failure
-   */
-  synchronized void readFromCopy(CopyOperationImpl op, boolean block) throws SQLException {
-  	copyQueryExecutor.readFromCopy(op, block);
-  }
 
   /*
    * To prevent client/server protocol deadlocks, we try to manage the estimated recv buffer size
@@ -2454,50 +2364,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                     pendingExecuteQueue.clear(); // No more query executions expected.
                     break;
 
-                case 'G': // CopyInResponse
-                    if(RedshiftLogger.isEnable()) {
-                        logger.log(LogLevel.DEBUG, " <=BE CopyInResponse");
-                        logger.log(LogLevel.DEBUG, " FE=> CopyFail");
-                    }
-
-                    // COPY sub-protocol is not implemented yet
-                    // We'll send a CopyFail message for COPY FROM STDIN so that
-                    // server does not wait for the data.
-
-                    byte[] buf = Utils.encodeUTF8(COPY_ERROR_MESSAGE);
-                    pgStream.sendChar('f');
-                    pgStream.sendInteger4(buf.length + 4 + 1);
-                    pgStream.send(buf);
-                    pgStream.sendChar(0);
-                    pgStream.flush();
-                    sendSync(true); // send sync message
-                    skipMessage(); // skip the response message
-                    break;
-
-                case 'H': // CopyOutResponse
-                    if(RedshiftLogger.isEnable())
-                        logger.log(LogLevel.DEBUG, " <=BE CopyOutResponse");
-
-                    skipMessage();
-                    // In case of CopyOutResponse, we cannot abort data transfer,
-                    // so just throw an error and ignore CopyData messages
-                    handler.handleError(
-                            new RedshiftException(GT.tr(COPY_ERROR_MESSAGE),
-                                    RedshiftState.NOT_IMPLEMENTED));
-                    break;
-
-                case 'c': // CopyDone
-                    skipMessage();
-                    if(RedshiftLogger.isEnable())
-                        logger.log(LogLevel.DEBUG, " <=BE CopyDone");
-                    break;
-
-                case 'd': // CopyData
-                    skipMessage();
-                    if(RedshiftLogger.isEnable())
-                        logger.log(LogLevel.DEBUG, " <=BE CopyData");
-                    break;
-
                 default:
                     throw new IOException("Unexpected packet type: " + c);
             }
@@ -2965,7 +2831,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 
   @Override
   public ReplicationProtocol getReplicationProtocol() {
-    return replicationProtocol;
+    return null;
   }
 
   @Override

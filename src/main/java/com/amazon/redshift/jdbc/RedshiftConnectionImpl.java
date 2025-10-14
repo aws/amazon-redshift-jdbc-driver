@@ -9,7 +9,6 @@ import com.amazon.redshift.AuthMech;
 import com.amazon.redshift.Driver;
 import com.amazon.redshift.RedshiftNotification;
 import com.amazon.redshift.RedshiftProperty;
-import com.amazon.redshift.copy.CopyManager;
 import com.amazon.redshift.core.BaseConnection;
 import com.amazon.redshift.core.BaseStatement;
 import com.amazon.redshift.core.CachedQuery;
@@ -1439,15 +1438,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
     return bindStringAsVarchar;
   }
 
-  private CopyManager copyManager = null;
-
-  public CopyManager getCopyAPI() throws SQLException {
-    checkClosed();
-    if (copyManager == null) {
-      copyManager = new CopyManager(this);
-    }
-    return copyManager;
-  }
 
   public boolean binaryTransferSend(int oid) {
     return queryExecutor.useBinaryForSend(oid);

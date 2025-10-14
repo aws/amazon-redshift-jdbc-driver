@@ -5,7 +5,6 @@
 
 package com.amazon.redshift;
 
-import com.amazon.redshift.copy.CopyManager;
 import com.amazon.redshift.fastpath.Fastpath;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.PreferQueryMode;
@@ -68,14 +67,6 @@ public interface RedshiftConnection {
    */
   RedshiftNotification[] getNotifications(int timeoutMillis) throws SQLException;
 
-  /**
-   * This returns the COPY API for the current connection.
-   *
-   * @return COPY API for the current connection
-   * @throws SQLException if something wrong happens
-   * @since 8.4
-   */
-  CopyManager getCopyAPI() throws SQLException;
 
   /**
    * This returns the LargeObject API for the current connection.
