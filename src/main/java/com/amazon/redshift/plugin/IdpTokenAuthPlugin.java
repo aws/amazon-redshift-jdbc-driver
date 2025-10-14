@@ -1,8 +1,8 @@
 package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.NativeTokenHolder;
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazonaws.util.StringUtils;
 
 import java.io.IOException;
 import java.util.Date;
@@ -38,9 +38,9 @@ public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
     }
 
     private void checkRequiredParameters() throws IOException {
-        if (StringUtils.isNullOrEmpty(token)) {
+        if (Utils.isNullOrEmpty(token)) {
             throw new IOException("IdC authentication failed: The token must be included in the connection parameters.");
-        } else if (StringUtils.isNullOrEmpty(token_type)) {
+        } else if (Utils.isNullOrEmpty(token_type)) {
             throw new IOException("IdC authentication failed: The token type must be included in the connection parameters.");
         }
     }

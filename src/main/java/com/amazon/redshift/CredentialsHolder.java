@@ -1,24 +1,25 @@
 package com.amazon.redshift;
 
-import java.util.Date;
+import java.time.Instant;
 
 import com.amazon.redshift.plugin.utils.RequestUtils;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSSessionCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.identity.spi.AwsSessionCredentialsIdentity;
 
-public class CredentialsHolder implements AWSCredentials
+public class CredentialsHolder implements AwsCredentials
 {
-    protected AWSCredentials m_credentials;
-    private Date m_expiration;
+    protected AwsCredentials m_credentials;
+    private Instant m_expiration;
     private IamMetadata m_metadata;
     private boolean refresh; // true means newly added, false means from cache.
 
-    protected CredentialsHolder(AWSCredentials credentials)
+    protected CredentialsHolder(AwsCredentials credentials)
     {
-        this(credentials, new Date(System.currentTimeMillis() + 15 * 60 * 1000));
+        this(credentials, Instant.now().plusSeconds(15 * 60));
     }
 
-    protected CredentialsHolder(AWSCredentials credentials, Date expiration)
+    protected CredentialsHolder(AwsCredentials credentials, Instant expiration)
     {
         this.m_credentials = credentials;
 
@@ -34,9 +35,9 @@ public class CredentialsHolder implements AWSCredentials
         }
     }
 
-    public static CredentialsHolder newInstance(AWSCredentials credentials)
+    public static CredentialsHolder newInstance(AwsCredentials credentials)
     {
-        if (credentials instanceof AWSSessionCredentials)
+        if (credentials instanceof AwsSessionCredentials)
         {
             return new SessionCredentialsHolder(credentials);
         }
@@ -44,29 +45,25 @@ public class CredentialsHolder implements AWSCredentials
         return new CredentialsHolder(credentials);
     }
 
-    public static CredentialsHolder newInstance(AWSCredentials credentials, Date expiration)
+    public static CredentialsHolder newInstance(AwsCredentials credentials, Instant expiration)
     {
-        if (credentials instanceof AWSSessionCredentials)
+        if (credentials instanceof AwsSessionCredentials)
         {
             return new SessionCredentialsHolder(credentials, expiration);
         }
-
         return new CredentialsHolder(credentials, expiration);
     }
 
-    /**
-     * @return The AWS Access Key ID for this credentials object.
-     */
     @Override
-    public String getAWSAccessKeyId()
+    public String accessKeyId()
     {
-        return m_credentials.getAWSAccessKeyId();
+        return m_credentials.accessKeyId();
     }
 
     @Override
-    public String getAWSSecretKey()
+    public String secretAccessKey()
     {
-        return m_credentials.getAWSSecretKey();
+        return m_credentials.secretAccessKey();
     }
 
     public boolean isExpired()
@@ -74,7 +71,7 @@ public class CredentialsHolder implements AWSCredentials
         return RequestUtils.isCredentialExpired(m_expiration);
     }
 
-    public Date getExpiration()
+    public Instant getExpiration()
     {
         return m_expiration;
     }
@@ -96,38 +93,40 @@ public class CredentialsHolder implements AWSCredentials
         }
         return m_metadata;
     }
-    
-    public void setRefresh(boolean flag) {
-    	refresh = flag;
+
+    public void setRefresh(boolean flag)
+    {
+        refresh = flag;
     }
 
-    public boolean isRefresh() {
-    	return refresh;
+    public boolean isRefresh()
+    {
+        return refresh;
     }
-    
+
     public void setMetadata(IamMetadata metadata)
     {
         this.m_metadata = metadata;
     }
 
     private static final class SessionCredentialsHolder
-        extends CredentialsHolder
-        implements AWSSessionCredentials
+            extends CredentialsHolder implements AwsSessionCredentialsIdentity
     {
-        protected SessionCredentialsHolder(AWSCredentials credentials)
+
+        private SessionCredentialsHolder(AwsCredentials credentials)
         {
             super(credentials);
         }
 
-        protected SessionCredentialsHolder(AWSCredentials credentials, Date expiration)
+        private SessionCredentialsHolder(AwsCredentials credentials, Instant expiration)
         {
             super(credentials, expiration);
         }
 
         @Override
-        public String getSessionToken()
+        public String sessionToken()
         {
-            return ((AWSSessionCredentials) m_credentials).getSessionToken();
+            return ((AwsSessionCredentials) m_credentials).sessionToken();
         }
     }
 
@@ -137,13 +136,12 @@ public class CredentialsHolder implements AWSCredentials
         /**
          * Connection string setting.
          */
-		private String dbUser;
+        private String dbUser;
 
-		/**
-		 * Value from SAML assertion.
-		 */
+        /**
+         * Value from SAML assertion.
+         */
         private String samlDbUser;
-
         /**
          * Connection profile setting.
          */
@@ -162,7 +160,6 @@ public class CredentialsHolder implements AWSCredentials
          * Forces the passed in dbGroups setting to be lower case.
          */
         private boolean forceLowercase = false;
-                
         public Boolean getAutoCreate()
         {
             return autoCreate;
@@ -222,7 +219,6 @@ public class CredentialsHolder implements AWSCredentials
         {
             this.forceLowercase = forceLowercase;
         }
-        
         public boolean getAllowDbUserOverride()
         {
             return allowDbUserOverride;

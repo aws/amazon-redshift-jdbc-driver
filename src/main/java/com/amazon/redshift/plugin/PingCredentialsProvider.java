@@ -1,12 +1,9 @@
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.util.IOUtils;
-import com.amazonaws.util.StringUtils;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -23,6 +20,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 import static java.lang.String.format;
 
@@ -64,7 +62,7 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
         checkRequiredParameters();
 
         // If no value was specified for m_partnerSpid use the AWS default.
-        if (StringUtils.isNullOrEmpty(m_partnerSpId))
+        if (Utils.isNullOrEmpty(m_partnerSpId))
         {
             m_partnerSpId = "urn%3Aamazon%3Awebservices";
         }
@@ -77,152 +75,137 @@ public class PingCredentialsProvider extends SamlCredentialsProvider
         String uri = "https://" +
                 m_idpHost + ':' + m_idpPort +
                 "/idp/startSSO.ping?PartnerSpId=" + m_partnerSpId;
-        CloseableHttpClient client = null;
         List<NameValuePair> parameters = new ArrayList<NameValuePair>(5);
 
-        try
-        {
-            CloseableHttpResponse resp;
-            
-            if (RedshiftLogger.isEnable())
-          		m_log.logDebug("uri: {0}", uri);
-            
+        try (CloseableHttpClient client = getHttpClient()) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logDebug("uri: {0}", uri);
+            }
             validateURL(uri);
-            client = getHttpClient();
             HttpGet get = new HttpGet(uri);
-            resp = client.execute(get);
-            if (resp.getStatusLine().getStatusCode() != 200)
-            {
-            	if(RedshiftLogger.isEnable())
-            		m_log.log(LogLevel.DEBUG, "getSamlAssertion https response:" + EntityUtils.toString(resp.getEntity()));
-            	
-                throw new IOException(
-                        "Failed send request: " + resp.getStatusLine().getReasonPhrase());
+
+            try (CloseableHttpResponse resp = client.execute(get)) {
+                if (resp.getStatusLine().getStatusCode() != 200) {
+                    if (RedshiftLogger.isEnable()) {
+                        m_log.log(LogLevel.DEBUG, "getSamlAssertion https response:" + EntityUtils.toString(resp.getEntity()));
+                    }
+
+                    throw new IOException(
+                            "Failed send request: " + resp.getStatusLine().getReasonPhrase());
+                }
+                HttpEntity entity = resp.getEntity();
+                String body = EntityUtils.toString(entity);
+                BasicNameValuePair username = null;
+                BasicNameValuePair pass = null;
+                String password_tag = null;
+
+                if (RedshiftLogger.isEnable()) {
+                    m_log.logDebug("body: {0}", body);
+                }
+
+                for (String inputTag : getInputTagsfromHTML(body)) {
+                    String name = getValueByKey(inputTag, "name");
+                    String id = getValueByKey(inputTag, "id");
+                    String value = getValueByKey(inputTag, "value");
+
+                    if (RedshiftLogger.isEnable()) {
+                        m_log.logDebug("name: {0} , id: {1}", name, id);
+                    }
+
+                    if (username == null
+                            && (("username".equals(id))
+                            || ("pf.username".equals(id))
+                            || ("username".equals(name))
+                            || ("pf.username".equals(name))
+                    )
+                            && isText(inputTag)) {
+                        username = new BasicNameValuePair(name, m_userName);
+                    } else if (("pf.pass".equals(name)
+                            || name.contains("pass")
+                    )
+                            && isPassword(inputTag)) {
+                        if (pass != null) {
+                            if (RedshiftLogger.isEnable()) {
+                                m_log.log(LogLevel.DEBUG, format("pass field: %s " +
+                                                "has conflict with field: %s",
+                                        password_tag, inputTag));
+                                m_log.log(LogLevel.DEBUG, body);
+                            }
+
+                            throw new IOException("Duplicate password fields on " +
+                                    "login page.");
+                        }
+                        password_tag = inputTag;
+                        pass = new BasicNameValuePair(name, m_password);
+                    } else if (!Utils.isNullOrEmpty(name)) {
+                        parameters.add(new BasicNameValuePair(name, value));
+                    }
+                }
+
+                if (username == null) {
+                    for (String inputTag : getInputTagsfromHTML(body)) {
+                        String name = getValueByKey(inputTag, "name");
+
+                        if (RedshiftLogger.isEnable()) {
+                            m_log.log(LogLevel.DEBUG, format("inputTag: %s " +
+                                            "has name with field: %s",
+                                    inputTag, name));
+                        }
+
+                        if (("email".equals(name) || name.contains("user")
+                                || name.contains("email")) && isText(inputTag)) {
+                            username = new BasicNameValuePair(name, m_userName);
+                        }
+                    }
+                }
+
+                if (username == null || pass == null) {
+                    boolean noUserName = (username == null);
+                    boolean noPass = (pass == null);
+
+                    if (RedshiftLogger.isEnable()) {
+                        m_log.log(LogLevel.DEBUG, body);
+                    }
+
+                    throw new IOException("Failed to parse login form. noUserName = " + noUserName + " noPass=" + noPass);
+                }
+
+                parameters.add(username);
+                parameters.add(pass);
+
+                String action = getFormAction(body);
+                if (!Utils.isNullOrEmpty(action) && action.startsWith("/")) {
+                    uri = "https://" + m_idpHost + ':' + m_idpPort + action;
+                }
+
+                if (RedshiftLogger.isEnable()) {
+                    m_log.logDebug("action uri: {0}", uri);
+                }
+
+                validateURL(uri);
+
+                HttpPost post = new HttpPost(uri);
+                post.setEntity(new UrlEncodedFormEntity(parameters));
+
+                try (CloseableHttpResponse postResponse = client.execute(post)) {
+                    if (postResponse.getStatusLine().getStatusCode() != 200) {
+                        throw new IOException(
+                                "Failed send request: " + postResponse.getStatusLine().getReasonPhrase());
+                    }
+
+                    String content = EntityUtils.toString(postResponse.getEntity());
+                    Matcher matcher = SAML_PATTERN.matcher(content);
+                    if (!matcher.find()) {
+                        throw new IOException("Failed to retrieve SAMLAssertion.");
+                    }
+
+                    return matcher.group(1);
+                }
             }
-            HttpEntity entity = resp.getEntity();
-            String body = EntityUtils.toString(entity);
-            BasicNameValuePair username = null;
-            BasicNameValuePair pass = null;
-            String password_tag = null;
-
-            if (RedshiftLogger.isEnable())
-          		m_log.logDebug("body: {0}", body);
-            
-            for (String inputTag : getInputTagsfromHTML(body))
-            {
-                String name = getValueByKey(inputTag, "name");
-                String id = getValueByKey(inputTag, "id");
-                String value = getValueByKey(inputTag, "value");
-
-                if (RedshiftLogger.isEnable())
-              		m_log.logDebug("name: {0} , id: {1}", name, id);
-                
-                if (username == null
-                    && (("username".equals(id)) 
-                    		 || ("pf.username".equals(id))
-                    		 || ("username".equals(name))                    		 
-                    		 || ("pf.username".equals(name))
-                    		)
-                    && isText(inputTag)) 
-                {
-                	username = new BasicNameValuePair(name, m_userName);
-		            } 
-                else if (("pf.pass".equals(name) 
-                					|| name.contains("pass")
-                				)
-		                    && isPassword(inputTag))
-		            {
-		                if (pass != null)
-		                {
-		                	if(RedshiftLogger.isEnable()) {
-		                		m_log.log(LogLevel.DEBUG, format("pass field: %s " +
-		                                    "has conflict with field: %s",
-		                            password_tag, inputTag));
-		                		m_log.log(LogLevel.DEBUG, body);
-		                	}
-		                	
-		                  throw new IOException("Duplicate password fields on " +
-		                            "login page.");
-		                }
-		                password_tag = inputTag;
-		                pass = new BasicNameValuePair(name, m_password);
-		            } 
-                else if (!StringUtils.isNullOrEmpty(name))
-		            {
-		                parameters.add(new BasicNameValuePair(name, value));
-		            }
-            }
-
-		        if( username == null )
-		        {
-		            for (String inputTag : getInputTagsfromHTML(body)) 
-		            {
-		                String name = getValueByKey(inputTag, "name");
-		                
-	                	if(RedshiftLogger.isEnable()) {
-	                		m_log.log(LogLevel.DEBUG, format("inputTag: %s " +
-	                                    "has name with field: %s",
-	                            inputTag, name));
-	                	}
-		                
-		                if (("email".equals(name) || name.contains("user")
-		                        || name.contains("email")) && isText(inputTag))
-		                {
-		                    username = new BasicNameValuePair(name, m_userName);
-		                }
-		            }
-		        }
-		        
-		        if (username == null || pass == null)
-		        {
-		        	boolean noUserName = (username == null);
-		        	boolean noPass = (pass == null);
-		        	
-		        	if(RedshiftLogger.isEnable())
-		        		m_log.log(LogLevel.DEBUG, body);
-		        	
-		          throw new IOException("Failed to parse login form. noUserName = " + noUserName + " noPass=" + noPass);
-		        }
-		        
-		        parameters.add(username);
-		        parameters.add(pass);
-            
-            String action = getFormAction(body);
-            if (!StringUtils.isNullOrEmpty(action) && action.startsWith("/"))
-            {
-                uri = "https://" + m_idpHost + ':' + m_idpPort + action;
-            }
-
-            if (RedshiftLogger.isEnable())
-          		m_log.logDebug("action uri: {0}", uri);
-            
-            validateURL(uri);
-            
-            HttpPost post = new HttpPost(uri);
-            post.setEntity(new UrlEncodedFormEntity(parameters));
-            resp = client.execute(post);
-            if (resp.getStatusLine().getStatusCode() != 200)
-            {
-                throw new IOException(
-                        "Failed send request: " + resp.getStatusLine().getReasonPhrase());
-            }
-
-            String content = EntityUtils.toString(resp.getEntity());
-            Matcher matcher = SAML_PATTERN.matcher(content);
-            if (!matcher.find())
-            {
-                throw new IOException("Failed to retrieve SAMLAssertion.");
-            }
-
-            return matcher.group(1);
         }
         catch (GeneralSecurityException e)
         {
-            throw new SdkClientException("Failed create SSLContext.", e);
-        }
-        finally
-        {
-            IOUtils.closeQuietly(client, null);
+            throw SdkClientException.create("Failed create SSLContext.", e);
         }
     }
 }

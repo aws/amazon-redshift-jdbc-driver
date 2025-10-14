@@ -9,6 +9,9 @@ package com.amazon.redshift.core;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -18,6 +21,9 @@ import java.sql.SQLException;
  * Collection of utilities used by the protocol-level code.
  */
 public class Utils {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   /**
    * Turn a bytearray into a printable form, representing each byte in hex.
    *
@@ -211,5 +217,31 @@ public class Utils {
 
   public static boolean isNullOrEmpty(String value) {
     return value == null || value.isEmpty();
+  }
+
+  /**
+   * Parses a JSON string into a JsonNode object.
+   *
+   * @param json The JSON string to be parsed. Must be a valid JSON format.
+   *             Can represent an object, array, or primitive JSON value.
+   * @return A JsonNode representing the parsed JSON structure.
+   *         The specific type of JsonNode (ObjectNode, ArrayNode, etc.)
+   *         will depend on the input JSON structure.
+   * @throws JsonProcessingException if the input string is not valid JSON,
+   *         or if there are any other problems parsing the JSON content.
+   * @throws IllegalArgumentException if the input string is null.
+   *
+   * @see com.fasterxml.jackson.databind.JsonNode
+   * @see com.fasterxml.jackson.databind.ObjectMapper#readTree(String)
+   *
+   * Example usage:
+   * <pre>
+   * String jsonString = "{\"name\":\"John\",\"age\":30}";
+   * JsonNode node = JsonUtil.parseJson(jsonString);
+   * String name = node.get("name").asText();
+   * </pre>
+   */
+  public static JsonNode parseJson(String json) throws JsonProcessingException {
+    return OBJECT_MAPPER.readTree(json);
   }
 }

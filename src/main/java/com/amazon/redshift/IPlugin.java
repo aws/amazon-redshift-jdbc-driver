@@ -1,9 +1,9 @@
 package com.amazon.redshift;
 
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazonaws.auth.AWSCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
-public interface IPlugin extends AWSCredentialsProvider
+public interface IPlugin extends AwsCredentialsProvider
 {
     void addParameter(String key, String value);
     void setLogger(RedshiftLogger log);
@@ -13,4 +13,3 @@ public interface IPlugin extends AWSCredentialsProvider
     String getCacheKey();
     int getSubType();
 }
-

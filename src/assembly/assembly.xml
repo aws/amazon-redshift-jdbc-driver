@@ -14,7 +14,6 @@
                 <exclude>com.ongres.scram:*</exclude>
                 <exclude>com.ongres.stringprep:*</exclude>
                 <exclude>net.java.dev.jna:*</exclude>
-                <exclude>org.slf4j:*</exclude>
                 <exclude>com.github.ben-manes.caffeine:*</exclude>
                 <exclude>org.junit.jupiter:*</exclude>
                 <exclude>org.junit.platform:*</exclude>
@@ -29,4 +28,3 @@
         </dependencySet>
     </dependencySets>
 </assembly>
-

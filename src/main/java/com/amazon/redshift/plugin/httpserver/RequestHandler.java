@@ -171,7 +171,7 @@ public class RequestHandler implements HttpRequestHandler
     }
 
     /**
-     * @return reset is_valid_result to false.
+     * Resets the result object.
      */
     public void resetValidResult()
     {

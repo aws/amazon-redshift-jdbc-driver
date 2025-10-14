@@ -1,9 +1,7 @@
 package com.amazon.redshift.plugin;
 
-import com.amazonaws.SdkClientException;
-import com.amazonaws.util.IOUtils;
-import com.amazonaws.util.StringUtils;
-import com.amazonaws.util.json.Jackson;
+import com.amazon.redshift.core.Utils;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.LogLevel;
@@ -17,9 +15,10 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,27 +73,27 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
          * user and password are also required and need to be set to the username and password of the
          * Microsoft Azure account that is logging in.
          */
-        if (StringUtils.isNullOrEmpty(m_idpTenant))
+        if (Utils.isNullOrEmpty(m_idpTenant))
         {
             throw new IOException("Missing required property: " + KEY_IDP_TENANT);
         }
-        else if (StringUtils.isNullOrEmpty(m_userName))
+        else if (Utils.isNullOrEmpty(m_userName))
         {
             throw new IOException(
                 "Missing required property: " + RedshiftProperty.UID.getName() + " or " +
                 		RedshiftProperty.USER.getName());
         }
-        else if (StringUtils.isNullOrEmpty(m_password))
+        else if (Utils.isNullOrEmpty(m_password))
         {
             throw new IOException(
                 "Missing required property: " + RedshiftProperty.PWD.getName() + " or " +
                 		RedshiftProperty.PASSWORD.getName());
         }
-        else if (StringUtils.isNullOrEmpty(m_clientSecret))
+        else if (Utils.isNullOrEmpty(m_clientSecret))
         {
             throw new IOException("Missing required property: " + KEY_CLIENT_SECRET);
         }
-        else if (StringUtils.isNullOrEmpty(m_clientId))
+        else if (Utils.isNullOrEmpty(m_clientId))
         {
             throw new IOException("Missing required property: " + KEY_CLIENT_ID);
         }
@@ -149,23 +148,17 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
      * @throws IOException
      * @throws SdkClientException
      */
-    private String azureOauthBasedAuthentication() throws IOException, SdkClientException
-    {
+    private String azureOauthBasedAuthentication() throws IOException, SdkClientException {
         // endpoint to connect with Microsoft Azure to get SAML Assertion token
         String uri = "https://login.microsoftonline.com/" + m_idpTenant + "/oauth2/token";
 
-        if (RedshiftLogger.isEnable())
-      		m_log.logDebug("uri: {0}", uri);
-        
+        if (RedshiftLogger.isEnable()) {
+            m_log.logDebug("uri: {0}", uri);
+        }
+
         validateURL(uri);
-        
-        CloseableHttpClient client = null;
-        CloseableHttpResponse resp = null;
 
-        try
-        {
-            client = getHttpClient();
-
+        try (CloseableHttpClient client = getHttpClient()) {
             HttpPost post = new HttpPost(uri);
 
             // required parameters to pass in POST body
@@ -184,97 +177,79 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
             // headers to pass with POST request
             post.addHeader("Content-Type", "application/x-www-form-urlencoded");
             post.addHeader("Accept", "application/json");
-            post.setEntity(new UrlEncodedFormEntity(parameters, Charset.forName("UTF-8")));
+            post.setEntity(new UrlEncodedFormEntity(parameters, StandardCharsets.UTF_8));
 
-            resp = client.execute(post);
-
-            String content = EntityUtils.toString(resp.getEntity());
-            JsonNode entityJson = Jackson.jsonNodeOf(content);
-
-            // if we don't receive a 200 response, throw an error saying we failed to authenticate
-            // with Azure
-            if (resp.getStatusLine().getStatusCode() != 200)
-            {
-            	if(RedshiftLogger.isEnable())
-            		m_log.log(LogLevel.DEBUG, "azureOauthBasedAuthentication https response: " + content);
-            	
-                String errorMessage =
-                    "Authentication failed on the Azure server. Please check the tenant, user, password, client secret, and client id.";
-                JsonNode errorDescriptionNode = entityJson.findValue("error_description");
-                if (errorDescriptionNode != null &&
-                    !StringUtils.isNullOrEmpty(errorDescriptionNode.textValue()))
-                {
-                    String errorDescription =
-                        errorDescriptionNode.textValue().replaceAll("\r\n", " ");
-                    JsonNode errorCodeNode = entityJson.findValue("error");
-                    if (errorCodeNode != null &&
-                        !StringUtils.isNullOrEmpty(errorCodeNode.textValue()))
-                    {
-                        errorMessage = errorCodeNode.textValue() + ": " + errorDescription;
-                    }
-                    else
-                    {
-                        errorMessage = "Unexpected response: " + errorDescription;
-                    }
+            try (CloseableHttpResponse resp = client.execute(post)) {
+                String content = EntityUtils.toString(resp.getEntity());
+                JsonNode entityJson;
+                try {
+                    entityJson = Utils.parseJson(content);
+                } catch (JsonProcessingException e) {
+                    throw SdkClientException.create("Failed to parse Azure response.", e);
                 }
-                throw new IOException(errorMessage);
-            }
 
-            if(RedshiftLogger.isEnable()) {
-                String maskedContent = content.replaceAll(getRegexForJsonKey("access_token"), "$1***masked***\"");
-                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("refresh_token"), "$1***masked***\"");
-                m_log.log(LogLevel.DEBUG, "content:" + maskedContent);
-            }
-            
-            // parse the JSON response to grab access_token field which contains Base64 encoded SAML
-            // Assertion and decode it
-            JsonNode accessTokenField = entityJson.findValue("access_token");
-            String encodedSamlAssertion;
-            if (accessTokenField != null)
-            {
-                encodedSamlAssertion = accessTokenField.textValue();
-                if (StringUtils.isNullOrEmpty(encodedSamlAssertion))
-                {
-                    throw new IOException("Invalid Azure access_token response");
+                // if we don't receive a 200 response, throw an error saying we failed to authenticate
+                // with Azure
+                if (resp.getStatusLine().getStatusCode() != 200) {
+                    if (RedshiftLogger.isEnable()) {
+                        m_log.log(LogLevel.DEBUG, "azureOauthBasedAuthentication https response: " + content);
+                    }
+
+                    String errorMessage = "Authentication failed on the Azure server. Please check the tenant, user, password, client secret, and client id.";
+                    JsonNode errorDescriptionNode = entityJson.findValue("error_description");
+                    if (errorDescriptionNode != null && !Utils.isNullOrEmpty(errorDescriptionNode.textValue())) {
+                        String errorDescription = errorDescriptionNode.textValue().replaceAll("\r\n", " ");
+                        JsonNode errorCodeNode = entityJson.findValue("error");
+                        if (errorCodeNode != null && !Utils.isNullOrEmpty(errorCodeNode.textValue())) {
+                            errorMessage = errorCodeNode.textValue() + ": " + errorDescription;
+                        } else {
+                            errorMessage = "Unexpected response: " + errorDescription;
+                        }
+                    }
+                    throw new IOException(errorMessage);
                 }
+
+                if (RedshiftLogger.isEnable()) {
+                    String maskedContent = content.replaceAll(getRegexForJsonKey("access_token"), "$1***masked***\"");
+                    maskedContent = maskedContent.replaceAll(getRegexForJsonKey("refresh_token"), "$1***masked***\"");
+                    m_log.log(LogLevel.DEBUG, "content:" + maskedContent);
+                }
+
+                // parse the JSON response to grab access_token field which contains Base64 encoded SAML
+                // Assertion and decode it
+                JsonNode accessTokenField = entityJson.findValue("access_token");
+                String encodedSamlAssertion;
+                if (accessTokenField != null) {
+                    encodedSamlAssertion = accessTokenField.textValue();
+                    if (Utils.isNullOrEmpty(encodedSamlAssertion)) {
+                        throw new IOException("Invalid Azure access_token response");
+                    }
+                } else {
+                    throw new IOException("Failed to find Azure access_token");
+                }
+
+                // decode the SAML Assertion to a String to add XML tags to form a SAML Response
+                String samlAssertion = new String(Base64.decodeBase64(encodedSamlAssertion), StandardCharsets.UTF_8);
+
+                /*
+                 * SAML Response is required to be sent to base class. We need to provide a minimum of:
+                 * 1) samlp:Response XML tag with xmlns:samlp protocol value
+                 * 2) samlp:Status XML tag and samlpStatusCode XML tag with Value indicating Success
+                 * 3) followed by Signed SAML Assertion
+                 */
+                StringBuilder sb = new StringBuilder()
+                        .append("<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\">")
+                        .append("<samlp:Status>")
+                        .append("<samlp:StatusCode Value=\"urn:oasis:names:tc:SAML:2.0:status:Success\"/>")
+                        .append("</samlp:Status>")
+                        .append(samlAssertion)
+                        .append("</samlp:Response>");
+
+                // re-encode the SAML Response in Base64 and return this to the base class
+                return new String(Base64.encodeBase64(sb.toString().getBytes()));
             }
-            else
-            {
-                throw new IOException("Failed to find Azure access_token");
-            }
-
-            // decode the SAML Assertion to a String to add XML tags to form a SAML Response
-            String samlAssertion =
-                new String(Base64.decodeBase64(encodedSamlAssertion),
-                    Charset.forName("UTF-8"));
-
-            /**
-             * SAML Response is required to be sent to base class. We need to provide a minimum of:
-             * 1) samlp:Response XML tag with xmlns:samlp protocol value
-             * 2) samlp:Status XML tag and samlpStatusCode XML tag with Value indicating Success
-             * 3) followed by Signed SAML Assertion
-             */
-            StringBuilder sb = new StringBuilder();
-            sb.append("<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\">");
-            sb.append("<samlp:Status>");
-            sb.append("<samlp:StatusCode Value=\"urn:oasis:names:tc:SAML:2.0:status:Success\"/>");
-            sb.append("</samlp:Status>");
-            sb.append(samlAssertion);
-            sb.append("</samlp:Response>");
-
-            // re-encode the SAML Resposne in Base64 and return this to the base class
-            return new String(Base64.encodeBase64(sb.toString().getBytes()));
-        }
-        catch (GeneralSecurityException e)
-        {
-            // failed to get HttpClient and thus cannot continue so throw an error.
-            throw new SdkClientException("Failed to create SSLContext", e);
-        }
-        finally
-        {
-            // close out closable resp and client. This does not throw any errors.
-            IOUtils.closeQuietly(resp, null);
-            IOUtils.closeQuietly(client, null);
+        } catch (GeneralSecurityException e) {
+            throw SdkClientException.create("Failed to create SSLContext", e);
         }
     }
 }

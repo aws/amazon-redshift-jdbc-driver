@@ -1,11 +1,12 @@
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
 import com.amazon.redshift.plugin.httpserver.Server;
 import com.amazon.redshift.plugin.utils.RandomStateUtil;
-import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
@@ -64,7 +65,6 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
      */
     public static final String KEY_SCOPE = "scope"; // "api://" + m_clientId + "/User.Read"
     
-    
     /**
      * Key for setting state.
      */
@@ -116,7 +116,7 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
     public static final String OAUTH_RESPONSE_MODE_PARAMETER_NAME = "response_mode";
 
     /**
-     * String containing Microsoft IDP host.
+	 * String containing Microsoft IDP host.
      */
     private static final String MICROSOFT_IDP_HOST = "login.microsoftonline.com";
 
@@ -386,11 +386,14 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
      */
     private String extractJwtAssertion(String content)
     {
-        String encodedJwtAssertion;
-        
-        JsonNode accessTokenField = Jackson.jsonNodeOf(content).findValue("access_token");
-        checkAndThrowsWithMessage(accessTokenField == null, "Failed to find access_token");
-        encodedJwtAssertion = accessTokenField.textValue();
+        JsonNode accessTokenField;
+        try {
+            accessTokenField = Utils.parseJson(content).findValue("access_token");
+        } catch (JsonProcessingException e) {
+            throw new InternalPluginException("Failed to parse access_token from response.");
+        }
+
+        String encodedJwtAssertion = accessTokenField.textValue();
         checkAndThrowsWithMessage(
             isNullOrEmpty(encodedJwtAssertion),
             "Invalid access_token value.");
@@ -410,10 +413,10 @@ public class BrowserAzureOAuth2CredentialsProvider extends JwtCredentialsProvide
      */
     private HttpPost createAuthorizationRequest(String authorizationCode) throws IOException
     {
-        URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_SCHEMA)
+        URIBuilder builder = new URIBuilder()
+            .setScheme(CURRENT_INTERACTION_SCHEMA)
             .setHost(MICROSOFT_IDP_HOST)
             .setPath("/" + m_idp_tenant + "/oauth2/v2.0/token");
-
         String tokenRequestUrl = builder.toString();
         String scope = "openid " + m_scope;
         

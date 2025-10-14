@@ -14,6 +14,7 @@
 
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
@@ -34,10 +35,17 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import com.amazon.redshift.NativeTokenHolder;
 import com.amazon.redshift.RedshiftProperty;
-import com.amazonaws.services.ssooidc.AWSSSOOIDC;
-import com.amazonaws.services.ssooidc.AWSSSOOIDCClientBuilder;
-import com.amazonaws.services.ssooidc.model.*;
-import com.amazonaws.util.StringUtils;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ssooidc.SsoOidcClient;
+import software.amazon.awssdk.services.ssooidc.model.AccessDeniedException;
+import software.amazon.awssdk.services.ssooidc.model.AuthorizationPendingException;
+import software.amazon.awssdk.services.ssooidc.model.CreateTokenRequest;
+import software.amazon.awssdk.services.ssooidc.model.CreateTokenResponse;
+import software.amazon.awssdk.services.ssooidc.model.RegisterClientRequest;
+import software.amazon.awssdk.services.ssooidc.model.RegisterClientResponse;
+import software.amazon.awssdk.services.ssooidc.model.SlowDownException;
+import software.amazon.awssdk.services.ssooidc.model.SsoOidcException;
+
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -148,7 +156,7 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	/**
 	 * AWSSSOOIDC client object needed to SSOOIDC methods
 	 */
-	protected AWSSSOOIDC m_sdk_client;
+	protected SsoOidcClient m_sdk_client;
 
 	/**
 	 * Key for authorization code.
@@ -219,8 +227,8 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 */
 	private String m_idcClientDisplayName = RedshiftProperty.IDC_CLIENT_DISPLAY_NAME.getDefaultValue();
 
-	// Used to cache RegisterClientResult, which contains clientId and clientSecret. Cache key will be <m_issuer_url>:<m_idc_region>:<m_listen_port>
-	private static final Map<String, RegisterClientResult> m_register_client_cache = new HashMap<String, RegisterClientResult>();
+	// Used to cache RegisterClientResponse, which contains clientId and clientSecret. Cache key will be <m_issuer_url>:<m_idc_region>:<m_listen_port>
+	private static final Map<String, RegisterClientResponse> m_register_client_cache = new HashMap<String, RegisterClientResponse>();
     
 	/**
 	 * Overridden method to obtain the auth token from plugin specific implementation
@@ -242,20 +250,22 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	protected NativeTokenHolder getIdcToken() throws IOException {
 		try {
 			checkRequiredParameters();
-			m_sdk_client = AWSSSOOIDCClientBuilder.standard().withRegion(m_idc_region).build();
+			m_sdk_client = SsoOidcClient.builder()
+					.region(Region.of(m_idc_region))
+					.build();
 			m_redirect_uri = M_REDIRECT_URI + ":" + m_listen_port;
 
-			RegisterClientResult registerClientResult = getRegisterClientResult();
+			RegisterClientResponse registerClientResponse = getRegisterClientResponse();
 
 			String codeVerifier = generateCodeVerifier();
 
 			String codeChallenge = generateCodeChallenge(codeVerifier);
 
-			String authCode = fetchAuthorizationCode(codeChallenge, registerClientResult);
+			String authCode = fetchAuthorizationCode(codeChallenge, registerClientResponse);
 
-			CreateTokenResult createTokenResult = fetchTokenResult(registerClientResult, authCode,codeVerifier);
+			CreateTokenResponse createTokenResponse = fetchTokenResponse(registerClientResponse, authCode,codeVerifier);
 
-			return processCreateTokenResult(createTokenResult);
+			return processCreateTokenResponse(createTokenResponse);
 		} catch (InternalPluginException | URISyntaxException ex) {
 			if (RedshiftLogger.isEnable())
 				m_log.log(LogLevel.ERROR, ex, "InternalPluginException in getIdcToken");
@@ -265,11 +275,11 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	}
 
 	private void checkRequiredParameters() throws InternalPluginException {
-		if (StringUtils.isNullOrEmpty(m_issuer_url)) {
+		if (Utils.isNullOrEmpty(m_issuer_url)) {
 			m_log.logDebug("IdC authentication failed: issuer_url needs to be provided in connection params");
 			throw new InternalPluginException("IdC authentication failed: The issuer URL must be included in the connection parameters.");
 		}
-		if (StringUtils.isNullOrEmpty(m_idc_region)) {
+		if (Utils.isNullOrEmpty(m_idc_region)) {
 			m_log.logDebug("IdC authentication failed: idc_region needs to be provided in connection params");
 			throw new InternalPluginException("IdC authentication failed: The IdC region must be included in the connection parameters.");
 		}
@@ -304,14 +314,15 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 				break;
 
 			case KEY_IDC_CLIENT_DISPLAY_NAME:
-				if (!StringUtils.isNullOrEmpty(value))
+				if (!Utils.isNullOrEmpty(value)) {
 					m_idcClientDisplayName = value;
+				}
 				if (RedshiftLogger.isEnable())
 					m_log.logDebug("Setting idc_client_display_name: {0}", m_idcClientDisplayName);
 				break;
 
 			case KEY_IDC_RESPONSE_TIMEOUT:
-				if (!StringUtils.isNullOrEmpty(value)) {
+				if (!Utils.isNullOrEmpty(value)) {
 					int timeout = Integer.parseInt(value);
 					if (timeout > 10) { // minimum allowed timeout value is 10 secs
 						m_idc_response_timeout = timeout;
@@ -333,34 +344,36 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 * Registers a client with IAM Identity Center. This allows clients to initiate authorization code + PKCE flow.
 	 * The output is persisted for reuse through many authentication requests.
 	 *
-	 * @return {@link RegisterClientResult} Client registration result containing {@code clientId} and {@code clientSecret} required for authorization code + PKCE flow
+	 * @return {@link RegisterClientResponse} Client registration response containing {@code clientId} and {@code clientSecret} required for authorization code + PKCE flow
 	 * @throws IOException if an error occurs during the involved API call
 	 */
-	protected RegisterClientResult getRegisterClientResult() throws IOException {
+	protected RegisterClientResponse getRegisterClientResponse() throws IOException {
 		String registerClientCacheKey = m_issuer_url + ":" + m_idc_region + ":" +  m_listen_port;
-		RegisterClientResult cachedRegisterClientResult = m_register_client_cache.get(registerClientCacheKey);
-		if (isCachedRegisterClientResultValid(cachedRegisterClientResult)) {
+		RegisterClientResponse cachedRegisterClientResponse = m_register_client_cache.get(registerClientCacheKey);
+		if (isCachedRegisterClientResponseValid(cachedRegisterClientResponse)) {
 			if (RedshiftLogger.isEnable()){
-				m_log.logDebug("Using cached register client result");
-				m_log.logDebug("Cached register client secret expiry is {0}", cachedRegisterClientResult.getClientSecretExpiresAt());
+				m_log.logDebug("Using cached register client response");
+				m_log.logDebug("Cached register client secret expiry is {0}", cachedRegisterClientResponse.clientSecretExpiresAt());
 			}
-			return cachedRegisterClientResult;
+			return cachedRegisterClientResponse;
 		}
 
-		RegisterClientRequest registerClientRequest = new RegisterClientRequest();
-		registerClientRequest.withClientName(m_idcClientDisplayName);
-		registerClientRequest.withClientType(M_CLIENT_TYPE);
-		registerClientRequest.withScopes(REDSHIFT_IDC_CONNECT_SCOPE);
-		registerClientRequest.withIssuerUrl(m_issuer_url);
-		registerClientRequest.withRedirectUris(m_redirect_uri);
-		registerClientRequest.withGrantTypes(AUTH_CODE_GRANT_TYPE);
+		RegisterClientRequest registerClientRequest = RegisterClientRequest.builder()
+				.clientName(m_idcClientDisplayName)
+				.clientType(M_CLIENT_TYPE)
+				.scopes(REDSHIFT_IDC_CONNECT_SCOPE)
+				.issuerUrl(m_issuer_url)
+				.redirectUris(m_redirect_uri)
+				.grantTypes(AUTH_CODE_GRANT_TYPE)
+				.build();
 
-		RegisterClientResult registerClientResult = null;
+		RegisterClientResponse registerClientResponse = null;
 		try {
-			registerClientResult = m_sdk_client.registerClient(registerClientRequest);
-			if (RedshiftLogger.isEnable() && registerClientResult.getSdkHttpMetadata() != null)
-				m_log.logDebug("registerClient response code: {0}", registerClientResult.getSdkHttpMetadata().getHttpStatusCode());
-		} catch (InternalServerException ex) {
+			registerClientResponse = m_sdk_client.registerClient(registerClientRequest);
+			if (RedshiftLogger.isEnable() && registerClientResponse.sdkHttpResponse() != null) {
+				m_log.logDebug("registerClient response code: {0}", registerClientResponse.sdkHttpResponse().statusCode());
+			}
+		} catch (SsoOidcException ex) {
 			if (RedshiftLogger.isEnable())
 				m_log.log(LogLevel.ERROR, ex, "Error: Unexpected server error while registering client;");
 			throw new IOException("IdC authentication failed : An error occurred during the request.", ex);
@@ -369,11 +382,11 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 				m_log.log(LogLevel.ERROR, ex, "Error: Unexpected register client error;");
 			throw new IOException("IdC registerClient failed : There was an error during the request.", ex);
 		}
-		m_register_client_cache.put(registerClientCacheKey, registerClientResult);
+		m_register_client_cache.put(registerClientCacheKey, registerClientResponse);
 		if (RedshiftLogger.isEnable())
-			m_log.logDebug("Cached register client secret expiry is {0}", registerClientResult.getClientSecretExpiresAt());
+			m_log.logDebug("Cached register client secret expiry is {0}", registerClientResponse.clientSecretExpiresAt());
 		
-		return registerClientResult;
+		return registerClientResponse;
 	}
 
 	/**
@@ -410,12 +423,12 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 * Retrieves an IdC vended authorization code from the IdC server through the redirectURI
 	 * 
 	 * @param codeChallenge String generated from applying a SHA256 hash to the code verifier
-	 * @param registerClientResult Contains the clientId and clientSecret
+	 * @param registerClientResponse Contains the clientId and clientSecret
 	 * @return {@link String} authCode: Authorization code returned from the IdC authorization server used to get the access token
 	 * @throws IOException If an I/O error occurs while communicating with the IdC server or processing the response
 	 * @throws URISyntaxException If the redirect URI or any other URI involved in the authorization process is malformed or violates URI syntax rules
 	 */
-	protected String fetchAuthorizationCode(String codeChallenge, RegisterClientResult registerClientResult) throws IOException, URISyntaxException
+	protected String fetchAuthorizationCode(String codeChallenge, RegisterClientResponse registerClientResponse) throws IOException, URISyntaxException
     {
         final String state = RandomStateUtil.generateRandomState();
 		RequestHandler requestHandler =
@@ -433,7 +446,7 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
                         return new InternalPluginException(state_error_message);
                     }
                     String code = findParameter(AUTH_CODE_PARAMETER_NAME, nameValuePairs);
-                    if (StringUtils.isNullOrEmpty(code))
+                    if (Utils.isNullOrEmpty(code))
                     {
 						String code_error_message = "No valid code found";
 						m_log.log(LogLevel.DEBUG, code_error_message);
@@ -450,7 +463,7 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
             server.listen();
             if(RedshiftLogger.isEnable())
                 m_log.log(LogLevel.DEBUG, String.format("Listening for connection on port %d", m_listen_port));
-            openBrowser(state, codeChallenge, registerClientResult);
+            openBrowser(state, codeChallenge, registerClientResponse);
             server.waitForResult();
         }
         catch (URISyntaxException | IOException ex)
@@ -485,13 +498,13 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	/**
 	 * Creates and returns an access token for the authorized client within if successful before the timeout
 	 * 
-	 * @param registerClientResult Contains the clientId and clientSecret
+	 * @param registerClientResponse Contains the clientId and clientSecret
 	 * @param authCode Authorization code returned from the IdC authorization server used to get the access token
 	 * @param codeVerifier Randomly generated base64 encoded 60 byte string
-	 * @return {@link CreateTokenResult} Create token result containing IdC token
+	 * @return {@link CreateTokenResponse} Create token response containing IdC token
 	 * @throws IOException If an I/O error occurs while communicating with the IdC server or processing the response
 	 */
-	protected CreateTokenResult fetchTokenResult(RegisterClientResult registerClientResult, String authCode, String codeVerifier) throws IOException {
+	protected CreateTokenResponse fetchTokenResponse(RegisterClientResponse registerClientResponse, String authCode, String codeVerifier) throws IOException {
 		long pollingEndTime = System.currentTimeMillis() + m_idc_response_timeout * MILLISECOND_MULTIPLIER;
 
 		int pollingIntervalInSec = CREATE_TOKEN_POLLING_INTERVAL;
@@ -499,11 +512,12 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 		// poll for create token with pollingIntervalInSec wait time between each attempt until pollingEndTime
 		while (System.currentTimeMillis() < pollingEndTime) {
 			try {
-				CreateTokenResult createTokenResult = getCreateTokenResult(registerClientResult.getClientId(), registerClientResult.getClientSecret(), authCode, AUTH_CODE_GRANT_TYPE, codeVerifier, m_redirect_uri);
-				if (RedshiftLogger.isEnable() && registerClientResult.getSdkHttpMetadata() != null)
-					m_log.logDebug("createToken response code: {0}", createTokenResult.getSdkHttpMetadata().getHttpStatusCode());
-				if (createTokenResult != null && createTokenResult.getAccessToken() != null) {
-					return createTokenResult;
+				CreateTokenResponse createTokenResponse = getCreateTokenResponse(registerClientResponse.clientId(), registerClientResponse.clientSecret(), authCode, AUTH_CODE_GRANT_TYPE, codeVerifier, m_redirect_uri);
+				if (RedshiftLogger.isEnable() && registerClientResponse.sdkHttpResponse() != null) {
+					m_log.logDebug("createToken response code: {0}", createTokenResponse.sdkHttpResponse().statusCode());
+				}
+				if (createTokenResponse != null && createTokenResponse.accessToken() != null) {
+					return createTokenResponse;
 				} else {
 					// auth server sent a non exception response without valid token, so throw error
 					if (RedshiftLogger.isEnable())
@@ -521,7 +535,7 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 				if (RedshiftLogger.isEnable())
 					m_log.log(LogLevel.ERROR, ex, "Error: Access denied, please ensure app assignment is done for the user;");
 				throw new IOException("IdC authentication failed : You don't have sufficient permission to perform the action. Please ensure app assignment is done for the user.", ex);
-			} catch (InternalServerException ex) {
+			} catch (SsoOidcException ex) {
 				if (RedshiftLogger.isEnable())
 					m_log.log(LogLevel.ERROR, ex, "Error: Server error in creating token;");
 				throw new IOException("IdC authentication failed : An error occurred during the request.", ex);
@@ -554,36 +568,37 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 * @param grantType    Supports grant types for the authorization code request
 	 * @param codeVerifier    Used for PKCE flow
 	 * @param redirectUri    Used to verify that the redirectUri is the same
-	 * @return {@link CreateTokenResult} Create token result containing IdC token
+	 * @return {@link CreateTokenResponse} Create token response containing IdC token
 	 */
-	protected CreateTokenResult getCreateTokenResult(String clientId, String clientSecret, String authCode, String grantType, String codeVerifier, String redirectUri) {
-		CreateTokenRequest createTokenRequest = new CreateTokenRequest();
-		createTokenRequest.withClientId(clientId);
-		createTokenRequest.withClientSecret(clientSecret);
-		createTokenRequest.withCode(authCode);
-		createTokenRequest.withGrantType(grantType);
-		createTokenRequest.withCodeVerifier(codeVerifier);
-		createTokenRequest.withRedirectUri(redirectUri);
+	protected CreateTokenResponse getCreateTokenResponse(String clientId, String clientSecret, String authCode, String grantType, String codeVerifier, String redirectUri) {
+		CreateTokenRequest createTokenRequest = CreateTokenRequest.builder()
+				.clientId(clientId)
+				.clientSecret(clientSecret)
+				.code(authCode)
+				.grantType(grantType)
+				.codeVerifier(codeVerifier)
+				.redirectUri(redirectUri)
+				.build();
 
 		return m_sdk_client.createToken(createTokenRequest);
 	}
 
 	/**
-	 * Takes a created token result as input and returns an object of type NativeTokenHolder that contains the access token and expiration
+	 * Takes a created token response as input and returns an object of type NativeTokenHolder that contains the access token and expiration
 	 * 
-	 * @param createTokenResult Contains the access token, refresh token, and accces token expiry
+	 * @param createTokenResponse Contains the access token, refresh token, and access token expiry
 	 * @return {@link NativeTokenHolder} This contains the retrieved access token and the expiration time of that token
 	 * 
 	 * @throws IOException If an I/O error occurs while communicating with the IdC server or processing the response
 	 */
-	protected NativeTokenHolder processCreateTokenResult(CreateTokenResult createTokenResult) throws IOException {
-		String idcToken = createTokenResult.getAccessToken();
-		if(StringUtils.isNullOrEmpty(idcToken)) {
+	protected NativeTokenHolder processCreateTokenResponse(CreateTokenResponse createTokenResponse) throws IOException {
+		String idcToken = createTokenResponse.accessToken();
+		if(Utils.isNullOrEmpty(idcToken)) {
 			throw new InternalPluginException("Returned access token is null or empty.");
 		}
 		int expiresInSecs = DEFAULT_IDC_TOKEN_EXPIRY_IN_SEC;
-		if (createTokenResult.getExpiresIn() != null && createTokenResult.getExpiresIn() > 0) {
-			expiresInSecs = createTokenResult.getExpiresIn();
+		if (createTokenResponse.expiresIn() != null && createTokenResponse.expiresIn() > 0) {
+			expiresInSecs = createTokenResponse.expiresIn();
 		}
 
 		Date expiration = new Date(System.currentTimeMillis() + expiresInSecs * MILLISECOND_MULTIPLIER);
@@ -598,19 +613,19 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 *
 	 * @param state A randomly generated string to protect against cross-site request forgery attacks
 	 * @param codeChallenge String generated from applying a SHA256 hash to the code verifier
-	 * @param registerClientResult Contains the clientId and clientSecret
+	 * @param registerClientResponse Contains the clientId and clientSecret
 	 *
 	 * @throws IOException If an error occurs while opening the default browser or establishing a connection to the IdC /authorize endpoint
 	 * @throws URISyntaxException If the URI used for the authorization code request is malformed or violates URI syntax rules
 	*/
-    protected void openBrowser(String state, String codeChallenge, RegisterClientResult registerClientResult) throws URISyntaxException, IOException
+    protected void openBrowser(String state, String codeChallenge, RegisterClientResponse registerClientResponse) throws URISyntaxException, IOException
     {
 		String idc_host = createIdcHost(m_idc_region);
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_PROTOCOL)
             .setHost(idc_host)
             .setPath(AUTHORIZE_ENDPOINT)
             .addParameter(OAUTH_RESPONSE_TYPE_PARAMETER_NAME, AUTH_CODE_PARAMETER_NAME)
-            .addParameter(OAUTH_CLIENT_ID_PARAMETER_NAME, registerClientResult.getClientId())
+            .addParameter(OAUTH_CLIENT_ID_PARAMETER_NAME, registerClientResponse.clientId())
             .addParameter(OAUTH_REDIRECT_PARAMETER_NAME, m_redirect_uri)
             .addParameter(OAUTH_SCOPE_PARAMETER_NAME, REDSHIFT_IDC_CONNECT_SCOPE)
             .addParameter(OAUTH_CSRF_STATE_PARAMETER_NAME, state)
@@ -647,10 +662,10 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
         }
     }
 
-	private boolean isCachedRegisterClientResultValid(RegisterClientResult cachedRegisterClientResult) {
-		if (cachedRegisterClientResult == null || cachedRegisterClientResult.getClientSecretExpiresAt() == null) {
+	private boolean isCachedRegisterClientResponseValid(RegisterClientResponse cachedRegisterClientResponse) {
+		if (cachedRegisterClientResponse == null || cachedRegisterClientResponse.clientSecretExpiresAt() == null) {
 			return false;
 		}
-		return System.currentTimeMillis() < cachedRegisterClientResult.getClientSecretExpiresAt() * 1000;
+		return System.currentTimeMillis() < cachedRegisterClientResponse.clientSecretExpiresAt() * 1000;
 	}
 }

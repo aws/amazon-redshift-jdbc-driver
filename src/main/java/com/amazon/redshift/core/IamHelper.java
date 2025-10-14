@@ -1,34 +1,5 @@
 package com.amazon.redshift.core;
 
-import com.amazon.redshift.util.RedshiftProperties;
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.auth.profile.ProfilesConfigFile;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.services.redshift.AmazonRedshift;
-import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
-import com.amazonaws.services.redshift.model.Cluster;
-import com.amazonaws.services.redshift.model.DescribeClustersRequest;
-import com.amazonaws.services.redshift.model.DescribeClustersResult;
-import com.amazonaws.services.redshift.model.Endpoint;
-import com.amazonaws.services.redshift.model.GetClusterCredentialsRequest;
-import com.amazonaws.services.redshift.model.GetClusterCredentialsResult;
-import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMRequest;
-import com.amazonaws.services.redshift.model.GetClusterCredentialsWithIAMResult;
-import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsRequest;
-import com.amazonaws.services.redshift.model.DescribeCustomDomainAssociationsResult;
-import com.amazonaws.services.redshift.model.Association;
-import com.amazonaws.services.redshift.AmazonRedshiftClient;
-import com.amazonaws.services.redshift.AmazonRedshiftClientBuilder;
-import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
@@ -38,8 +9,35 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
+import com.amazon.redshift.util.RedshiftProperties;
 import com.amazon.redshift.util.RedshiftState;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache.ProxyConfiguration;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.redshift.RedshiftClient;
+import software.amazon.awssdk.services.redshift.RedshiftClientBuilder;
+import software.amazon.awssdk.services.redshift.model.Association;
+import software.amazon.awssdk.services.redshift.model.Cluster;
+import software.amazon.awssdk.services.redshift.model.DescribeClustersRequest;
+import software.amazon.awssdk.services.redshift.model.DescribeClustersResponse;
+import software.amazon.awssdk.services.redshift.model.DescribeCustomDomainAssociationsRequest;
+import software.amazon.awssdk.services.redshift.model.DescribeCustomDomainAssociationsResponse;
+import software.amazon.awssdk.services.redshift.model.Endpoint;
+import software.amazon.awssdk.services.redshift.model.GetClusterCredentialsRequest;
+import software.amazon.awssdk.services.redshift.model.GetClusterCredentialsResponse;
+import software.amazon.awssdk.services.redshift.model.GetClusterCredentialsWithIamRequest;
+import software.amazon.awssdk.services.redshift.model.GetClusterCredentialsWithIamResponse;
+import software.amazon.awssdk.services.redshiftserverless.RedshiftServerlessClientBuilder;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -47,7 +45,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -77,8 +74,8 @@ public final class IamHelper extends IdpAuthHelper {
     NONE, PROFILE, IAM_KEYS_WITH_SESSION, IAM_KEYS, PLUGIN
   }
 
-  private static Map<String, GetClusterCredentialsResult> credentialsCache = new HashMap<String, GetClusterCredentialsResult>();
-  private static Map<String, GetClusterCredentialsWithIAMResult> credentialsV2Cache = new HashMap<String, GetClusterCredentialsWithIAMResult>();
+  private static Map<String, GetClusterCredentialsResponse> credentialsCache = new HashMap<String, GetClusterCredentialsResponse>();
+  private static Map<String, GetClusterCredentialsWithIamResponse> credentialsV2Cache = new HashMap<String, GetClusterCredentialsWithIamResponse>();
 
   private IamHelper() {
   }
@@ -139,7 +136,7 @@ public final class IamHelper extends IdpAuthHelper {
         mProvisioned = HOST_PATTERN.matcher(host);
         mServerless = SERVERLESS_WORKGROUP_HOST_PATTERN.matcher(host);
       }
-      String clusterId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);;
+      String clusterId = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.CLUSTER_IDENTIFIER.getName(), info);
 
       if ((null != mProvisioned && mProvisioned.matches()) || (null != clusterId && clusterId.startsWith("redshift-serverless-")))
       {
@@ -305,7 +302,7 @@ public final class IamHelper extends IdpAuthHelper {
       // property or
       // as a password value.
       if (null != iamSecretKey) {
-        if (StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
+        if (Utils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
           RedshiftException err = new RedshiftException(
               GT.tr("Missing connection property {0}", RedshiftProperty.IAM_ACCESS_KEY_ID.getName()),
               RedshiftState.UNEXPECTED_ERROR);
@@ -325,7 +322,7 @@ public final class IamHelper extends IdpAuthHelper {
       }
 
       if (null != iamSessionToken) {
-        if (StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
+        if (Utils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
           RedshiftException err = new RedshiftException(
               GT.tr("Missing connection property {0}", RedshiftProperty.IAM_ACCESS_KEY_ID.getName()),
               RedshiftState.UNEXPECTED_ERROR);
@@ -378,13 +375,13 @@ public final class IamHelper extends IdpAuthHelper {
    *           If an unspecified error occurs.
    */
   private static void setIAMCredentials(RedshiftJDBCSettings settings, RedshiftLogger log, String authProfile) throws RedshiftException {
-    AWSCredentialsProvider provider;
+    AwsCredentialsProvider provider;
     CredentialProviderType providerType = CredentialProviderType.NONE;
     boolean idpCredentialsRefresh = false;
     String idpToken = null;
 
-    if (!StringUtils.isNullOrEmpty(settings.m_credentialsProvider)) {
-      if (!StringUtils.isNullOrEmpty(settings.m_profile)) {
+    if (!Utils.isNullOrEmpty(settings.m_credentialsProvider)) {
+      if (!Utils.isNullOrEmpty(settings.m_profile)) {
         RedshiftException err = new RedshiftException(
             GT.tr("Conflict in connection property setting {0} and {1}",
                 RedshiftProperty.CREDENTIALS_PROVIDER.getName(), RedshiftProperty.AWS_PROFILE.getName()),
@@ -396,8 +393,8 @@ public final class IamHelper extends IdpAuthHelper {
         throw err;
       }
 
-      if (StringUtils.isNullOrEmpty(authProfile)
-            && !StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
+      if (Utils.isNullOrEmpty(authProfile)
+            && !Utils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
         RedshiftException err = new RedshiftException(
             GT.tr("Conflict in connection property setting {0} and {1}",
                 RedshiftProperty.CREDENTIALS_PROVIDER.getName(), RedshiftProperty.IAM_ACCESS_KEY_ID.getName()),
@@ -410,8 +407,8 @@ public final class IamHelper extends IdpAuthHelper {
       }
 
       try {
-        Class<? extends AWSCredentialsProvider> clazz = (Class.forName(settings.m_credentialsProvider)
-            .asSubclass(AWSCredentialsProvider.class));
+        Class<? extends AwsCredentialsProvider> clazz = (Class.forName(settings.m_credentialsProvider)
+                .asSubclass(AwsCredentialsProvider.class));
 
         provider = clazz.newInstance();
         if (provider instanceof IPlugin) {
@@ -452,9 +449,9 @@ public final class IamHelper extends IdpAuthHelper {
 
         throw err;
       }
-    } else if (!StringUtils.isNullOrEmpty(settings.m_profile)) {
-      if (StringUtils.isNullOrEmpty(authProfile)
-            && !StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
+    } else if (!Utils.isNullOrEmpty(settings.m_profile)) {
+      if (Utils.isNullOrEmpty(authProfile)
+            && !Utils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
         RedshiftException err = new RedshiftException(GT.tr("Conflict in connection property setting {0} and {1}",
             RedshiftProperty.AWS_PROFILE.getName(), RedshiftProperty.IAM_ACCESS_KEY_ID.getName()),
             RedshiftState.UNEXPECTED_ERROR);
@@ -465,30 +462,29 @@ public final class IamHelper extends IdpAuthHelper {
         throw err;
       }
 
-      ProfilesConfigFile pcf = new PluginProfilesConfigFile(settings, log);
-      provider = new ProfileCredentialsProvider(pcf, settings.m_profile);
+      provider = new PluginProfilesCredentialsProvider(settings, log);
       providerType = CredentialProviderType.PROFILE;
-    } else if (!StringUtils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
-      AWSCredentials credentials;
+    } else if (!Utils.isNullOrEmpty(settings.m_iamAccessKeyID)) {
+      AwsCredentials credentials;
 
-      if (!StringUtils.isNullOrEmpty(settings.m_iamSessionToken)) {
-        credentials = new BasicSessionCredentials(settings.m_iamAccessKeyID, settings.m_iamSecretKey,
-            settings.m_iamSessionToken);
+      if (!Utils.isNullOrEmpty(settings.m_iamSessionToken)) {
+        credentials = AwsSessionCredentials.create(settings.m_iamAccessKeyID, settings.m_iamSecretKey, settings.m_iamSessionToken);
         providerType = CredentialProviderType.IAM_KEYS_WITH_SESSION;
       } else {
-        credentials = new BasicAWSCredentials(settings.m_iamAccessKeyID, settings.m_iamSecretKey);
+        credentials = AwsBasicCredentials.create(settings.m_iamAccessKeyID, settings.m_iamSecretKey);
         providerType = CredentialProviderType.IAM_KEYS;
       }
 
-      provider = new AWSStaticCredentialsProvider(credentials);
+      provider = StaticCredentialsProvider.create(credentials);
     } else {
-      provider = new DefaultAWSCredentialsProviderChain();
+      provider = DefaultCredentialsProvider.builder()
+              .build();
     }
 
     if (RedshiftLogger.isEnable())
       log.log(LogLevel.DEBUG, "IDP Credential Provider {0}:{1}", provider, settings.m_credentialsProvider);
 
-    int getClusterCredentialApiType = findTypeOfGetClusterCredentialsAPI(settings, providerType, provider);
+    int getClusterCredentialApiType = findTypeOfGetClusterCredentialsAPI(settings);
 
     if (getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_V1_API
         || getClusterCredentialApiType == GET_CLUSTER_CREDENTIALS_IAM_V2_API
@@ -499,7 +495,7 @@ public final class IamHelper extends IdpAuthHelper {
 
       // Provider will cache the credentials, it's OK to call getCredentials()
       // here.
-      AWSCredentials credentials = provider.getCredentials();
+      AwsCredentials credentials = provider.resolveCredentials();
       if (credentials instanceof CredentialsHolder) {
         idpCredentialsRefresh = ((CredentialsHolder) credentials).isRefresh();
 
@@ -576,7 +572,7 @@ public final class IamHelper extends IdpAuthHelper {
       // Check for GetClusterCredentialsV2 cache
       // Combine key of IDP and V2 API
       String key = null;
-      GetClusterCredentialsWithIAMResult credentials = null;
+      GetClusterCredentialsWithIamResponse credentials = null;
 
       if (!settings.m_iamDisableCache) {
         key = getCredentialsV2CacheKey(settings, providerType, provider, getClusterCredentialApiType, false);
@@ -584,7 +580,7 @@ public final class IamHelper extends IdpAuthHelper {
       }
 
       if (credentials == null
-          || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
+              || RequestUtils.isCredentialExpired(credentials.expiration())) {
         // If not found or expired
         // Get IDP token
         if (providerType == CredentialProviderType.PLUGIN) {
@@ -610,18 +606,18 @@ public final class IamHelper extends IdpAuthHelper {
    * @throws RedshiftException
    *           If getting the cluster credentials fails.
    */
-  private static void setClusterCredentials(AWSCredentialsProvider credProvider, RedshiftJDBCSettings settings,
+  private static void setClusterCredentials(AwsCredentialsProvider credProvider, RedshiftJDBCSettings settings,
       RedshiftLogger log, CredentialProviderType providerType, boolean idpCredentialsRefresh,
       int getClusterCredentialApiType) throws RedshiftException {
     try {
 
-      AmazonRedshiftClientBuilder builder = AmazonRedshiftClientBuilder.standard();
-      builder = (AmazonRedshiftClientBuilder) setBuilderConfiguration(settings, log, builder);
+      RedshiftClientBuilder builder = RedshiftClient.builder();
+      builder = (RedshiftClientBuilder) setBuilderConfiguration(settings, log, builder);
 
       switch (getClusterCredentialApiType) {
         case GET_CLUSTER_CREDENTIALS_V1_API:
           // Call Provision cluster V1 API
-          AmazonRedshift client = builder.withCredentials(credProvider).build();
+          RedshiftClient client = builder.credentialsProvider(credProvider).build();
 
           callDescribeCustomDomainNameAssociationsAPIForV1(settings, client, log);
           callDescribeClustersAPIForV1(settings, client, log);
@@ -629,16 +625,16 @@ public final class IamHelper extends IdpAuthHelper {
           if (RedshiftLogger.isEnable())
             log.log(LogLevel.DEBUG, "Call V1 API of GetClusterCredentials");
 
-          GetClusterCredentialsResult result = getClusterCredentialsResult(settings, client, log, providerType,
+          GetClusterCredentialsResponse result = getClusterCredentialsResult(settings, client, log, providerType,
                   idpCredentialsRefresh);
 
-          settings.m_username = result.getDbUser();
-          settings.m_password = result.getDbPassword();
+          settings.m_username = result.dbUser();
+          settings.m_password = result.dbPassword();
 
           if (RedshiftLogger.isEnable())
           {
             Date now = new Date();
-            log.logInfo(now + ": Using GetClusterCredentialsResult with expiration " + result.getExpiration());
+            log.logInfo(now + ": Using GetClusterCredentialsResult with expiration " + result.expiration());
           }
 
           break;
@@ -661,7 +657,7 @@ public final class IamHelper extends IdpAuthHelper {
         case GET_CLUSTER_CREDENTIALS_IAM_V2_API:
           // Call V2 IAM API Provision
 
-          AmazonRedshiftClient iamClient = (AmazonRedshiftClient) builder.withCredentials(credProvider).build();
+          RedshiftClient iamClient = builder.credentialsProvider(credProvider).build();
 
           callDescribeCustomDomainNameAssociationsAPIForV2(settings, iamClient, log);
           callDescribeClustersAPIForV2(settings, iamClient, log);
@@ -669,23 +665,23 @@ public final class IamHelper extends IdpAuthHelper {
           if (RedshiftLogger.isEnable())
             log.log(LogLevel.DEBUG, "Call V2 API of GetClusterCredentials");
 
-          GetClusterCredentialsWithIAMResult iamResult = getClusterCredentialsResultV2(settings, iamClient, log, providerType,
-                  idpCredentialsRefresh, credProvider, getClusterCredentialApiType);
+          GetClusterCredentialsWithIamResponse iamResult = getClusterCredentialsResultV2(settings, iamClient, log, providerType,
+                  credProvider, getClusterCredentialApiType);
 
-          settings.m_username = iamResult.getDbUser();
-          settings.m_password = iamResult.getDbPassword();
+          settings.m_username = iamResult.dbUser();
+          settings.m_password = iamResult.dbPassword();
 
           // result will contain TimeToRefresh
           if (RedshiftLogger.isEnable()) {
             Date now = new Date();
-            log.logInfo(now + ": Using GetClusterCredentialsResultV2 with expiration " + iamResult.getExpiration());
-            log.logInfo(now + ": Using GetClusterCredentialsResultV2 with TimeToRefresh " + iamResult.getNextRefreshTime());
+            log.logInfo(now + ": Using GetClusterCredentialsResultV2 with expiration " + iamResult.expiration());
+            log.logInfo(now + ": Using GetClusterCredentialsResultV2 with TimeToRefresh " + iamResult.nextRefreshTime());
           }
 
           break;
       }
     }
-    catch (AmazonClientException e)
+    catch (SdkClientException e)
     {
       RedshiftException err = new RedshiftException(GT.tr("IAM error retrieving temp credentials: {0}", e.getMessage()),
           RedshiftState.UNEXPECTED_ERROR, e);
@@ -700,69 +696,71 @@ public final class IamHelper extends IdpAuthHelper {
   /**
    * Helper function to call the DescribeClustersAPIForV2 for IAM clients for provisioned clusters
    */
-  static void callDescribeClustersAPIForV2(RedshiftJDBCSettings settings, AmazonRedshiftClient iamClient, RedshiftLogger log)
+  static void callDescribeClustersAPIForV2(RedshiftJDBCSettings settings, RedshiftClient iamClient, RedshiftLogger log)
   {
     if (null == settings.m_host || settings.m_port == 0)
     {
       if (RedshiftLogger.isEnable())
         log.logInfo("calling describe clusters API with clusterID : " + settings.m_clusterIdentifier);
 
-      DescribeClustersRequest req = new DescribeClustersRequest();
-      req.setClusterIdentifier(settings.m_clusterIdentifier);
-      DescribeClustersResult resp = iamClient.describeClusters(req);
-      List<Cluster> clusters = resp.getClusters();
+      DescribeClustersRequest req = DescribeClustersRequest.builder()
+              .clusterIdentifier(settings.m_clusterIdentifier)
+              .build();
+      DescribeClustersResponse resp = iamClient.describeClusters(req);
+      List<Cluster> clusters = resp.clusters();
       if (clusters.isEmpty()) {
-        throw new AmazonClientException("Failed to describeClusters.");
+        throw SdkClientException.create("Failed to describeClusters.");
       }
 
       Cluster cluster = clusters.get(0);
-      Endpoint endpoint = cluster.getEndpoint();
+      Endpoint endpoint = cluster.endpoint();
       if (null == endpoint) {
-        throw new AmazonClientException("Cluster is not fully created yet.");
+        throw SdkClientException.create("Cluster is not fully created yet.");
       }
 
-      settings.m_host = endpoint.getAddress();
-      settings.m_port = endpoint.getPort();
+      settings.m_host = endpoint.address();
+      settings.m_port = endpoint.port();
     }
   }
 
   /**
    * Helper function to call the DescribeClustersAPIForV1 for provisioned clusters
    */
-  static void callDescribeClustersAPIForV1(RedshiftJDBCSettings settings, AmazonRedshift client, RedshiftLogger log)
+  static void callDescribeClustersAPIForV1(RedshiftJDBCSettings settings, RedshiftClient client, RedshiftLogger log)
   {
     if (null == settings.m_host || settings.m_port == 0)
     {
       if (RedshiftLogger.isEnable())
         log.logInfo("calling describe clusters API with clusterID : " + settings.m_clusterIdentifier);
 
-      DescribeClustersRequest req = new DescribeClustersRequest();
-      req.setClusterIdentifier(settings.m_clusterIdentifier);
-      DescribeClustersResult resp = client.describeClusters(req);
-      List<Cluster> clusters = resp.getClusters();
+      DescribeClustersRequest req = DescribeClustersRequest.builder()
+              .clusterIdentifier(settings.m_clusterIdentifier)
+              .build();
+      DescribeClustersResponse resp = client.describeClusters(req);
+      List<Cluster> clusters = resp.clusters();
       if (clusters.isEmpty()) {
-        throw new AmazonClientException("Failed to describeClusters.");
+        throw SdkClientException.create("Failed to describeClusters.");
       }
 
       Cluster cluster = clusters.get(0);
-      Endpoint endpoint = cluster.getEndpoint();
+      Endpoint endpoint = cluster.endpoint();
       if (null == endpoint) {
-        throw new AmazonClientException("Cluster is not fully created yet.");
+        throw SdkClientException.create("Cluster is not fully created yet.");
       }
 
-      settings.m_host = endpoint.getAddress();
-      settings.m_port = endpoint.getPort();
+      settings.m_host = endpoint.address();
+      settings.m_port = endpoint.port();
     }
   }
 
   /**
    * Helper function to call the DescribeCustomDomainNameAssociationsAPI for IAM clients for provisioned clusters
    */
-  static void callDescribeCustomDomainNameAssociationsAPIForV2(RedshiftJDBCSettings settings, AmazonRedshiftClient iamClient, RedshiftLogger log) throws RedshiftException
+  static void callDescribeCustomDomainNameAssociationsAPIForV2(RedshiftJDBCSettings settings, RedshiftClient iamClient, RedshiftLogger log) throws RedshiftException
   {
     if(settings.m_isCname)
     {
-      DescribeCustomDomainAssociationsRequest describeRequest = new DescribeCustomDomainAssociationsRequest();
+      DescribeCustomDomainAssociationsRequest.Builder describeRequestBuilder = DescribeCustomDomainAssociationsRequest.builder();
 
       if(null != settings.m_host)
       {
@@ -770,7 +768,7 @@ public final class IamHelper extends IdpAuthHelper {
         if (RedshiftLogger.isEnable())
           log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
 
-        describeRequest.setCustomDomainName(settings.m_host);
+        describeRequestBuilder.customDomainName(settings.m_host);
       }
       else
       {
@@ -781,17 +779,18 @@ public final class IamHelper extends IdpAuthHelper {
 
       try
       {
-        DescribeCustomDomainAssociationsResult describeResponse = iamClient.describeCustomDomainAssociations(describeRequest);
-        List<Association> associations = describeResponse.getAssociations();
+        DescribeCustomDomainAssociationsRequest describeRequest = describeRequestBuilder.build();
+        DescribeCustomDomainAssociationsResponse describeResponse = iamClient.describeCustomDomainAssociations(describeRequest);
+        List<Association> associations = describeResponse.associations();
         // API itself will throw if result list's count is 0, so we enter catch case
         if(associations.stream().count() > 1)
         {
           if (RedshiftLogger.isEnable())
-            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.customDomainName() + ". Only one expected.");
           return;
         }
 
-        String clusterID = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        String clusterID = describeResponse.associations().get(0).certificateAssociations().get(0).clusterIdentifier();
         if(null != clusterID && !clusterID.isEmpty()) {
           settings.m_clusterIdentifier = clusterID;
           if (RedshiftLogger.isEnable())
@@ -809,11 +808,11 @@ public final class IamHelper extends IdpAuthHelper {
   /**
    * Helper function to call the DescribeCustomDomainNameAssociationsAPI for provisioned clusters
    */
-  static void callDescribeCustomDomainNameAssociationsAPIForV1(RedshiftJDBCSettings settings, AmazonRedshift client, RedshiftLogger log) throws RedshiftException
+  static void callDescribeCustomDomainNameAssociationsAPIForV1(RedshiftJDBCSettings settings, RedshiftClient client, RedshiftLogger log) throws RedshiftException
   {
     if(settings.m_isCname)
     {
-      DescribeCustomDomainAssociationsRequest describeRequest = new DescribeCustomDomainAssociationsRequest();
+      DescribeCustomDomainAssociationsRequest.Builder describeRequestBuilder = DescribeCustomDomainAssociationsRequest.builder();
 
       if(null != settings.m_host)
       {
@@ -821,7 +820,7 @@ public final class IamHelper extends IdpAuthHelper {
         if (RedshiftLogger.isEnable())
           log.logInfo("calling describe cname associations API with hostname : " + settings.m_host);
 
-        describeRequest.setCustomDomainName(settings.m_host);
+        describeRequestBuilder.customDomainName(settings.m_host);
       }
       else
       {
@@ -832,17 +831,18 @@ public final class IamHelper extends IdpAuthHelper {
 
       try
       {
-        DescribeCustomDomainAssociationsResult describeResponse = client.describeCustomDomainAssociations(describeRequest);
-        List<Association> associations = describeResponse.getAssociations();
+        DescribeCustomDomainAssociationsRequest describeRequest = describeRequestBuilder.build();
+        DescribeCustomDomainAssociationsResponse describeResponse = client.describeCustomDomainAssociations(describeRequest);
+        List<Association> associations = describeResponse.associations();
         // API itself will throw if result list's count is 0, so we enter catch case
         if(associations.stream().count() > 1)
         {
           if (RedshiftLogger.isEnable())
-            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.getCustomDomainName() + ". Only one expected.");
+            log.logInfo("Multiple associations received for provided custom domain name : " + describeRequest.customDomainName() + ". Only one expected.");
           return;
         }
 
-        String clusterID = describeResponse.getAssociations().get(0).getCertificateAssociations().get(0).getClusterIdentifier();
+        String clusterID = describeResponse.associations().get(0).certificateAssociations().get(0).clusterIdentifier();
         if(null != clusterID && !clusterID.isEmpty()) {
           settings.m_clusterIdentifier = clusterID;
           if (RedshiftLogger.isEnable())
@@ -858,12 +858,15 @@ public final class IamHelper extends IdpAuthHelper {
     }
   }
 
-  private static synchronized GetClusterCredentialsResult getClusterCredentialsResult(RedshiftJDBCSettings settings,
-      AmazonRedshift client, RedshiftLogger log, CredentialProviderType providerType, boolean idpCredentialsRefresh)
-      throws AmazonClientException {
+  private static synchronized GetClusterCredentialsResponse getClusterCredentialsResult(
+          RedshiftJDBCSettings settings,
+          RedshiftClient client,
+          RedshiftLogger log,
+          CredentialProviderType providerType,
+          boolean idpCredentialsRefresh) throws SdkClientException {
 
     String key = null;
-    GetClusterCredentialsResult credentials = null;
+    GetClusterCredentialsResponse credentials = null;
 
     if (!settings.m_iamDisableCache) {
       key = getCredentialsCacheKey(settings, providerType, false);
@@ -871,7 +874,7 @@ public final class IamHelper extends IdpAuthHelper {
     }
 
     if (credentials == null || (providerType == CredentialProviderType.PLUGIN && idpCredentialsRefresh)
-        || RequestUtils.isCredentialExpired(credentials.getExpiration())) {
+            || RequestUtils.isCredentialExpired(credentials.expiration())) {
       if (RedshiftLogger.isEnable())
         log.logInfo("GetClusterCredentials NOT from cache");
 
@@ -888,7 +891,7 @@ public final class IamHelper extends IdpAuthHelper {
           // make api call with cname
           credentials = makeGetClusterCredentialsAPICall(request, credentials, client, log);
         }
-        catch(AmazonClientException ace)
+        catch(SdkClientException sdkClientException)
         {
           // if api call with cname fails, recreate request packet with clusterid and re-make api call
 
@@ -925,39 +928,39 @@ public final class IamHelper extends IdpAuthHelper {
    */
   static GetClusterCredentialsRequest constructRequestForGetClusterCredentials(RedshiftJDBCSettings settings, boolean constructWithCname, RedshiftLogger log)
   {
-    GetClusterCredentialsRequest request = new GetClusterCredentialsRequest();
+    GetClusterCredentialsRequest.Builder requestBuilder = GetClusterCredentialsRequest.builder();
 
     if (settings.m_iamDuration > 0)
     {
-      request.setDurationSeconds(settings.m_iamDuration);
+      requestBuilder.durationSeconds(settings.m_iamDuration);
     }
 
-    request.setDbName(settings.m_Schema);
-    request.setDbUser(settings.m_dbUser == null ? settings.m_username : settings.m_dbUser);
-    request.setAutoCreate(settings.m_autocreate);
-    request.setDbGroups(settings.m_dbGroups);
+    requestBuilder.dbName(settings.m_Schema);
+    requestBuilder.dbUser(settings.m_dbUser == null ? settings.m_username : settings.m_dbUser);
+    requestBuilder.autoCreate(settings.m_autocreate);
+    requestBuilder.dbGroups(settings.m_dbGroups);
 
     if(constructWithCname)
     {
-      request.setCustomDomainName(settings.m_host);
+      requestBuilder.customDomainName(settings.m_host);
     }
     else
     {
-      request.setClusterIdentifier(settings.m_clusterIdentifier);
+      requestBuilder.clusterIdentifier(settings.m_clusterIdentifier);
     }
 
     if (RedshiftLogger.isEnable())
     {
-      log.logInfo(request.toString());
+      log.logInfo(requestBuilder.toString());
     }
 
-    return request;
+    return requestBuilder.build();
   }
 
   /**
    * Helper function to make the API call to GetClusterCredentials
    */
-  static GetClusterCredentialsResult makeGetClusterCredentialsAPICall(GetClusterCredentialsRequest request, GetClusterCredentialsResult credentials, AmazonRedshift client, RedshiftLogger log)
+  static GetClusterCredentialsResponse makeGetClusterCredentialsAPICall(GetClusterCredentialsRequest request, GetClusterCredentialsResponse credentials, RedshiftClient client, RedshiftLogger log)
   {
     for (int i = 0; i < MAX_AMAZONCLIENT_RETRY; ++i)
     {
@@ -966,20 +969,20 @@ public final class IamHelper extends IdpAuthHelper {
         credentials = client.getClusterCredentials(request);
         break;
       }
-      catch (AmazonClientException ce)
+      catch (SdkClientException sdkClientException)
       {
         if(RedshiftLogger.isEnable())
-          log.logDebug("Call to getClusterCredentials failed with error: " + ce.getMessage());
-        checkForApiCallRateExceedError(ce, i, "getClusterCredentialsResult", log);
+          log.logDebug("Call to getClusterCredentials failed with error: " + sdkClientException.getMessage());
+        checkForApiCallRateExceedError(sdkClientException, i, "getClusterCredentialsResult", log);
       }
     }
 
     return credentials;
   }
 
-  static void checkForApiCallRateExceedError(AmazonClientException ace, int i, String callerMethod, RedshiftLogger log)
-      throws AmazonClientException {
-    if (ace.getMessage().contains("Rate exceeded") && i < MAX_AMAZONCLIENT_RETRY - 1) {
+  static void checkForApiCallRateExceedError(SdkClientException sdkClientException, int i, String callerMethod, RedshiftLogger log)
+      throws SdkClientException {
+    if (sdkClientException.getMessage().contains("Rate exceeded") && i < MAX_AMAZONCLIENT_RETRY - 1) {
       if (RedshiftLogger.isEnable())
         log.logInfo(callerMethod + " caught 'Rate exceeded' error...");
       try {
@@ -988,17 +991,19 @@ public final class IamHelper extends IdpAuthHelper {
         Thread.currentThread().interrupt();
       }
     } else {
-      throw ace;
+      throw sdkClientException;
     }
   }
 
-  private static synchronized GetClusterCredentialsWithIAMResult getClusterCredentialsResultV2(
-      RedshiftJDBCSettings settings, AmazonRedshiftClient client, RedshiftLogger log,
-      CredentialProviderType providerType, boolean idpCredentialsRefresh, AWSCredentialsProvider provider,
-      int getClusterCredentialApiType) throws AmazonClientException
-  {
+  private static synchronized GetClusterCredentialsWithIamResponse getClusterCredentialsResultV2(
+          RedshiftJDBCSettings settings,
+          RedshiftClient client,
+          RedshiftLogger log,
+          CredentialProviderType providerType,
+          AwsCredentialsProvider provider,
+          int getClusterCredentialApiType) throws SdkClientException {
     String key = null;
-    GetClusterCredentialsWithIAMResult credentials = null;
+    GetClusterCredentialsWithIamResponse credentials = null;
 
     if (!settings.m_iamDisableCache)
     {
@@ -1007,7 +1012,7 @@ public final class IamHelper extends IdpAuthHelper {
     }
 
     if (credentials == null || (providerType == CredentialProviderType.PLUGIN && settings.m_idpToken != null)
-        || RequestUtils.isCredentialExpired(credentials.getExpiration()))
+            || RequestUtils.isCredentialExpired(credentials.expiration()))
     {
       if (RedshiftLogger.isEnable())
         log.logInfo("GetClusterCredentialsV2 NOT from cache");
@@ -1018,14 +1023,14 @@ public final class IamHelper extends IdpAuthHelper {
       if(settings.m_isCname)
       {
         // construct request packet with cname
-        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, true, log);
+        GetClusterCredentialsWithIamRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, true, log);
 
         try
         {
           // make api call with cname
           credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
         }
-        catch (AmazonClientException ce)
+        catch (SdkClientException sdkClientException)
         {
           // if api call with cname fails, recreate request packet with clusterid and re-make api call
 
@@ -1041,7 +1046,7 @@ public final class IamHelper extends IdpAuthHelper {
       else
       {
         // construct request packet with clusterid and make api call
-        GetClusterCredentialsWithIAMRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
+        GetClusterCredentialsWithIamRequest request = constructRequestForGetClusterCredentialsWithIAM(settings, false, log);
         credentials = makeGetClusterCredentialsWithIAMAPICall(request, credentials, client, log);
       }
 
@@ -1060,34 +1065,38 @@ public final class IamHelper extends IdpAuthHelper {
   /**
    * Helper function to construct the request object for GetClusterCredentialsWithIAM API
    */
-  static GetClusterCredentialsWithIAMRequest constructRequestForGetClusterCredentialsWithIAM(RedshiftJDBCSettings settings, boolean constructWithCname, RedshiftLogger log)
+  static GetClusterCredentialsWithIamRequest constructRequestForGetClusterCredentialsWithIAM(RedshiftJDBCSettings settings, boolean constructWithCname, RedshiftLogger log)
   {
-    GetClusterCredentialsWithIAMRequest request = new GetClusterCredentialsWithIAMRequest();
+    GetClusterCredentialsWithIamRequest.Builder requestBuilder = GetClusterCredentialsWithIamRequest.builder();
 
     if (settings.m_iamDuration > 0) {
-      request.setDurationSeconds(settings.m_iamDuration);
+      requestBuilder.durationSeconds(settings.m_iamDuration);
     }
-    request.setDbName(settings.m_Schema);
+    requestBuilder.dbName(settings.m_Schema);
 
     if (constructWithCname)
     {
-      request.setCustomDomainName(settings.m_host);
+      requestBuilder.customDomainName(settings.m_host);
     }
     else
     {
-      request.setClusterIdentifier(settings.m_clusterIdentifier);
+      requestBuilder.clusterIdentifier(settings.m_clusterIdentifier);
     }
 
     if (RedshiftLogger.isEnable())
-      log.logInfo(request.toString());
+      log.logInfo(requestBuilder.toString());
 
-    return request;
+    return requestBuilder.build();
   }
 
   /**
    * Helper function to make the API call to GetClusterCredentialsWithIAM
    */
-  static GetClusterCredentialsWithIAMResult makeGetClusterCredentialsWithIAMAPICall(GetClusterCredentialsWithIAMRequest request, GetClusterCredentialsWithIAMResult credentials, AmazonRedshiftClient client, RedshiftLogger log)
+  static GetClusterCredentialsWithIamResponse makeGetClusterCredentialsWithIAMAPICall(
+          GetClusterCredentialsWithIamRequest request,
+          GetClusterCredentialsWithIamResponse credentials,
+          RedshiftClient client,
+          RedshiftLogger log)
   {
     for (int i = 0; i < MAX_AMAZONCLIENT_RETRY; ++i)
     {
@@ -1096,9 +1105,9 @@ public final class IamHelper extends IdpAuthHelper {
         credentials = client.getClusterCredentialsWithIAM(request);
         break;
       }
-      catch (AmazonClientException ace)
+      catch (SdkClientException sdkClientException)
       {
-        checkForApiCallRateExceedError(ace, i, "getClusterCredentialsResultV2", log);
+        checkForApiCallRateExceedError(sdkClientException, i, "getClusterCredentialsResultV2", log);
       }
     }
 
@@ -1147,7 +1156,7 @@ public final class IamHelper extends IdpAuthHelper {
   }
 
   static String getCredentialsV2CacheKey(RedshiftJDBCSettings settings, CredentialProviderType providerType,
-      AWSCredentialsProvider provider, int getClusterCredentialApiType, boolean serverless) {
+                                         AwsCredentialsProvider provider, int getClusterCredentialApiType, boolean serverless) {
     String key = "";
 
     if (providerType == CredentialProviderType.PLUGIN) {
@@ -1209,8 +1218,7 @@ public final class IamHelper extends IdpAuthHelper {
     return key;
   }
 
-  private static int findTypeOfGetClusterCredentialsAPI(RedshiftJDBCSettings settings,
-      CredentialProviderType providerType, AWSCredentialsProvider provider) {
+  private static int findTypeOfGetClusterCredentialsAPI(RedshiftJDBCSettings settings) {
 
     if (!settings.m_isServerless)
     {
@@ -1227,11 +1235,17 @@ public final class IamHelper extends IdpAuthHelper {
   }
 
   static AwsClientBuilder setBuilderConfiguration(RedshiftJDBCSettings settings, RedshiftLogger log,
-      AwsClientBuilder builder) {
-    ClientConfiguration clientConfig = RequestUtils.getProxyClientConfig(log);
+                                                      AwsClientBuilder<?, ?> builder) {
+    ProxyConfiguration proxyConfig = RequestUtils.getProxyConfiguration(log);
 
-    if (clientConfig != null) {
-      builder.setClientConfiguration(clientConfig);
+    if (proxyConfig != null) {
+      ApacheHttpClient.Builder httpClientBuilder = ApacheHttpClient.builder();
+      httpClientBuilder.proxyConfiguration(proxyConfig);
+      if (builder instanceof RedshiftClientBuilder) {
+        ((RedshiftClientBuilder) builder).httpClient(httpClientBuilder.build());
+      } else if (builder instanceof RedshiftServerlessClientBuilder) {
+        ((RedshiftServerlessClientBuilder) builder).httpClient(httpClientBuilder.build());
+      }
     }
 
     if (RedshiftLogger.isEnable()) {
@@ -1239,11 +1253,12 @@ public final class IamHelper extends IdpAuthHelper {
           + settings.m_awsRegion);
     }
 
+
     if (settings.m_endpoint != null) {
-      EndpointConfiguration cfg = new EndpointConfiguration(settings.m_endpoint, settings.m_awsRegion);
-      builder.setEndpointConfiguration(cfg);
-    } else if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty()) {
-      builder.setRegion(settings.m_awsRegion);
+        builder.endpointOverride(URI.create(settings.m_endpoint));
+    }
+    if (settings.m_awsRegion != null && !settings.m_awsRegion.isEmpty()) {
+      builder.region(Region.of(settings.m_awsRegion));
     }
 
     return builder;

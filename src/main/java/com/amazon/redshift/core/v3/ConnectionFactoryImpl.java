@@ -35,7 +35,6 @@ import com.amazon.redshift.util.RedshiftConstants;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 import com.amazon.redshift.util.ServerErrorMessage;
-import com.amazonaws.util.StringUtils;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -475,32 +474,32 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     
     // Redshift Native Auth values
     if(redshiftNativeAuth) {
-      if(!StringUtils.isNullOrEmpty(idpType)) {
+      if (!Utils.isNullOrEmpty(idpType)) {
         paramList.add(new String[]{"idp_type",idpType});
       }
       if(RedshiftLogger.isEnable())
         logger.logDebug("Using idp_type=" + idpType);
       
       String providerName = RedshiftProperty.PROVIDER_NAME.get(info);
-      if (!StringUtils.isNullOrEmpty(providerName)) {
+      if (!Utils.isNullOrEmpty(providerName)) {
         paramList.add(new String[]{"provider_name",providerName});
       }
       if(RedshiftLogger.isEnable())
         logger.logDebug("Using provider_name=" + providerName);
 
-      if(!StringUtils.isNullOrEmpty(tokenType)) {
+      if (!Utils.isNullOrEmpty(tokenType)) {
         paramList.add(new String[]{"token_type",tokenType});
       }
       if(RedshiftLogger.isEnable())
         logger.logDebug("Using token_type=" + tokenType);
 
-      if(!StringUtils.isNullOrEmpty(identityNamepsace)) {
+      if (!Utils.isNullOrEmpty(identityNamepsace)) {
         paramList.add(new String[]{"identity_namespace",identityNamepsace});
       }
       if(RedshiftLogger.isEnable())
         logger.logDebug("Using identity_namespace=" + identityNamepsace);
         
-      if(!StringUtils.isNullOrEmpty(idcClientDisplayName)) {
+      if (!Utils.isNullOrEmpty(idcClientDisplayName)) {
         paramList.add(new String[]{"idc_client_display_name", idcClientDisplayName});
       }
       if(RedshiftLogger.isEnable())

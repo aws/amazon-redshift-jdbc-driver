@@ -16,6 +16,7 @@ package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.INativePlugin;
 import com.amazon.redshift.NativeTokenHolder;
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.util.RedshiftException;
@@ -27,8 +28,6 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.amazonaws.util.StringUtils.isNullOrEmpty;
 
 public abstract class CommonCredentialsProvider extends IdpCredentialsProvider implements INativePlugin {
     private static final Map<String, NativeTokenHolder> m_cache = new HashMap<String, NativeTokenHolder>();
@@ -149,7 +148,7 @@ public abstract class CommonCredentialsProvider extends IdpCredentialsProvider i
         } catch (IOException ex) {
             if(RedshiftLogger.isEnable())
                 m_log.log(LogLevel.ERROR, ex, "IOException while refreshing token");
-            throw new RedshiftException(!isNullOrEmpty(ex.getMessage()) ? ex.getMessage() : "There was an error during authentication.", ex);
+            throw new RedshiftException(!Utils.isNullOrEmpty(ex.getMessage()) ? ex.getMessage() : "There was an error during authentication.", ex);
         } catch (Exception ex) {
             if (RedshiftLogger.isEnable())
                 m_log.log(LogLevel.ERROR, ex, "Exception while refreshing token");
@@ -173,7 +172,7 @@ public abstract class CommonCredentialsProvider extends IdpCredentialsProvider i
         } catch (IOException ex) {
             if(RedshiftLogger.isEnable())
                 m_log.log(LogLevel.ERROR, ex, "IOException during getIdpToken");
-            throw new RedshiftException(!isNullOrEmpty(ex.getMessage()) ? ex.getMessage() : "There was an error during authentication.", ex);
+            throw new RedshiftException(!Utils.isNullOrEmpty(ex.getMessage()) ? ex.getMessage() : "There was an error during authentication.", ex);
         } catch (Exception ex) {
             if (RedshiftLogger.isEnable())
                 m_log.log(LogLevel.ERROR, ex, "Exception during getIdpToken");

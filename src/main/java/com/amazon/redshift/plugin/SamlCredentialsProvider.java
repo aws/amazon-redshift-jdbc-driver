@@ -1,33 +1,19 @@
 package com.amazon.redshift.plugin;
 
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.AnonymousAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
-import com.amazonaws.services.securitytoken.model.AssumeRoleWithSAMLRequest;
-import com.amazonaws.services.securitytoken.model.AssumeRoleWithSAMLResult;
-import com.amazonaws.services.securitytoken.model.Credentials;
-import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.CredentialsHolder;
 import com.amazon.redshift.CredentialsHolder.IamMetadata;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.core.IamHelper;
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.httpclient.log.IamCustomLogFactory;
-import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -52,6 +38,17 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
+import software.amazon.awssdk.services.sts.model.AssumeRoleWithSamlResponse;
+import software.amazon.awssdk.services.sts.model.AssumeRoleWithSamlRequest;
+import software.amazon.awssdk.services.sts.model.Credentials;
 
 public abstract class SamlCredentialsProvider extends IdpCredentialsProvider implements IPlugin
 {
@@ -77,7 +74,6 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
     protected Boolean m_groupFederation = false;
 
     private static Map<String, CredentialsHolder> m_cache = new HashMap<String, CredentialsHolder>();
-    
     private CredentialsHolder m_lastRefreshCredentials; // Used when cache is disable.
 
     /**
@@ -141,9 +137,10 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
     @Override
     public void addParameter(String key, String value)
     {
-	      if (RedshiftLogger.isEnable())
-	    		m_log.logDebug("key: {0}", key);
-    	
+        if (RedshiftLogger.isEnable()) {
+            m_log.logDebug("key: {0}", key);
+        }
+
         if (RedshiftProperty.UID.getName().equalsIgnoreCase(key)
                 || RedshiftProperty.USER.getName().equalsIgnoreCase(key))
         {
@@ -219,63 +216,64 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
     {
         return IamHelper.SAML_PLUGIN;
     }
-    
+
     @Override
-    public CredentialsHolder getCredentials()
+    public CredentialsHolder resolveCredentials()
     {
-    		CredentialsHolder credentials = null;
-    		
-    		if(!m_disableCache) {
-    			String key = getCacheKey();
-    			credentials = m_cache.get(key);
-    		}
-    		
+        CredentialsHolder credentials = null;
+
+        if (!m_disableCache) {
+            String key = getCacheKey();
+            credentials = m_cache.get(key);
+        }
+
         if (credentials == null || credentials.isExpired())
         {
-	          if(RedshiftLogger.isEnable()) 
-	            m_log.logInfo("SAML getCredentials NOT from cache");
-        	
-	          synchronized(this) {
-	          	
-	          	refresh();
-	          	
-	          	if(m_disableCache) {
-	          		credentials = m_lastRefreshCredentials;
-	          		m_lastRefreshCredentials = null;
-	          	}
-	          }
+            if (RedshiftLogger.isEnable()) {
+                m_log.logInfo("SAML getCredentials NOT from cache");
+            }
+
+            synchronized(this) {
+
+                refresh();
+
+                if (m_disableCache) {
+                    credentials = m_lastRefreshCredentials;
+                    m_lastRefreshCredentials = null;
+                }
+            }
         }
         else {
-          credentials.setRefresh(false);
-          if(RedshiftLogger.isEnable()) 
-            m_log.logInfo("SAML getCredentials from cache");
+            credentials.setRefresh(false);
+            if (RedshiftLogger.isEnable()) {
+                m_log.logInfo("SAML getCredentials from cache");
+            }
         }
-        
+
         if(!m_disableCache) {
-          // if the SAML response has dbUser argument, it will be picked up at this point.
-        	credentials = m_cache.get(getCacheKey());
+            // if the SAML response has dbUser argument, it will be picked up at this point.
+            credentials = m_cache.get(getCacheKey());
         }
 
         // if dbUser argument has been passed in the connection string, add it to metadata.
-        if (!StringUtils.isNullOrEmpty(m_dbUser))
+        if (!Utils.isNullOrEmpty(m_dbUser))
         {
             credentials.getThisMetadata().setDbUser(this.m_dbUser);
         }
 
         if (credentials == null)
         {
-            throw new SdkClientException("Unable to load AWS credentials from ADFS");
+            throw SdkClientException.create("Unable to load AWS credentials from ADFS");
         }
-      
+
         if(RedshiftLogger.isEnable()) {
             Date now = new Date();
             m_log.logInfo(now + ": Using entry for SamlCredentialsProvider.getCredentials cache with expiration " + credentials.getExpiration());
         }
-        
+
         return credentials;
     }
 
-    @Override
     public void refresh()
     {
         // Get the current thread and set the context loader with our custom load class method.
@@ -288,9 +286,10 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
         {
             String samlAssertion = getSamlAssertion();
 
-            if (RedshiftLogger.isEnable())
-            		m_log.logDebug("SamlCredentialsProvider: Received SAML assertion of length={0}", samlAssertion != null ? samlAssertion.length() : -1);
-                    
+            if (RedshiftLogger.isEnable()) {
+                m_log.logDebug("SamlCredentialsProvider: Received SAML assertion of length={0}", samlAssertion != null ? samlAssertion.length() : -1);
+            }
+
             final Pattern SAML_PROVIDER_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:saml-provider/\\S+");
             final Pattern ROLE_PATTERN = Pattern.compile("arn:aws[-a-z]*:iam::\\d*:role/\\S+");
             Document doc = parse(Base64.decodeBase64(samlAssertion));
@@ -325,7 +324,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
                                 role = roleMatcher.group(0);
                             }
                         }
-                        if (!StringUtils.isNullOrEmpty(role) && !StringUtils.isNullOrEmpty(provider))
+                        if (!Utils.isNullOrEmpty(role) && !Utils.isNullOrEmpty(provider))
                         {
                             roles.put(role, provider);
                         }
@@ -335,7 +334,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
 
             if (roles.isEmpty())
             {
-                throw new SdkClientException("No role found in SamlAssertion: " + samlAssertion);
+                throw SdkClientException.create("No role found in SamlAssertion: " + samlAssertion);
             }
 
             String roleArn;
@@ -346,7 +345,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
                 principal = roles.get(m_preferredRole);
                 if (principal == null)
                 {
-                    throw new SdkClientException("Preferred role not found in SamlAssertion: " + samlAssertion);
+                    throw SdkClientException.create("Preferred role not found in SamlAssertion: " + samlAssertion);
                 }
             }
             else
@@ -356,132 +355,134 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
                 principal = entry.getValue();
             }
 
-            AssumeRoleWithSAMLRequest samlRequest = new AssumeRoleWithSAMLRequest();
-            samlRequest.setSAMLAssertion(samlAssertion);
-            samlRequest.setRoleArn(roleArn);
-            samlRequest.setPrincipalArn(principal);
+            AssumeRoleWithSamlRequest.Builder samlRequestBuilder = AssumeRoleWithSamlRequest.builder();
+            samlRequestBuilder.samlAssertion(samlAssertion);
+            samlRequestBuilder.roleArn(roleArn);
+            samlRequestBuilder.principalArn(principal);
             if (m_duration > 0)
             {
-                samlRequest.setDurationSeconds(m_duration);
+                samlRequestBuilder.durationSeconds(m_duration);
             }
 
-            AWSCredentialsProvider p = new AWSStaticCredentialsProvider(new AnonymousAWSCredentials());
-            AWSSecurityTokenServiceClientBuilder builder = AWSSecurityTokenServiceClientBuilder.standard();
-            ClientConfiguration config = null;
-            builder.withClientConfiguration(config);
-            
-            AWSSecurityTokenService stsSvc =
-            		RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p, m_log);
-            
-            AssumeRoleWithSAMLResult result = stsSvc.assumeRoleWithSAML(samlRequest);
-            Credentials cred = result.getCredentials();
-            Date expiration = cred.getExpiration();
-            AWSCredentials c = new BasicSessionCredentials(cred.getAccessKeyId(),
-                    cred.getSecretAccessKey(), cred.getSessionToken());
+            AwsCredentialsProvider p = AnonymousCredentialsProvider.create();
+            StsClientBuilder builder = StsClient.builder();
+            ClientOverrideConfiguration config = null;
+            builder.overrideConfiguration(config);
+
+            StsClient stsSvc =
+                    RequestUtils.buildSts(m_stsEndpoint, m_region, builder, p, m_log);
+
+            AssumeRoleWithSamlResponse result = stsSvc.assumeRoleWithSAML(samlRequestBuilder.build());
+            Credentials cred = result.credentials();
+            Instant expiration = cred.expiration();
+            AwsCredentials c = AwsSessionCredentials.create(cred.accessKeyId(), cred.secretAccessKey(), cred.sessionToken());
             CredentialsHolder credentials = CredentialsHolder.newInstance(c, expiration);
             credentials.setMetadata(readMetadata(doc));
             credentials.setRefresh(true);
-            
-            if(!m_disableCache)
-            	m_cache.put(getCacheKey(), credentials);
-            else
-              m_lastRefreshCredentials = credentials;
+
+            if (!m_disableCache) {
+                m_cache.put(getCacheKey(), credentials);
+            } else {
+                m_lastRefreshCredentials = credentials;
+            }
         }
-        catch (IOException e)
-        {
-          if (RedshiftLogger.isEnable())
-        		m_log.logError(e);
-        	
-          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        catch (IOException e) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
         }
-        catch (SAXException e)
-        {
-          if (RedshiftLogger.isEnable())
-        		m_log.logError(e);
-          
-          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        catch (SAXException e) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
         }
-        catch (ParserConfigurationException e)
-        {
-          if (RedshiftLogger.isEnable())
-        		m_log.logError(e);
-        	
-          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        catch (ParserConfigurationException e) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
         }
-        catch (XPathExpressionException e)
-        {
-          if (RedshiftLogger.isEnable())
-        		m_log.logError(e);
-        	
-          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        catch (XPathExpressionException e) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
         }
-        catch (Exception e)
-        {
-          if (RedshiftLogger.isEnable())
-        		m_log.logError(e);
-        	
-          throw new SdkClientException("SAML error: " + e.getMessage(), e);
+        catch (Exception e) {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
         }
-        finally
-        {
-          currentThread.setContextClassLoader(cl);
+        finally {
+            currentThread.setContextClassLoader(cl);
         }
     }
-    
+
     @Override
     public String getPluginSpecificCacheKey() {
-    	// Override this in each derived plugin such as Azure, Browser, Okta, Ping etc.
-    	return "";
+        // Override this in each derived plugin such as Azure, Browser, Okta, Ping etc.
+        return "";
     }
 
     @Override
     public String getIdpToken() {
-    	String samlAssertion = null;
-      // Get the current thread and set the context loader with our custom load class method.
-      Thread currentThread = Thread.currentThread();
-      ClassLoader cl = currentThread.getContextClassLoader();
+        String samlAssertion = null;
+        // Get the current thread and set the context loader with our custom load class method.
+        Thread currentThread = Thread.currentThread();
+        ClassLoader cl = currentThread.getContextClassLoader();
 
-      Thread.currentThread().setContextClassLoader(CONTEXT_CLASS_LOADER);
+        Thread.currentThread().setContextClassLoader(CONTEXT_CLASS_LOADER);
 
-      try
-      {
-          samlAssertion = getSamlAssertion();
+        try
+        {
+            samlAssertion = getSamlAssertion();
 
-          if (RedshiftLogger.isEnable())
-              m_log.logDebug("SamlCredentialsProvider: Got SAML assertion of " +
-                      "length={0}", samlAssertion != null ? samlAssertion.length() : -1);
-      }
-      catch (IOException e)
-      {
-        if (RedshiftLogger.isEnable())
-      		m_log.logError(e);
-      	
-        throw new SdkClientException("SAML error: " + e.getMessage(), e);
-      }
-      catch (Exception e)
-      {
-        if (RedshiftLogger.isEnable())
-      		m_log.logError(e);
-      	
-        throw new SdkClientException("SAML error: " + e.getMessage(), e);
-      }
-      finally
-      {
-        currentThread.setContextClassLoader(cl);
-      }
-      
-      return  samlAssertion;
+            if (RedshiftLogger.isEnable()) {
+                m_log.logDebug("SamlCredentialsProvider: Got SAML assertion of " +
+                        "length={0}", samlAssertion != null ? samlAssertion.length() : -1);
+            }
+        }
+        catch (IOException e)
+        {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
+        }
+        catch (Exception e)
+        {
+            if (RedshiftLogger.isEnable()) {
+                m_log.logError(e);
+            }
+
+            throw SdkClientException.create("SAML error: " + e.getMessage(), e);
+        }
+        finally
+        {
+            currentThread.setContextClassLoader(cl);
+        }
+
+        return  samlAssertion;
     }
-    
+
     @Override
     public void setGroupFederation(boolean groupFederation) {
-    	m_groupFederation = groupFederation;
+        m_groupFederation = groupFederation;
     }
-    
+
     @Override
     public String getCacheKey()
     {
-    		String pluginSpecificKey = getPluginSpecificCacheKey();
+        String pluginSpecificKey = getPluginSpecificCacheKey();
         return m_userName + m_password + m_idpHost + m_idpPort + m_duration + m_preferredRole + pluginSpecificKey;
     }
 
@@ -492,7 +493,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
 
 
         List<String> attributeValues = GetSAMLAttributeValues(xPath, doc,
-            "https://redshift.amazon.com/SAML/Attributes/AllowDbUserOverride");
+                "https://redshift.amazon.com/SAML/Attributes/AllowDbUserOverride");
         if (!attributeValues.isEmpty())
         {
             metadata.setAllowDbUserOverride(Boolean.valueOf(attributeValues.get(0)));
@@ -540,17 +541,17 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
                 metadata.setDbGroups(sb.toString());
             }
         }
-        
+
         attributeValues = GetSAMLAttributeValues(xPath, doc,
-		                "https://redshift.amazon.com/SAML/Attributes/ForceLowercase");
+                "https://redshift.amazon.com/SAML/Attributes/ForceLowercase");
         if (!attributeValues.isEmpty())
         {
             metadata.setForceLowercase(Boolean.valueOf(attributeValues.get(0)));
         }
-        		
+
         return metadata;
     }
-    
+
     /**
      * Method removes all groups from given lists matching {@link m_dbGroupsFilter}
      *  regex.
@@ -565,7 +566,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
             for (String attributeValue : attributeValues)
             {
                 m_log.logDebug("Check group {0} with regexp {1}",
-                                             attributeValue, m_dbGroupsFilter);
+                        attributeValue, m_dbGroupsFilter);
                 if (!groupsFilter.matcher(attributeValue).matches())
                 {
                     m_log.logDebug("Add {0} to dbgroups", attributeValue);
@@ -585,7 +586,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);        
+        factory.setExpandEntityReferences(false);
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
         DocumentBuilder db = factory.newDocumentBuilder();
@@ -612,18 +613,18 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
 
     protected List<String> getInputTagsfromHTML(String body)
     {
-    		Set<String> distinctInputTags = new HashSet<>();    	
+        Set<String> distinctInputTags = new HashSet<>();
         List<String> inputTags = new ArrayList<String>();
         Pattern inputTagPattern = Pattern.compile("<input(.+?)/>", Pattern.DOTALL);
         Matcher inputTagMatcher = inputTagPattern.matcher(body);
         while (inputTagMatcher.find())
         {
-           String tag = inputTagMatcher.group(0);
-           String tagNameLower = getValueByKey(tag, "name").toLowerCase();
-           if (!tagNameLower.isEmpty() && distinctInputTags.add(tagNameLower)) 
-           {
-          	 inputTags.add(tag);
-           }
+            String tag = inputTagMatcher.group(0);
+            String tagNameLower = getValueByKey(tag, "name").toLowerCase();
+            if (!tagNameLower.isEmpty() && distinctInputTags.add(tagNameLower))
+            {
+                inputTags.add(tag);
+            }
         }
         return inputTags;
     }
@@ -660,7 +661,7 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
         }
         return "";
     }
-    
+
     /**
      * Escape certain HTML entities for the given input string.
      *
@@ -718,41 +719,41 @@ public abstract class SamlCredentialsProvider extends IdpCredentialsProvider imp
 
     protected void checkRequiredParameters() throws IOException
     {
-        if (StringUtils.isNullOrEmpty(m_userName))
+        if (Utils.isNullOrEmpty(m_userName))
         {
             throw new IOException("Missing required property: " + RedshiftProperty.USER.getName());
         }
-        if (StringUtils.isNullOrEmpty(m_password))
+        if (Utils.isNullOrEmpty(m_password))
         {
             throw new IOException("Missing required property: " + RedshiftProperty.PASSWORD.getName());
         }
-        if (StringUtils.isNullOrEmpty(m_idpHost))
+        if (Utils.isNullOrEmpty(m_idpHost))
         {
             throw new IOException("Missing required property: " + KEY_IDP_HOST);
         }
     }
-    
+
     protected boolean isText(String inputTag)
     {
-    		String typeVal = getValueByKey(inputTag, "type");
-    		if(typeVal == null
-    				|| typeVal.length() == 0)
-    		{
-    			typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
-    		}
-    		
+        String typeVal = getValueByKey(inputTag, "type");
+        if (typeVal == null
+                || typeVal.length() == 0)
+        {
+            typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
+        }
+
         return "text".equals(typeVal);
     }
 
     protected boolean isPassword(String inputTag)
     {
-  		String typeVal = getValueByKey(inputTag, "type");
-  		if(typeVal == null
-  				|| typeVal.length() == 0)
-  		{
-  			typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
-  		}
-  		
-      return "password".equals(typeVal);
-    }   
+        String typeVal = getValueByKey(inputTag, "type");
+        if (typeVal == null
+                || typeVal.length() == 0)
+        {
+            typeVal = getValueByKeyWithoutQuotesAndValueInSingleQuote(inputTag, "type");
+        }
+
+        return "password".equals(typeVal);
+    }
 }

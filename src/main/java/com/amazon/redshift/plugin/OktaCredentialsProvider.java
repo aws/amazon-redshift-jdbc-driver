@@ -1,10 +1,8 @@
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.util.IOUtils;
-import com.amazonaws.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -23,6 +21,7 @@ import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 public class OktaCredentialsProvider extends SamlCredentialsProvider
 {
@@ -55,92 +54,76 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
     
 
     @Override
-    protected String getSamlAssertion() throws IOException
-    {
+    protected String getSamlAssertion() throws IOException {
         checkRequiredParameters();
-        if (StringUtils.isNullOrEmpty(m_app_id))
-        {
+        if (Utils.isNullOrEmpty(m_app_id)) {
             throw new IOException("Missing required property: " + KEY_APP_URL);
         }
 
-        CloseableHttpClient httpClient = null;
-
-        try
-        {
-            httpClient = getHttpClient();
+        try (CloseableHttpClient httpClient = getHttpClient()) {
             String strOktaSessionToken = oktaAuthentication(httpClient);
             return handleSamlAssertion(httpClient, strOktaSessionToken);
-        }
-        catch (GeneralSecurityException e)
-        {
-            throw new SdkClientException("Failed create SSLContext.", e);
-        }
-        finally
-        {
-            IOUtils.closeQuietly(httpClient, null);
+        } catch (GeneralSecurityException e) {
+            throw SdkClientException.create("Failed create SSLContext.", e);
         }
     }
 
     /**
      * Authenticates users credentials via Okta, return Okta session token.
      */
-    private String oktaAuthentication(CloseableHttpClient httpClient) throws IOException
-    {
-        CloseableHttpResponse responseAuthenticate = null;
-        try
-        {
-            ObjectMapper mapper = new ObjectMapper();
+    private String oktaAuthentication(CloseableHttpClient httpClient) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
 
-            //HTTP Post request to Okta API for session token
-            String uri = "https://" + m_idpHost + "/api/v1/authn";
-            
-            if (RedshiftLogger.isEnable())
-          		m_log.logDebug("uri: {0}", uri);
-            
-            validateURL(uri);
-            
-            HttpPost httpost = new HttpPost(uri);
-            httpost.addHeader("Accept", "application/json");
-            httpost.addHeader("Content-Type", "application/json");
-            httpost.addHeader("Cache-Control", "no-cache");
-            //construction of JSON request
-            Map<String,String> creds = new HashMap<String,String>();
-            creds.put("username", m_userName);
-            creds.put("password", m_password);
-            StringWriter writer = new StringWriter();
+        //HTTP Post request to Okta API for session token
+        String uri = "https://" + m_idpHost + "/api/v1/authn";
+
+        if (RedshiftLogger.isEnable()) {
+            m_log.logDebug("uri: {0}", uri);
+        }
+
+        validateURL(uri);
+
+        HttpPost httpost = new HttpPost(uri);
+        httpost.addHeader("Accept", "application/json");
+        httpost.addHeader("Content-Type", "application/json");
+        httpost.addHeader("Cache-Control", "no-cache");
+
+        //construction of JSON request
+        Map<String,String> creds = new HashMap<String,String>();
+        creds.put("username", m_userName);
+        creds.put("password", m_password);
+
+        try (StringWriter writer = new StringWriter()) {
             mapper.writeValue(writer, creds);
             StringEntity entity = new StringEntity(writer.toString(), "UTF-8");
             entity.setContentType("application/json");
             httpost.setEntity(entity);
-            responseAuthenticate = httpClient.execute(httpost);
-            String content = EntityUtils.toString(responseAuthenticate.getEntity());
 
-          	if(RedshiftLogger.isEnable()) {
-                String maskedContent = content.replaceAll(getRegexForJsonKey("sessionToken"), "$1***masked***\"");
-                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("id"), "$1***masked***\"");
-                maskedContent = maskedContent.replaceAll(getRegexForJsonKey("passwordChanged"), "$1***masked***\"");
-                m_log.log(LogLevel.DEBUG, "oktaAuthentication https response:" + maskedContent);
-            }
-            
-            StatusLine statusLine = responseAuthenticate.getStatusLine();
-            int requestStatus = statusLine.getStatusCode();
-            
-            if (requestStatus != 200)
-            {
-                throw new IOException(statusLine.getReasonPhrase());
-            }
-            //Retrieve and parse the Okta response for session token
-            JsonNode json = mapper.readTree(content);
+            try (CloseableHttpResponse responseAuthenticate = httpClient.execute(httpost)) {
+                String content = EntityUtils.toString(responseAuthenticate.getEntity());
 
-            if ("SUCCESS".equals(json.get("status").asText()))
-            {
-                return json.get("sessionToken").asText();
+                if (RedshiftLogger.isEnable()) {
+                    String maskedContent = content.replaceAll(getRegexForJsonKey("sessionToken"), "$1***masked***\"");
+                    maskedContent = maskedContent.replaceAll(getRegexForJsonKey("id"), "$1***masked***\"");
+                    maskedContent = maskedContent.replaceAll(getRegexForJsonKey("passwordChanged"), "$1***masked***\"");
+                    m_log.log(LogLevel.DEBUG, "oktaAuthentication https response:" + maskedContent);
+                }
+
+                StatusLine statusLine = responseAuthenticate.getStatusLine();
+                int requestStatus = statusLine.getStatusCode();
+
+                if (requestStatus != 200) {
+                    throw new IOException(statusLine.getReasonPhrase());
+                }
+
+                //Retrieve and parse the Okta response for session token
+                JsonNode json = mapper.readTree(content);
+
+                if ("SUCCESS".equals(json.get("status").asText())) {
+                    return json.get("sessionToken").asText();
+                }
+                throw new IOException("No session token in the response.");
             }
-            throw new IOException("No session token in the response.");
-        }
-        finally
-        {
-            IOUtils.closeQuietly(responseAuthenticate, null);
         }
     }
 
@@ -150,7 +133,7 @@ public class OktaCredentialsProvider extends SamlCredentialsProvider
     private String handleSamlAssertion(CloseableHttpClient httpClient, String oktaSessionToken) throws IOException
     {
         // If no value was specified for m_app_name, use the current default.
-        if (StringUtils.isNullOrEmpty(m_app_name))
+        if (Utils.isNullOrEmpty(m_app_name))
         {
             m_app_name = "amazon_aws";
         }

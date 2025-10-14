@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.amazon.redshift.core.Utils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -23,9 +24,9 @@ import org.apache.http.util.EntityUtils;
 
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazonaws.SdkClientException;
-import com.amazonaws.util.IOUtils;
-import com.amazonaws.util.StringUtils;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.utils.IoUtils;
 
 public class AdfsCredentialsProvider extends SamlCredentialsProvider
 {
@@ -63,12 +64,12 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
     
     protected String getSamlAssertion() throws IOException
     {
-        if (StringUtils.isNullOrEmpty(m_idpHost))
+        if (Utils.isNullOrEmpty(m_idpHost))
         {
             throw new IOException("Missing required property: " + KEY_IDP_HOST);
         }
 
-        if (StringUtils.isNullOrEmpty(m_userName) || StringUtils.isNullOrEmpty(m_password))
+        if (Utils.isNullOrEmpty(m_userName) || Utils.isNullOrEmpty(m_password))
         {
             return windowsIntegratedAuthentication();
         }
@@ -81,7 +82,7 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
         String osName = System.getProperty("os.name").toLowerCase(Locale.getDefault());
         if (!osName.contains("windows"))
         {
-            throw new SdkClientException("WIA only support Windows platform.");
+            throw SdkClientException.create("WIA only support Windows platform.");
         }
 
         InputStream is = null;
@@ -108,27 +109,27 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
             is = process.getInputStream();
             os = process.getOutputStream();
 
-            String samlAssertion = IOUtils.toString(is);
+            String samlAssertion = SdkBytes.fromInputStream(is).asUtf8String();
             int code = process.waitFor();
             if (code != 0)
             {
-                throw new SdkClientException("Failed execute adfs command, return: " + code);
+                throw SdkClientException.create("Failed execute adfs command, return: " + code);
             }
 
             return samlAssertion;
         }
         catch (InterruptedException e)
         {
-            throw new SdkClientException("Failed execute adfs command.", e);
+            throw SdkClientException.create("Failed execute adfs command.", e);
         }
         catch (IOException e)
         {
-            throw new SdkClientException("Failed execute adfs command.", e);
+            throw SdkClientException.create("Failed execute adfs command.", e);
         }
         finally
         {
-            IOUtils.closeQuietly(is, null);
-            IOUtils.closeQuietly(os, null);
+            IoUtils.closeQuietly(is, null);
+            IoUtils.closeQuietly(os, null);
             if (file != null && !file.delete())
             {
                 file.deleteOnExit();
@@ -197,7 +198,7 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
             }
 
             String action = getFormAction(body);
-            if (!StringUtils.isNullOrEmpty(action) && action.startsWith("/"))
+            if (!Utils.isNullOrEmpty(action) && action.startsWith("/"))
             {
                 uri = "https://" + m_idpHost + ':' + m_idpPort + action;
             }
@@ -226,11 +227,11 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
         }
         catch (GeneralSecurityException e)
         {
-            throw new SdkClientException("Failed create SSLContext.", e);
+            throw SdkClientException.create("Failed create SSLContext.", e);
         }
         finally
         {
-            IOUtils.closeQuietly(client, null);
+            IoUtils.closeQuietly(client, null);
         }
     }
 
@@ -243,12 +244,12 @@ public class AdfsCredentialsProvider extends SamlCredentialsProvider
         {
             is = AdfsCredentialsProvider.class.getResourceAsStream("adfs.exe");
             os = new FileOutputStream(file);
-            IOUtils.copy(is, os);
+            IoUtils.copy(is, os);
         }
         finally
         {
-            IOUtils.closeQuietly(is, null);
-            IOUtils.closeQuietly(os, null);
+            IoUtils.closeQuietly(is, null);
+            IoUtils.closeQuietly(os, null);
         }
 
         return file;

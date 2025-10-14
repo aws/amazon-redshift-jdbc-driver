@@ -108,7 +108,7 @@ public class BasicNativeSamlCredentialsProvider extends BrowserSamlCredentialsPr
         /*
          *  If you wish to make a connection property required, you can check that the associated
          *  field has been populated, and if not, throw an IOException.
-         *          if (StringUtils.isNullOrEmpty(samlAssertion))
+         *          if (Utils.isNullOrEmpty(samlAssertion))
          *          {
          *              throw new IOException("Missing required property: " + KEY_SAML_ASSERTION);
          *          }

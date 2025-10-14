@@ -1,11 +1,12 @@
 package com.amazon.redshift.plugin;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
 import com.amazon.redshift.plugin.httpserver.Server;
 import com.amazon.redshift.plugin.utils.RandomStateUtil;
-import com.amazonaws.util.json.Jackson;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpHeaders;
@@ -27,14 +28,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
 import static com.amazon.redshift.plugin.httpserver.RequestHandler.REDSHIFT_PATH;
 import static com.amazon.redshift.plugin.utils.CheckUtils.*;
 import static com.amazon.redshift.plugin.utils.ResponseUtils.findParameter;
-import static com.amazonaws.util.StringUtils.isNullOrEmpty;
 import static org.apache.commons.codec.binary.StringUtils.newStringUtf8;
 
 /**
@@ -270,7 +269,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
                                 " does not match the outgoing state " + state);
                     }
                     String code = findParameter(OAUTH_IDP_CODE_PARAMETER_NAME, nameValuePairs);
-                    if (isNullOrEmpty(code))
+                    if (Utils.isNullOrEmpty(code))
                     {
                         return new InternalPluginException("No valid code found");
                     }
@@ -380,12 +379,15 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
      */
     private String extractSamlAssertion(String content)
     {
-        String encodedSamlAssertion;
-        JsonNode accessTokenField = Jackson.jsonNodeOf(content).findValue("access_token");
-        checkAndThrowsWithMessage(accessTokenField == null, "Failed to find access_token");
-        encodedSamlAssertion = accessTokenField.textValue();
+        JsonNode accessTokenField;
+        try {
+            accessTokenField = Utils.parseJson(content).findValue("access_token");
+        } catch (JsonProcessingException e) {
+            throw new InternalPluginException("Failed to parse access_token");
+        }
+        String encodedSamlAssertion = accessTokenField.textValue();
         checkAndThrowsWithMessage(
-            isNullOrEmpty(encodedSamlAssertion),
+            Utils.isNullOrEmpty(encodedSamlAssertion),
             "Invalid access_token value.");
         
       	if(RedshiftLogger.isEnable())

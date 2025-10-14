@@ -1,10 +1,7 @@
 package com.amazon.redshift.plugin.utils;
 
+import com.amazon.redshift.core.Utils;
 import com.amazon.redshift.plugin.InternalPluginException;
-
-import java.io.IOException;
-
-import static com.amazonaws.util.StringUtils.isNullOrEmpty;
 
 /**
  * All for plugin parameters check.
@@ -18,7 +15,7 @@ public class CheckUtils
     public static void checkMissingAndThrows(String parameter, String parameterName)
         throws InternalPluginException
     {
-        if (isNullOrEmpty(parameter))
+        if (Utils.isNullOrEmpty(parameter))
         {
             throw new InternalPluginException("Missing required property: " + parameterName);
         }

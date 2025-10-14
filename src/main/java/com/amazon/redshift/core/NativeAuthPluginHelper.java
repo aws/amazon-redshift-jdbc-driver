@@ -2,7 +2,6 @@ package com.amazon.redshift.core;
 
 import com.amazon.redshift.plugin.utils.RequestUtils;
 import com.amazon.redshift.util.RedshiftProperties;
-import com.amazonaws.util.StringUtils;
 import com.amazon.redshift.INativePlugin;
 import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.NativeTokenHolder;
@@ -14,9 +13,7 @@ import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 
-import java.util.Date;
 import java.util.Map;
-import java.util.Properties;
 
 public final class NativeAuthPluginHelper extends IdpAuthHelper {
 
@@ -76,7 +73,7 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
     String idpToken = null;
     INativePlugin provider = null;
 
-    if (!StringUtils.isNullOrEmpty(settings.m_credentialsProvider)) {
+    if (!Utils.isNullOrEmpty(settings.m_credentialsProvider)) {
       try {
         Class<? extends INativePlugin> clazz = (Class.forName(settings.m_credentialsProvider)
             .asSubclass(INativePlugin.class));
