@@ -179,11 +179,12 @@ public class RedshiftTimestamp extends Timestamp {
   
   @Override
   public String toString() {
-  	if (s == null)
-  		return super.toString();
-  	else {
+    if (calendar == null) {
+        return super.toString();
+    }
+    else {
         return getRedshiftString();
-  	}
+    }
   }
   
   /**
