@@ -825,22 +825,27 @@ public class RedshiftConnectionImpl implements BaseConnection {
           binObj.setByteValue(byteValue, 0);
         }
         else if (byteValue != null && obj instanceof RedshiftInterval) {
-        	RedshiftInterval intervalObj = (RedshiftInterval) obj;
-        	
-        	// Binary format is 8 bytes time and 4 byes months
-        	long time = ByteConverter.int8(byteValue, 0);
-        	int month = ByteConverter.int4(byteValue, 8);
-        	
-        	intervalObj.setValue(month, time);
-        	
-//        	intervalObj.setValue(new String(byteValue));
+          RedshiftInterval intervalObj = (RedshiftInterval) obj;
+
+          if (byteValue.length == 8) {
+            // Only time component is present
+            long time = ByteConverter.int8(byteValue, 0);
+            intervalObj.setValue(0, time); // Set months to 0
+          } else if (byteValue.length == 12) {
+            // Both time and month components are present
+            long time = ByteConverter.int8(byteValue, 0);
+            int month = ByteConverter.int4(byteValue, 8);
+            intervalObj.setValue(month, time);
+          } else {
+            throw new IllegalArgumentException("Unexpected byte array length: " + byteValue.length + ". Expected either 8 or 12 bytes.");
+          }
         }
         else {
           obj.setValue(value);
         }
       } else {
         // If className is null, then the type is unknown.
-        // so return a RedshiftOject with the type set, and the value set
+        // so return a RedshiftObject with the type set, and the value set
         obj = new RedshiftObject();
         obj.setType(type);
         obj.setValue(value);
