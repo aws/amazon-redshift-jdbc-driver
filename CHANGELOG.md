@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v2.2.0 (2025-10-14)
+----------------------
+- Upgraded to AWS SDK v2 
+- Fixed incorrect formatting of timezone-aware timestamp columns (TIMESTAMPTZ/TIMETZ) in edge cases where the cached string representation was null, ensuring timezone offsets are properly displayed.
+- Removed unsupported client/stdin CopyAPI feature implementation that was no longer maintained or supported
+- Build now fails when Javadoc generation encounters errors, ensuring documentation quality and preventing builds with malformed documentation.
+
+
 v2.1.0.34 (2025-08-07)
 ----------------------
 - Added a new statement cancel state IN_QUERY_SUSPENDED to accurately track query suspension status ensuring that suspended queries remain cancellable
