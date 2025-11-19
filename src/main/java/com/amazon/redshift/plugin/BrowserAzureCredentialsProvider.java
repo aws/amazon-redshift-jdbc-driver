@@ -1,6 +1,7 @@
 package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.core.Utils;
+import com.amazon.redshift.util.JsonUtils;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
@@ -402,7 +403,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     {
         JsonNode accessTokenField;
         try {
-            accessTokenField = Utils.parseJson(content).findValue("access_token");
+            accessTokenField = JsonUtils.parseJson(content).findValue("access_token");
         } catch (JsonProcessingException e) {
             throw new InternalPluginException("Failed to parse access_token");
         }

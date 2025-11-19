@@ -15,6 +15,7 @@ import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftProperties;
 import com.amazon.redshift.util.RedshiftState;
+import com.amazon.redshift.util.JsonUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -187,7 +188,7 @@ public class IdpAuthHelper {
 
 
     try {
-      JsonNode profileJson = Utils.parseJson(profileContent);
+      JsonNode profileJson = JsonUtils.parseJson(profileContent);
       Iterator<Entry<String, JsonNode>> elements = profileJson.fields();
 
       while (elements.hasNext()) {

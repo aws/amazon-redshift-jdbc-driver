@@ -1,6 +1,7 @@
 package com.amazon.redshift.plugin;
 
 import com.amazon.redshift.core.Utils;
+import com.amazon.redshift.util.JsonUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.RedshiftProperty;
@@ -204,7 +205,7 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
                 String content = EntityUtils.toString(resp.getEntity());
                 JsonNode entityJson;
                 try {
-                    entityJson = Utils.parseJson(content);
+                    entityJson = JsonUtils.parseJson(content);
                 } catch (JsonProcessingException e) {
                     throw SdkClientException.create("Failed to parse Azure response.", e);
                 }
