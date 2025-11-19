@@ -1,6 +1,17 @@
 Changelog
 =========
 
+v2.2.1 (2025-11-19)
+----------------------
+- Removed unsupported PostgreSQL replication feature 
+- Removed Jackson dependency for non-IAM authentication mechanisms
+- Added the idp_partition parameter which allows users to authenticate against Azure Active Directory across different Microsoft cloud environments (e.g., Commercial, US Gov, China)
+- Fixed Java 11+ compatibility issue by improving exception handling in StreamWrapper.finalize()
+- Enhanced database metadata retrieval logic in getCatalogs(), getSchemas(), getTables(), getColumns(), getPrimaryKeys(), getImportedKeys(), getExportedKeys(), getBestRowIdentifier(), getColumnPrivileges(), getTablePrivileges(), getProcedures(), getProcedureColumns(), getFunctions(), getFunctionColumns() to enable data sharing capabilities while maintaining JDBC specification compliance
+- Added warning messages when log level 4 or higher are enabled
+- Fixed IDC authentication redirect URL for China regions
+
+
 v2.2.0 (2025-10-14)
 ----------------------
 - Upgraded to AWS SDK v2 
