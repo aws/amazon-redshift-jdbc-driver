@@ -37,6 +37,7 @@ import com.amazon.redshift.NativeTokenHolder;
 import com.amazon.redshift.RedshiftProperty;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssooidc.SsoOidcClient;
+import java.util.regex.Pattern;
 import software.amazon.awssdk.services.ssooidc.model.AccessDeniedException;
 import software.amazon.awssdk.services.ssooidc.model.AuthorizationPendingException;
 import software.amazon.awssdk.services.ssooidc.model.CreateTokenRequest;
@@ -177,6 +178,16 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	 * String containing amazonaws.com used for building the authorization server endpoint.
 	 */
     private static final String AMAZON_COM_DOMAIN = "amazonaws.com";
+
+	/**
+	 * String containing amazonaws.com.cn used for building the authorization server endpoint.
+	 */
+	private static final String AMAZON_CHINA_DOMAIN = "amazonaws.com.cn";
+
+	/**
+	 * Regex pattern to validate AWS region format
+	 */
+	private static final Pattern REGION_PATTERN = Pattern.compile("^[a-z]{2,3}(-[a-z]+)+-[0-9]+$");
 
 	/**
 	 * Application scope variable.
@@ -620,7 +631,7 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	*/
     protected void openBrowser(String state, String codeChallenge, RegisterClientResponse registerClientResponse) throws URISyntaxException, IOException
     {
-		String idc_host = createIdcHost(m_idc_region);
+		String idc_host = buildOidcHostUrl(m_idc_region);
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_PROTOCOL)
             .setHost(idc_host)
             .setPath(AUTHORIZE_ENDPOINT)
@@ -647,9 +658,31 @@ public class BrowserIdcAuthPlugin extends CommonCredentialsProvider {
 	            String.format("Authorization code request URI: \n%s", authorizeRequestUrl.toString()));
     }
 
-	private String createIdcHost(String idc_region) {
-		return OIDC_SUBDOMAIN + "." + m_idc_region + "." + AMAZON_COM_DOMAIN;
-	}
+    /**
+     * Builds the OpenID Connect (OIDC) host URL based on the provided region.
+     *
+     * @param idc_region The AWS region identifier (e.g., "us-west-2", "cn-north-1")
+     * @return The formatted OIDC host URL
+     * @throws IllegalArgumentException if the region is null, empty, or not a valid AWS region
+     */
+    private String buildOidcHostUrl(final String idc_region) {
+        if (idc_region == null) {
+            throw new IllegalArgumentException("Region cannot be null");
+        }
+
+        final String normalizedRegion = idc_region.trim().toLowerCase();
+        if (normalizedRegion.isEmpty()) {
+            throw new IllegalArgumentException("Region cannot be empty");
+        }
+
+        // Validate region format to prevent injection attacks
+        if (!REGION_PATTERN.matcher(normalizedRegion).matches()) {
+            throw new IllegalArgumentException("Invalid AWS region format: " + normalizedRegion);
+        }
+
+        final String domain = normalizedRegion.startsWith("cn-") ? AMAZON_CHINA_DOMAIN : AMAZON_COM_DOMAIN;
+        return String.format("%s.%s.%s", OIDC_SUBDOMAIN, normalizedRegion, domain);
+    }
 
 	private byte[] sha256(byte[] input) {
         try {
