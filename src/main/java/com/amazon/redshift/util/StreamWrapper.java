@@ -113,11 +113,21 @@ public class StreamWrapper {
             }
           }
 
+          // Suppress deprecation warning: finalize() is deprecated in Java 9+ but needed
+          // for Java 8 compatibility and reliable resource cleanup in this specific case
+          @SuppressWarnings("deprecation")
+          @Override
           protected void finalize() throws IOException {
             // forcibly close it because super.finalize() may keep the FD open, which may prevent
             // file deletion
             close();
-            super.finalize();
+            try {
+              super.finalize();
+            } catch (Throwable t) {
+              // Ignore exceptions during finalization - object is being garbage collected
+              // and no recovery is possible. This also handles Java 11+ compatibility where
+              // super.finalize() throws Throwable instead of just IOException
+            }
           }
         };
       } else {
