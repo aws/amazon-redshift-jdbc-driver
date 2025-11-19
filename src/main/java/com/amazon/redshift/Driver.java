@@ -267,6 +267,16 @@ public class Driver implements java.sql.Driver {
       	logger.log(LogLevel.DEBUG, "===================================");
       	logger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
       	connLogger.log(LogLevel.DEBUG, "===================================");
+        connLogger.log(LogLevel.DEBUG, "\n" +
+          "    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+          "    ****************************************************************************************************************************************\n" +
+          "    *                                                                                                                                      *\n" +
+          "    *  Log level {0} is enabled!                                                                                                             *\n" +
+          "    *  WARNING: Log level 4 or higher captures ALL data which may include sensitive information.                                           *\n" +
+          "    *                                                                                                                                      *\n" +
+          "    *  IMPORTANT: Before sharing logs with support or any third party, ensure all sensitive information is redacted/removed from the logs  *\n" +
+          "    ****************************************************************************************************************************************",
+                getLogLevel(props));
       	connLogger.logFunction(true, temp, RedshiftLogger.maskSecureInfoInProps(props));
       	
       	connLogger.log(LogLevel.DEBUG, "Connecting with URL: {0}", temp);
@@ -371,6 +381,13 @@ public class Driver implements java.sql.Driver {
     RedshiftLogger connLogger = new RedshiftLogger(driverLogFile, driverLogLevel, false, maxLogFileSize, maxLogFileCount);
     
     return connLogger;
+  }
+
+  private String getLogLevel(final Properties props) {
+    final String alias1LogLevel = RedshiftProperty.LOG_LEVEL.get(props);
+    final String alias2LogLevel = RedshiftProperty.DSI_LOG_LEVEL.get(props);
+    // return log level 0 (LogLevel.OFF) if log level is not specified
+    return (alias1LogLevel != null) ? alias1LogLevel : (alias2LogLevel != null) ? alias2LogLevel : "0";
   }
   
   /**
