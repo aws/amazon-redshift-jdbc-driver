@@ -20,7 +20,6 @@ import com.amazon.redshift.core.Parser;
 import com.amazon.redshift.core.Query;
 import com.amazon.redshift.core.QueryExecutor;
 import com.amazon.redshift.core.QueryExecutorBase;
-import com.amazon.redshift.core.ReplicationProtocol;
 import com.amazon.redshift.core.ResultCursor;
 import com.amazon.redshift.core.ResultHandler;
 import com.amazon.redshift.core.ResultHandlerBase;
@@ -2829,10 +2828,6 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     return applicationName;
   }
 
-  @Override
-  public ReplicationProtocol getReplicationProtocol() {
-    return null;
-  }
 
   @Override
   public boolean useBinaryForReceive(int oid) {

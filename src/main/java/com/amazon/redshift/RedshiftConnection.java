@@ -9,7 +9,6 @@ import com.amazon.redshift.fastpath.Fastpath;
 import com.amazon.redshift.jdbc.AutoSave;
 import com.amazon.redshift.jdbc.PreferQueryMode;
 import com.amazon.redshift.largeobject.LargeObjectManager;
-import com.amazon.redshift.replication.RedshiftReplicationConnection;
 import com.amazon.redshift.util.RedshiftObject;
 
 import java.sql.Array;
@@ -230,10 +229,6 @@ public interface RedshiftConnection {
    */
   void setAutosave(AutoSave autoSave);
 
-  /**
-   * @return replication API for the current connection
-   */
-  RedshiftReplicationConnection getReplicationAPI();
 
   /**
    * <p>Returns the current values of all parameters reported by the server.</p>

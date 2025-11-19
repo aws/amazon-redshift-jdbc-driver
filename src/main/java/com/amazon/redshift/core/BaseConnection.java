@@ -57,13 +57,6 @@ public interface BaseConnection extends RedshiftConnection, Connection {
    */
   QueryExecutor getQueryExecutor();
 
-  /**
-   * Internal protocol for work with physical and logical replication. 
-   * Unsupported in Redshift.
-   *
-   * @return not null replication protocol
-   */
-  ReplicationProtocol getReplicationProtocol();
 
   /**
    * <p>Construct and return an appropriate object for the given type and value. This only considers

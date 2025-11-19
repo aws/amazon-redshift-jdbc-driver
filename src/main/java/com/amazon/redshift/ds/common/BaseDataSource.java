@@ -1146,13 +1146,6 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     RedshiftProperty.SOCKET_FACTORY_ARG.set(properties, socketFactoryArg);
   }
 
-  /**
-   * @param replication set to 'database' for logical replication or 'true' for physical replication
-   * @see RedshiftProperty#REPLICATION
-   */
-  public void setReplication(String replication) {
-    RedshiftProperty.REPLICATION.set(properties, replication);
-  }
 
   /**
    * @return 'select', "callIfNoReturn', or 'call'
@@ -1170,13 +1163,6 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     RedshiftProperty.ESCAPE_SYNTAX_CALL_MODE.set(properties, callMode);
   }
 
-  /**
-   * @return null, 'database', or 'true
-   * @see RedshiftProperty#REPLICATION
-   */
-  public String getReplication() {
-    return RedshiftProperty.REPLICATION.get(properties);
-  }
 
   /**
    * @return Log Level of the JDBC Driver

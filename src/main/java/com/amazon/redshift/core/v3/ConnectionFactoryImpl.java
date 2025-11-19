@@ -507,10 +507,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
     }
     
     
-    String replication = RedshiftProperty.REPLICATION.get(info);
-    if (replication != null && assumeVersion.getVersionNum() >= ServerVersion.v9_4.getVersionNum()) {
-      paramList.add(new String[]{"replication", replication});
-    }
 
     String currentSchema = RedshiftProperty.CURRENT_SCHEMA.get(info);
     if (currentSchema != null) {

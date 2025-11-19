@@ -21,7 +21,6 @@ import com.amazon.redshift.core.Provider;
 import com.amazon.redshift.core.Query;
 import com.amazon.redshift.core.QueryExecutor;
 import com.amazon.redshift.core.RedshiftJDBCSettings;
-import com.amazon.redshift.core.ReplicationProtocol;
 import com.amazon.redshift.core.ResultHandlerBase;
 import com.amazon.redshift.core.ServerVersion;
 import com.amazon.redshift.core.SqlCommand;
@@ -33,8 +32,6 @@ import com.amazon.redshift.fastpath.Fastpath;
 import com.amazon.redshift.largeobject.LargeObjectManager;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazon.redshift.replication.RedshiftReplicationConnection;
-import com.amazon.redshift.replication.RedshiftReplicationConnectionImpl;
 import com.amazon.redshift.ssl.NonValidatingFactory;
 import com.amazon.redshift.core.v3.QueryExecutorImpl;
 import com.amazon.redshift.util.QuerySanitizer;
@@ -171,11 +168,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   // Only instantiated if a task is actually scheduled.
   private volatile Timer cancelTimer = null;
 
-  /**
-   * Replication protocol in current version postgresql(10devel) supports a limited number of
-   * commands.
-   */
-  private final boolean replicationConnection;
 
   private final LruCache<FieldMetadata.Key, FieldMetadata> fieldMetadataCache;
   
@@ -461,8 +453,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
             Math.max(0, RedshiftProperty.DATABASE_METADATA_CACHE_FIELDS.getInt(info)),
             Math.max(0, RedshiftProperty.DATABASE_METADATA_CACHE_FIELDS_MIB.getInt(info) * 1024 * 1024),
         false);
-
-    replicationConnection = RedshiftProperty.REPLICATION.get(info) != null;
   }
 
   private static ReadOnlyBehavior getReadOnlyBehavior(String property) {
@@ -607,9 +597,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
     return queryExecutor;
   }
 
-  public ReplicationProtocol getReplicationProtocol() {
-    return queryExecutor.getReplicationProtocol();
-  }
 
   /**
    * This adds a warning to the warning chain.
@@ -1527,10 +1514,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
     return fieldMetadataCache;
   }
 
-  @Override
-  public RedshiftReplicationConnection getReplicationAPI() {
-    return new RedshiftReplicationConnectionImpl(this);
-  }
 
   private static void appendArray(StringBuilder sb, Object elements, char delim) {
     sb.append('{');
@@ -1775,23 +1758,14 @@ public class RedshiftConnectionImpl implements BaseConnection {
           try
           {
             setNetworkTimeout(null, timeout * 1000);
-            if (replicationConnection)
+            PreparedStatement checkConnectionQuery;
+            synchronized (this)
             {
-              Statement statement = createStatement();
-              statement.execute("IDENTIFY_SYSTEM");
-              statement.close();
+              checkConnectionQuery = prepareStatement("");
             }
-            else
-            {
-              PreparedStatement checkConnectionQuery;
-              synchronized (this)
-              {
-                checkConnectionQuery = prepareStatement("");
-              }
-              checkConnectionQuery.setQueryTimeout(timeout);
-              checkConnectionQuery.executeUpdate();
-              checkConnectionQuery.close();
-            }
+            checkConnectionQuery.setQueryTimeout(timeout);
+            checkConnectionQuery.executeUpdate();
+            checkConnectionQuery.close();
             return true;
           }
           finally

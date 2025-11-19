@@ -466,10 +466,6 @@ public interface QueryExecutor extends TypeTransferModeRegistry {
    */
   void setFlushCacheOnDeallocate(boolean flushCacheOnDeallocate);
 
-  /**
-   * @return the ReplicationProtocol instance for this connection.
-   */
-  ReplicationProtocol getReplicationProtocol();
 
   void setNetworkTimeout(int milliseconds) throws IOException;
 

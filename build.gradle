@@ -112,7 +112,6 @@ javadoc {
     exclude 'com/amazon/redshift/jre7/sasl/**'
     exclude 'com/amazon/redshift/largeobject/**'
     exclude 'com/amazon/redshift/osgi/**'
-    exclude 'com/amazon/redshift/replication/**'
     exclude 'com/amazon/redshift/plugin/**'
     exclude 'com/amazon/redshift/geometric/**'
     exclude 'com/amazon/redshift/util/**'

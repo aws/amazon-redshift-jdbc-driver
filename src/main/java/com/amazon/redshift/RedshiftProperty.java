@@ -523,7 +523,7 @@ public enum RedshiftProperty {
    * extended means always use bind/execute messages, extendedForPrepared means extended for prepared statements only,
    * extendedCacheEverything means use extended protocol and try cache every statement (including Statement.execute(String sql)) in a query cache.</p>
    *
-   * <p>This mode is meant for debugging purposes and/or for cases when extended protocol cannot be used (e.g. logical replication protocol)</p>
+   * <p>This mode is meant for debugging purposes and/or for cases when extended protocol cannot be used </p>
    */
   PREFER_QUERY_MODE(
     "preferquerymode",
@@ -610,29 +610,6 @@ public enum RedshiftProperty {
     "receivebuffersize",
     "-1",
     "Socket read buffer size"),
-
-  /**
-   * <p>Connection parameter passed in the startup message. This parameter accepts two values; "true"
-   * and "database". Passing "true" tells the backend to go into walsender mode, wherein a small set
-   * of replication commands can be issued instead of SQL statements. Only the simple query protocol
-   * can be used in walsender mode. Passing "database" as the value instructs walsender to connect
-   * to the database specified in the dbname parameter, which will allow the connection to be used
-   * for logical replication from that database.</p>
-   * <p>Parameter should be use together with {@link RedshiftProperty#ASSUME_MIN_SERVER_VERSION} with
-   * parameter &gt;= 9.4 (backend &gt;= 9.4)</p>
-   */
-  REPLICATION(
-    "replication",
-    null,
-    "Connection parameter passed in startup message, one of 'true' or 'database' "
-      + "Passing 'true' tells the backend to go into walsender mode, "
-      + "wherein a small set of replication commands can be issued instead of SQL statements. "
-      + "Only the simple query protocol can be used in walsender mode. "
-      + "Passing 'database' as the value instructs walsender to connect "
-      + "to the database specified in the dbname parameter, "
-      + "which will allow the connection to be used for logical replication "
-      + "from that database. "
-      + "(backend >= 9.4)"),
 
   /**
    * Configure optimization to enable batch insert re-writing.
@@ -1420,4 +1397,3 @@ public enum RedshiftProperty {
     return publicProperties;
   }
 }
-
