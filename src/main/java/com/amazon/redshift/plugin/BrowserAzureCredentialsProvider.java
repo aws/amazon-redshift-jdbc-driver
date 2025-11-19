@@ -6,6 +6,7 @@ import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.httpserver.RequestHandler;
 import com.amazon.redshift.plugin.httpserver.Server;
 import com.amazon.redshift.plugin.utils.RandomStateUtil;
+import com.amazon.redshift.plugin.AzureIdpHostUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.codec.binary.Base64;
@@ -55,6 +56,11 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
      * Key for setting idp tenant.
      */
     public static final String KEY_IDP_TENANT = "idp_tenant";
+
+    /**
+     * Key for setting idp partition.
+     */
+    public static final String KEY_IDP_PARTITION = "idp_partition";
 
     /**
      * Key for setting client ID.
@@ -125,6 +131,11 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
      * IDP tenant variable.
      */
     private String m_idp_tenant;
+
+    /**
+     * IDP partition variable.
+     */
+    private String m_idp_partition;
 
     /**
      * Client ID variable.
@@ -204,6 +215,16 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
               	if (RedshiftLogger.isEnable())
               		m_log.logDebug("m_idp_tenant: {0}", m_idp_tenant);
               	
+                break;
+            case KEY_IDP_PARTITION:
+                // Validate partition before setting
+                AzureIdpHostUtil.validatePartition(value);
+                m_idp_partition = value;
+                
+                if (RedshiftLogger.isEnable()) {
+                    m_log.logDebug("m_idp_partition: {0}", m_idp_partition);
+                }
+                
                 break;
             case KEY_CLIENT_ID:
             	
@@ -406,7 +427,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     private HttpPost createAuthorizationRequest(String authorizationCode) throws IOException
     {
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_SCHEMA)
-            .setHost(MICROSOFT_IDP_HOST)
+            .setHost(AzureIdpHostUtil.getIdpHostByPartition(m_idp_partition))
             .setPath("/" + m_idp_tenant + "/oauth2/token");
 
         String tokenRequestUrl = builder.toString();
@@ -451,7 +472,7 @@ public class BrowserAzureCredentialsProvider extends SamlCredentialsProvider
     private void openBrowser(String state) throws URISyntaxException, IOException
     {
         URIBuilder builder = new URIBuilder().setScheme(CURRENT_INTERACTION_SCHEMA)
-            .setHost(MICROSOFT_IDP_HOST)
+            .setHost(AzureIdpHostUtil.getIdpHostByPartition(m_idp_partition))
             .setPath("/" + m_idp_tenant + "/oauth2/authorize")
             .addParameter(OAUTH_SCOPE_PARAMETER_NAME, "openid")
             .addParameter(OAUTH_RESPONSE_TYPE_PARAMETER_NAME, "code")

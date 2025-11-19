@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.AzureIdpHostUtil;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.NameValuePair;
@@ -34,6 +35,11 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
     private static final String KEY_IDP_TENANT = "idp_tenant";
 
     /**
+     * String containing "idp_partition" as a parameter key.
+     */
+    private static final String KEY_IDP_PARTITION = "idp_partition";
+
+    /**
      * String containing "client_secret" as a parameter key.
      */
     private static final String KEY_CLIENT_SECRET = "client_secret";
@@ -47,6 +53,11 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
      * The value of parameter idp_tenant.
      */
     private String m_idpTenant;
+
+    /**
+     * The value of parameter idp_partition.
+     */
+    private String m_idpPartition;
 
     /**
      * The value of parameter client_secret.
@@ -118,6 +129,16 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
         {
             m_idpTenant = value;
         }
+        else if (KEY_IDP_PARTITION.equalsIgnoreCase(key))
+        {
+            // Validate partition before setting
+            AzureIdpHostUtil.validatePartition(value);
+            m_idpPartition = value;
+            
+            if (RedshiftLogger.isEnable()) {
+                m_log.logDebug("m_idpPartition: {0}", m_idpPartition);
+            }
+        }
         else if (KEY_CLIENT_SECRET.equalsIgnoreCase(key))
         {
             m_clientSecret = value;
@@ -150,7 +171,7 @@ public class AzureCredentialsProvider extends SamlCredentialsProvider
      */
     private String azureOauthBasedAuthentication() throws IOException, SdkClientException {
         // endpoint to connect with Microsoft Azure to get SAML Assertion token
-        String uri = "https://login.microsoftonline.com/" + m_idpTenant + "/oauth2/token";
+        String uri = "https://" + AzureIdpHostUtil.getIdpHostByPartition(m_idpPartition) + "/" + m_idpTenant + "/oauth2/token";
 
         if (RedshiftLogger.isEnable()) {
             m_log.logDebug("uri: {0}", uri);
