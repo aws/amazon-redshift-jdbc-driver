@@ -14,7 +14,6 @@ import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
 
 import java.math.BigInteger;
-import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -26,27 +25,30 @@ import java.util.*;
 
 public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
-	// Universal (local+external), local , and external schema indicators.
-	private final  int NO_SCHEMA_UNIVERSAL_QUERY = 0;
-	private final  int LOCAL_SCHEMA_QUERY = 1;
-	private final  int EXTERNAL_SCHEMA_QUERY = 2;
+  // Universal (local+external), local , and external schema indicators.
+  private final  int NO_SCHEMA_UNIVERSAL_QUERY = 0;
+  private final  int LOCAL_SCHEMA_QUERY = 1;
+  private final  int EXTERNAL_SCHEMA_QUERY = 2;
 
-    // The minimum show discovery version for the following metadata api was version 2:
-    // getCatalogs, getSchemas, getTables, getColumns
-    private final int MIN_SHOW_DISCOVERY_VERSION = 2;
-	
+  // The minimum show discovery version with prepare support for the following metadata api was version 4:
+  // get_catalogs, get_schemas, get_tables, get_columns,
+  // get_primary_keys, get_imported_keys, get_exported_keys, get_best_row_identifier,
+  // get_column_privileges, get_table_privileges,
+  // get_procedures, get_procedure_columns, get_functions, get_function_columns
+  private final int MIN_SHOW_DISCOVERY_VERSION_V4 = 4;
+
   public RedshiftDatabaseMetaData(RedshiftConnectionImpl conn) throws SQLException {
     this.connection = conn;
-    this.metadataServerAPIHelper = new MetadataServerAPIHelper(conn);
-    this.metadataAPIPostProcessing = new MetadataAPIPostProcessing(conn);
+    this.metadataServerProxy = new MetadataServerProxy(conn);
+    this.metadataAPIPostProcessor = new MetadataAPIPostProcessor(conn);
   }
 
   private String keywords;
 
   protected final RedshiftConnectionImpl connection; // The connection association
 
-  protected final MetadataServerAPIHelper metadataServerAPIHelper;
-  protected final MetadataAPIPostProcessing metadataAPIPostProcessing;
+  protected final MetadataServerProxy metadataServerProxy;
+  protected final MetadataAPIPostProcessor metadataAPIPostProcessor;
 
   private int nameDataLength = 0; // length for name datatype
   private int indexMaxKeys = 0; // maximum number of keys in an index.
@@ -959,14 +961,52 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     sb.append("'");
     return sb.toString();
   }
-  
-  public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern)
+
+  @Override
+  public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getProceduresLegacyHardcodedQuery(catalog, schemaPattern, procedureNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getProcedures with catalog = {0}, schemaPattern = {1},"
+                      + " procedureNamePattern = {2}",
+              catalog, schemaPattern, procedureNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || procedureNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getProceduresPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getProceduresPostProcessing(
+            metadataServerProxy.getProcedures(catalog, schemaPattern, procedureNamePattern, isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getProceduresLegacyHardcodedQuery(String catalog, String schemaPattern, String procedureNamePattern)
       throws SQLException {
     String sql;
-    
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern);
-    
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern);
+    }
     sql = "SELECT current_database() AS PROCEDURE_CAT, n.nspname AS PROCEDURE_SCHEM, p.proname AS PROCEDURE_NAME, "
           + "NULL, NULL, NULL, d.description AS REMARKS, "
           + " CASE  "
@@ -984,9 +1024,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 /*    if (connection.haveMinimumServerVersion(ServerVersion.v11)) {
       sql += " AND p.prokind='p'";
     } */
-    
+
     sql += getCatalogFilterCondition(catalog);
-    
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
       sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     } else {
@@ -1002,23 +1042,63 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     sql += " ORDER BY PROCEDURE_SCHEM, PROCEDURE_NAME, p.prooid::text ";
 
     ResultSet rs = createMetaDataStatement().executeQuery(sql);
-    
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
 
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
-  public ResultSet getProcedureColumns(String catalog, String schemaPattern,
+  @Override
+  public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern,
+                                       String columnNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern, columnNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getProcedureColumnsLegacyHardcodedQuery(catalog, schemaPattern, procedureNamePattern, columnNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getProcedureColumns with catalog = {0}, schemaPattern = {1},"
+                      + " procedureNamePattern = {2}, columnNamePattern = {3}",
+              catalog, schemaPattern, procedureNamePattern, columnNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || procedureNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getProcedureColumnsPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getProcedureColumnsPostProcessing(
+            metadataServerProxy.getProcedureColumns(catalog, schemaPattern, procedureNamePattern, columnNamePattern,
+                    isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getProcedureColumnsLegacyHardcodedQuery(String catalog, String schemaPattern,
       String procedureNamePattern, String columnNamePattern) throws SQLException {
     String sql;
     final String unknownColumnSize = "2147483647";
-    
+
     StringBuilder procedureColQuery = new StringBuilder();
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern, columnNamePattern);
-    
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, procedureNamePattern, columnNamePattern);
+    }
     procedureColQuery.append(
         "SELECT PROCEDURE_CAT , PROCEDURE_SCHEM , PROCEDURE_NAME, COLUMN_NAME, "
         + " COLUMN_TYPE, DATA_TYPE, TYPE_NAME, COLUMN_SIZE AS PRECISION, LENGTH , DECIMAL_DIGITS AS SCALE,  "
@@ -1256,9 +1336,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
             + " FROM pg_catalog.pg_proc_info p LEFT JOIN pg_namespace n ON n.oid = p.pronamespace "
             + " WHERE pg_catalog.format_type(p.prorettype, NULL) != 'void' ");
-    
+
     procedureColQuery.append(getCatalogFilterCondition(catalog));
-    
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	procedureColQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
     }
@@ -1266,11 +1346,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (procedureNamePattern != null && !procedureNamePattern.isEmpty()) {
     	procedureColQuery.append(" AND proname LIKE " + escapeQuotes(procedureNamePattern));
     }
-    
+
     if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
     	procedureColQuery.append(" AND COLUMN_NAME LIKE " + escapeQuotes(columnNamePattern));
     }
-    
+
     procedureColQuery.append(" UNION ALL ");
 
     procedureColQuery.append(" SELECT DISTINCT current_database() AS PROCEDURE_CAT, "
@@ -1517,7 +1597,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + "   WHEN (PROBIN_BYTES IS NOT NULL) "
             + " 				AND (proallargtypes[pos] IN (1042, 1043) or proargtypes[pos] in (1042,1043)) "
             + "		THEN PROBIN_BYTES-4 "
-            + " END AS COLUMN_BYTES, "            
+            + " END AS COLUMN_BYTES, "
             + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
             + " ELSE pg_catalog.format_type(proallargtypes[pos], NULL) END AS LENGTH,"
             + " CASE WHEN proallargtypes is NULL THEN pg_catalog.format_type(proargtypes[pos], NULL)"
@@ -1549,11 +1629,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " ELSE generate_series(array_lower(proargnames, 1), array_upper(proargnames, 1)+1)-1 "
             + " END AS pos"
             + " FROM pg_catalog.pg_proc_info p ) AS s ON (pos >= 0)");
-    
+
     procedureColQuery.append(" WHERE true ");
-    
+
     procedureColQuery.append(getCatalogFilterCondition(catalog));
-    
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	procedureColQuery.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
     }
@@ -1561,24 +1641,24 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (procedureNamePattern != null && !procedureNamePattern.isEmpty()) {
     	procedureColQuery.append(" AND proname LIKE " + escapeQuotes(procedureNamePattern));
     }
-    
+
     if (columnNamePattern != null && !columnNamePattern.isEmpty()) {
     	procedureColQuery.append(" AND COLUMN_NAME LIKE " + escapeQuotes(columnNamePattern));
     }
-    
+
     procedureColQuery.append(" ) AS INPUT_PARAM_TABLE"
         + " WHERE ORDINAL_POSITION IS NOT NULL"
         + " ) AS RESULT_SET WHERE (DATA_TYPE != 1111 OR (TYPE_NAME IS NOT NULL AND TYPE_NAME != '-'))"
         + " ORDER BY PROCEDURE_CAT ,PROCEDURE_SCHEM,"
         + " PROCEDURE_NAME, PROOID, PROARGINDEX, COLUMN_TYPE DESC");
-    
+
     sql = procedureColQuery.toString();
-    
+
     ResultSet rs = createMetaDataStatement().executeQuery(sql);
-    
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
-    
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
@@ -1587,28 +1667,34 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
                              String[] types) throws SQLException {
     ResultSet rs = null;
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
-
-
-    if (supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("Support SHOW command. getTables with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}", catalog, schemaPattern, tableNamePattern);
-
-      // Return Empty ResultSet if catalog or schemaPattern or tableNamePattern is empty string
-      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern);
-      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
-      boolean retEmpty = false;
-
-      rs = metadataAPIPostProcessing.getTablesPostProcessing(metadataServerAPIHelper.getTablesServerAPI(catalog, schemaPattern, tableNamePattern, retEmpty, isSingleDatabaseMetaData()), retEmpty, types);
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
     }
-    else{
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getTablesLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, types);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
     }
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command. getTables with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}", catalog, schemaPattern, tableNamePattern);
+    }
 
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || tableNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getTablesPostProcessing(null, types);
+    }
+
+    rs = metadataAPIPostProcessor.getTablesPostProcessing(metadataServerProxy.getTables(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()), types);
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
@@ -1616,9 +1702,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     String sql = null;
     int schemaPatternType = Optional.ofNullable(connection.getOverrideSchemaPatternType()).orElse(getExtSchemaPatternMatch(schemaPattern));
 
-    if (RedshiftLogger.isEnable())
+    if (RedshiftLogger.isEnable()) {
       connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
-
+    }
     if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
       // Join on pg_catalog
       sql = buildLocalSchemaTablesQuery(catalog, schemaPattern, tableNamePattern, types);
@@ -1639,11 +1725,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   }
 
   private String buildLocalSchemaTablesQuery(String catalog,
-  												String schemaPattern, 
+  												String schemaPattern,
   												String tableNamePattern,
       										String[] types) throws SQLException {
     String select;
-    
+
     select = "SELECT CAST(current_database() AS VARCHAR(124)) AS TABLE_CAT, n.nspname AS TABLE_SCHEM, c.relname AS TABLE_NAME, "
              + " CASE n.nspname ~ '^pg_' OR n.nspname = 'information_schema' "
              + " WHEN true THEN CASE "
@@ -1690,14 +1776,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
              + " WHERE c.relnamespace = n.oid ";
 
     String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, LOCAL_SCHEMA_QUERY, true, null);
-    
+
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
 
     return select + filterClause + orderby;
   }
-  
+
   private String getTableFilterClause(String catalog,
-																			String schemaPattern, 
+																			String schemaPattern,
 																			String tableNamePattern,
 																			String[] types,
 																			int schemaPatternType,
@@ -1705,18 +1791,18 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 																			String databaseColName) throws SQLException {
   	String filterClause = "";
     String useSchemas = "SCHEMAS";
-  	
+
     filterClause += getCatalogFilterCondition(catalog, apiSupportedOnlyForConnectedDatabase, databaseColName);
-    
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	filterClause += " AND TABLE_SCHEM LIKE " + escapeQuotes(schemaPattern);
     }
-    
+
     if (tableNamePattern != null && !tableNamePattern.isEmpty()) {
     	filterClause += " AND TABLE_NAME LIKE " + escapeQuotes(tableNamePattern);
     }
     if (types != null) {
-    	
+
     	if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
 	    	filterClause += " AND (false ";
 	      StringBuilder orclause = new StringBuilder();
@@ -1740,25 +1826,25 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 	      	if(len > 0)
 	      		filterClause +=", ";
 	      }
-	      
+
 	      filterClause += ") ";
     	}
-    }	
-    
+    }
+
   	if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
 	    if (connection.getHideUnprivilegedObjects()) {
 	    	filterClause += " AND has_table_privilege(c.oid, "
 	        + " 'SELECT, INSERT, UPDATE, DELETE, RULE, REFERENCES, TRIGGER')";
 	    }
   	}
-    
-    
-    
+
+
+
     return filterClause;
   }
-  
+
   private String buildUniversalSchemaTablesQuery(String catalog,
-			String schemaPattern, 
+			String schemaPattern,
 			String tableNamePattern,
 			String[] types) throws SQLException {
     // Basic query, without the join operation and subquery name appended to the end
@@ -1790,21 +1876,21 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " '' AS SELF_REFERENCING_COL_NAME,"
             + " '' AS REF_GENERATION "
             + " FROM svv_tables)");
-    
+
     tableQuery.append( " WHERE true ");
-    
+
     String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, NO_SCHEMA_UNIVERSAL_QUERY, true, null);
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
-    
+
     tableQuery.append(filterClause);
     tableQuery.append(orderby);
-    
+
     return tableQuery.toString();
   }
 
   // Datashare/Cross-db support svv_all_tables view
   private String buildUniversalAllSchemaTablesQuery(String catalog,
-			String schemaPattern, 
+			String schemaPattern,
 			String tableNamePattern,
 			String[] types) throws SQLException {
     StringBuilder tableQuery = new StringBuilder(2048);
@@ -1818,7 +1904,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " WHEN SCHEMA_NAME='information_schema' "
             + "    AND TABLE_TYPE='VIEW' THEN 'SYSTEM VIEW' "
             + " ELSE TABLE_TYPE "
-            + " END "             
+            + " END "
             + " AS VARCHAR(124)) AS TABLE_TYPE,"
             + " REMARKS,"
             + " '' as TYPE_CAT,"
@@ -1827,20 +1913,20 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " '' AS SELF_REFERENCING_COL_NAME,"
             + " '' AS REF_GENERATION "
             + " FROM PG_CATALOG.SVV_ALL_TABLES)");
-    
+
     tableQuery.append( " WHERE true ");
-    
+
     String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, NO_SCHEMA_UNIVERSAL_QUERY, false, "TABLE_CAT");
     String orderby = " ORDER BY TABLE_TYPE, TABLE_CAT, TABLE_SCHEM, TABLE_NAME ";
-    
+
     tableQuery.append(filterClause);
     tableQuery.append(orderby);
-    
+
     return tableQuery.toString();
   }
-  
+
   private String buildExternalSchemaTablesQuery(String catalog,
-													String schemaPattern, 
+													String schemaPattern,
 													String tableNamePattern,
 													String[] types) throws SQLException {
     // Basic query, without the join operation and subquery name appended to the end
@@ -1859,16 +1945,16 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
             + " FROM svv_external_tables)");
 
     tableQuery.append( " WHERE true ");
-    
+
     String filterClause = getTableFilterClause(catalog, schemaPattern, tableNamePattern, types, EXTERNAL_SCHEMA_QUERY, true, null);
     String orderby = " ORDER BY TABLE_TYPE,TABLE_SCHEM,TABLE_NAME ";
-    
+
     tableQuery.append(filterClause);
     tableQuery.append(orderby);
-    
+
     return tableQuery.toString();
   }
-  
+
   private static final Map<String, Map<String, String>> tableTypeClauses;
 
   static {
@@ -1877,18 +1963,18 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     tableTypeClauses.put("TABLE", ht);
     ht.put("SCHEMAS", "c.relkind = 'r' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
     ht.put("NOSCHEMAS", "c.relkind = 'r' AND c.relname !~ '^pg_'");
-    
+
 /*  ht = new HashMap<String, String>();
     tableTypeClauses.put("PARTITIONED TABLE", ht);
     ht.put("SCHEMAS", "c.relkind = 'p' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'");
     ht.put("NOSCHEMAS", "c.relkind = 'p' AND c.relname !~ '^pg_'");
-*/  
+*/
     ht = new HashMap<String, String>();
     tableTypeClauses.put("VIEW", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'v' AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema'");
     ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname !~ '^pg_'");
-    
+
   ht = new HashMap<String, String>();
     tableTypeClauses.put("INDEX", ht);
     ht.put("SCHEMAS",
@@ -1899,7 +1985,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     tableTypeClauses.put("SEQUENCE", ht);
     ht.put("SCHEMAS", "c.relkind = 'S'");
     ht.put("NOSCHEMAS", "c.relkind = 'S'");
-  
+
     ht = new HashMap<String, String>();
     tableTypeClauses.put("TYPE", ht);
     ht.put("SCHEMAS",
@@ -1925,14 +2011,14 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         "c.relkind = 'v' AND (n.nspname = 'pg_catalog' OR n.nspname = 'information_schema') ");
     ht.put("NOSCHEMAS", "c.relkind = 'v' AND c.relname ~ '^pg_'");
 
-    
+
     ht = new HashMap<String, String>();
     tableTypeClauses.put("SYSTEM INDEX", ht);
     ht.put("SCHEMAS",
         "c.relkind = 'i' AND (n.nspname = 'pg_catalog' OR n.nspname = 'information_schema') ");
     ht.put("NOSCHEMAS",
         "c.relkind = 'v' AND c.relname ~ '^pg_' AND c.relname !~ '^pg_toast_' AND c.relname !~ '^pg_temp_'");
-        
+
     ht = new HashMap<String, String>();
     tableTypeClauses.put("TEMPORARY TABLE", ht);
     ht.put("SCHEMAS", "c.relkind IN ('r','p') AND n.nspname ~ '^pg_temp_' ");
@@ -1950,17 +2036,17 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     ht.put("SCHEMAS", "c.relkind = 'S' AND n.nspname ~ '^pg_temp_' ");
     ht.put("NOSCHEMAS", "c.relkind = 'S' AND c.relname ~ '^pg_temp_' ");
 
-/*    
+/*
     ht = new HashMap<String, String>();
     tableTypeClauses.put("FOREIGN TABLE", ht);
     ht.put("SCHEMAS", "c.relkind = 'f'");
     ht.put("NOSCHEMAS", "c.relkind = 'f'");
-    
+
     ht = new HashMap<String, String>();
     tableTypeClauses.put("MATERIALIZED VIEW", ht);
     ht.put("SCHEMAS", "c.relkind = 'm'");
     ht.put("NOSCHEMAS", "c.relkind = 'm'");
-*/    
+*/
     tableTypeClauses.put("EXTERNAL TABLE", null);
   }
 
@@ -1973,28 +2059,34 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
     ResultSet rs = null;
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern);
-
-    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("Support SHOW command. getSchemas with catalog = {0}, schemaPattern = {1}", catalog, schemaPattern);
-
-
-      // Return Empty ResultSet if catalog or schemaPattern is empty string
-      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern);
-      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
-      boolean retEmpty = false;
-
-      rs = metadataAPIPostProcessing.getSchemasPostProcessing(metadataServerAPIHelper.getSchemasServerAPI(catalog, schemaPattern, retEmpty, isSingleDatabaseMetaData()), retEmpty);
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern);
     }
-    else{
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getSchemasLegacyHardcodedQuery(catalog, schemaPattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
     }
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
-    
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command. getSchemas with catalog = {0}, schemaPattern = {1}", catalog, schemaPattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getSchemasPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getSchemasPostProcessing(metadataServerProxy.getSchemas(catalog, schemaPattern, isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
@@ -2042,29 +2134,33 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   public ResultSet getCatalogs() throws SQLException {
     ResultSet rs = null;
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true);
-
-    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("Support SHOW command. getCatalog");
-
-      if (isSingleDatabaseMetaData()) {
-        rs = getCurrentDB();
-      }
-      else{
-        rs = metadataAPIPostProcessing.getCatalogsPostProcessing(metadataServerAPIHelper.getCatalogsServerAPI());
-      }
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true);
     }
-    else {
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getCatalogsLegacyHardcodedQuery();
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
     }
 
-    if (RedshiftLogger.isEnable())
-      connection.getLogger().logFunction(false, rs);
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command. getCatalog");
+    }
 
+    if (isSingleDatabaseMetaData()) {
+      rs = getCurrentDB();
+    }
+    else{
+      rs = metadataAPIPostProcessor.getCatalogsPostProcessing(metadataServerProxy.getCatalogs());
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
-  	
+
   }
 
   private ResultSet getCatalogsLegacyHardcodedQuery() throws SQLException {
@@ -2099,31 +2195,39 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   }
 
   public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
-                              String columnNamePattern) throws SQLException 
+                              String columnNamePattern) throws SQLException
   {
     ResultSet rs = null;
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, columnNamePattern);
-
-    if(supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION){
-      if (RedshiftLogger.isEnable())
-        connection.getLogger().logInfo("Support SHOW command. getColumns with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}, columnNamePattern = {3}", catalog, schemaPattern, tableNamePattern, columnNamePattern);
-
-      // Return Empty ResultSet if catalog or schemaPattern or tableNamePattern or columnNamePattern is empty string
-      //boolean retEmpty = isEmpty(catalog) || isEmpty(schemaPattern) || isEmpty(tableNamePattern) || isEmpty(columnNamePattern);
-      // TODO: Temporarily accept empty string as input and treated the same as null but will block them in near future
-      boolean retEmpty = false;
-
-      rs = metadataAPIPostProcessing.getColumnsPostProcessing(metadataServerAPIHelper.getColumnsServerAPI(catalog, schemaPattern, tableNamePattern, columnNamePattern, retEmpty, isSingleDatabaseMetaData()), retEmpty);
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, columnNamePattern);
     }
-    else{
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getColumnsLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
     }
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
-    
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command. getColumns with catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}, columnNamePattern = {3}", catalog, schemaPattern, tableNamePattern, columnNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || tableNamePattern.isEmpty() || columnNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getColumnsPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getColumnsPostProcessing(metadataServerProxy.getColumns(catalog, schemaPattern, tableNamePattern,
+            columnNamePattern, isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
@@ -2131,9 +2235,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     String sql = null;
     int schemaPatternType = getExtSchemaPatternMatch(schemaPattern);
 
-    if (RedshiftLogger.isEnable())
+    if (RedshiftLogger.isEnable()) {
       connection.getLogger().logInfo("schemaPatternType = {0}", schemaPatternType);
-
+    }
     if (schemaPatternType == LOCAL_SCHEMA_QUERY) {
       // Join on pg_catalog union with pg_late_binding_view
       sql = buildLocalSchemaColumnsQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
@@ -2152,9 +2256,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
     return createMetaDataStatement().executeQuery(sql);
   }
-  
+
   private String buildLocalSchemaColumnsQuery(String catalog,
-															String schemaPattern, 
+															String schemaPattern,
 															String tableNamePattern,
 															String columnNamePattern) throws SQLException {
 
@@ -2429,7 +2533,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append("WHERE a.attnum > 0 AND NOT a.attisdropped    ");
 
       result.append(getCatalogFilterCondition(catalog));
-      
+
       if (schemaPattern != null && !schemaPattern.isEmpty()) {
       	result.append(" AND n.nspname LIKE " + escapeQuotes(schemaPattern));
       }
@@ -2444,7 +2548,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       }
 
       result.append(" ORDER BY TABLE_SCHEM,c.relname,attnum ) ");
-      
+
 
       // This part uses redshift method PG_GET_LATE_BINDING_VIEW_COLS() to
       // get the column list for late binding view.
@@ -2645,9 +2749,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       result.append(" WHERE true ");
 
       // Apply the filters to the column list for late binding view.
-      
+
       result.append(getCatalogFilterCondition(catalog));
-      
+
       if (schemaPattern != null && !schemaPattern.isEmpty()) {
       	result.append(" AND schemaname LIKE " + escapeQuotes(schemaPattern));
       }
@@ -2663,15 +2767,15 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
       return result.toString();
   }
-  
+
   private String buildUniversalAllSchemaColumnsQuery(String catalog,
-												String schemaPattern, 
+												String schemaPattern,
 												String tableNamePattern,
 												String columnNamePattern) throws SQLException {
   	final String unknownColumnSize = "2147483647";
-    
+
 	  StringBuilder result = new StringBuilder(8192);
-	  
+
 	  result.append("SELECT database_name AS TABLE_CAT, "
     + " schema_name AS TABLE_SCHEM, "
     + " table_name, "
@@ -2798,8 +2902,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN 'time with time zone' THEN 6 "
     + " WHEN 'timestamp' THEN 6 "
     + " WHEN 'timestamp without time zone' THEN 6 "
-    + " WHEN 'timestamptz' THEN 6 " 
-    + " WHEN 'timestamp with time zone' THEN 6 " 
+    + " WHEN 'timestamptz' THEN 6 "
+    + " WHEN 'timestamp with time zone' THEN 6 "
     + " WHEN 'geometry' THEN NULL "
     + " WHEN 'super' THEN NULL "
     + " WHEN 'varbyte' THEN NULL "
@@ -2923,12 +3027,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN left(column_default, 16) = 'default_identity' THEN 'YES' "
     + " ELSE 'NO' END AS IS_AUTOINCREMENT, "
     + " IS_AUTOINCREMENT AS IS_GENERATEDCOLUMN "
-    + " FROM PG_CATALOG.svv_all_columns ");	  
+    + " FROM PG_CATALOG.svv_all_columns ");
 
 	  result.append( " WHERE true ");
-	  
+
 	  result.append(getCatalogFilterCondition(catalog, false, null));
-	  
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	result.append(" AND schema_name LIKE " + escapeQuotes(schemaPattern));
     }
@@ -2940,18 +3044,18 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     }
 
     result.append(" ORDER BY TABLE_CAT, TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION ");
-	  
+
 	  return result.toString();
   }
-  
+
   private String buildUniversalSchemaColumnsQuery(String catalog,
-												String schemaPattern, 
+												String schemaPattern,
 												String tableNamePattern,
 												String columnNamePattern) throws SQLException {
   	final String unknownColumnSize = "2147483647";
-  
+
 	  StringBuilder result = new StringBuilder(8192);
-	
+
 	  // NOTE: Explicit cast on current_database() prevents bug where data returned from server
 	  // has incorrect length and displays random characters. [JDBC-529]
 	  result.append("SELECT current_database()::varchar(128) AS TABLE_CAT,"
@@ -3210,11 +3314,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " ELSE 'NO' END AS IS_AUTOINCREMENT,"
         + " IS_AUTOINCREMENT AS IS_GENERATEDCOLUMN"
 	      + " FROM svv_columns");
-	  
+
 	  result.append( " WHERE true ");
-	  
+
 	  result.append(getCatalogFilterCondition(catalog));
-	  
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	result.append(" AND table_schema LIKE " + escapeQuotes(schemaPattern));
     }
@@ -3226,90 +3330,90 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     }
 
     result.append(" ORDER BY table_schem,table_name,ORDINAL_POSITION ");
-	  
+
 	  return result.toString();
   }
-  
+
   private String buildExternalSchemaColumnsQuery(String catalog,
-																				String schemaPattern, 
+																				String schemaPattern,
 																				String tableNamePattern,
 																				String columnNamePattern) throws SQLException {
   	final String unknownColumnSize = "2147483647";
-  	
+
     StringBuilder result = new StringBuilder(8192);
-    
+
     // NOTE: Explicit cast on current_database() prevents bug where data returned from server
     // has incorrect length and displays random characters. [JDBC-529]
-    result.append("SELECT current_database()::varchar(128) AS TABLE_CAT," 
-    + " schemaname AS TABLE_SCHEM," 
-    + " tablename AS TABLE_NAME," 
-    + " columnname AS COLUMN_NAME," 
-    + " CAST(CASE WHEN external_type = 'text' THEN 12" 
-    + " WHEN external_type = 'bit' THEN -7" 
-    + " WHEN external_type = 'bool' THEN -7" 
+    result.append("SELECT current_database()::varchar(128) AS TABLE_CAT,"
+    + " schemaname AS TABLE_SCHEM,"
+    + " tablename AS TABLE_NAME,"
+    + " columnname AS COLUMN_NAME,"
+    + " CAST(CASE WHEN external_type = 'text' THEN 12"
+    + " WHEN external_type = 'bit' THEN -7"
+    + " WHEN external_type = 'bool' THEN -7"
     + " WHEN external_type = 'boolean' THEN -7"
-    + " WHEN left(external_type, 7) = 'varchar' THEN 12" 
-    + " WHEN left(external_type, 17) = 'character varying' THEN 12" 
+    + " WHEN left(external_type, 7) = 'varchar' THEN 12"
+    + " WHEN left(external_type, 17) = 'character varying' THEN 12"
     + " WHEN left(external_type, 4) = 'char' THEN 1"
-    + " WHEN left(external_type, 9) = 'character' THEN 1" 
-    + " WHEN left(external_type, 5) = 'nchar' THEN 1" 
-    + " WHEN left(external_type, 6) = 'bpchar' THEN 1" 
-    + " WHEN left(external_type, 8) = 'nvarchar' THEN 12" 
-    + " WHEN external_type = '\"char\"' THEN 1" 
-    + " WHEN external_type = 'date' THEN 91" 
+    + " WHEN left(external_type, 9) = 'character' THEN 1"
+    + " WHEN left(external_type, 5) = 'nchar' THEN 1"
+    + " WHEN left(external_type, 6) = 'bpchar' THEN 1"
+    + " WHEN left(external_type, 8) = 'nvarchar' THEN 12"
+    + " WHEN external_type = '\"char\"' THEN 1"
+    + " WHEN external_type = 'date' THEN 91"
     + " WHEN external_type = 'time' THEN 92 "
     + " WHEN external_type = 'time without time zone' THEN 92 "
     + " WHEN external_type = 'timetz' THEN 2013 "
     + " WHEN external_type = 'time with time zone' THEN 2013 "
-    + " WHEN external_type = 'timestamp' THEN 93" 
-    + " WHEN external_type = 'timestamp without time zone' THEN 93" 
-    + " WHEN external_type = 'timestamptz' THEN 2014" 
+    + " WHEN external_type = 'timestamp' THEN 93"
+    + " WHEN external_type = 'timestamp without time zone' THEN 93"
+    + " WHEN external_type = 'timestamptz' THEN 2014"
     + " WHEN external_type = 'timestamp with time zone' THEN 2014"
     + " WHEN external_type = 'smallint' THEN 5"
     + " WHEN external_type = 'int2' THEN 5"
-    + " WHEN external_type = '_int2' THEN 5" 
-    + " WHEN external_type = 'integer' THEN 4" 
+    + " WHEN external_type = '_int2' THEN 5"
+    + " WHEN external_type = 'integer' THEN 4"
     + " WHEN external_type = 'int' THEN 4"
-    + " WHEN external_type = 'int4' THEN 4" 
-    + " WHEN external_type = '_int4' THEN 4" 
-    + " WHEN external_type = 'bigint' THEN -5" 
-    + " WHEN external_type = 'int8' THEN -5" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN 2" 
-    + " WHEN external_type = 'real' THEN 7" 
-    + " WHEN external_type = 'float4' THEN 7" 
-    + " WHEN external_type = '_float4' THEN 7" 
-    + " WHEN external_type = 'double' THEN 8" 
-    + " WHEN external_type = 'double precision' THEN 8" 
-    + " WHEN external_type = 'float8' THEN 8" 
-    + " WHEN external_type = '_float8' THEN 8" 
-    + " WHEN external_type = 'float' THEN 6" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN 2" 
-    + " WHEN external_type = 'bytea' THEN -2" 
-    + " WHEN external_type = 'oid' THEN -5" 
-    + " WHEN external_type = 'name' THEN 12" 
-    + " WHEN external_type = 'ARRAY' THEN 2003" 
+    + " WHEN external_type = 'int4' THEN 4"
+    + " WHEN external_type = '_int4' THEN 4"
+    + " WHEN external_type = 'bigint' THEN -5"
+    + " WHEN external_type = 'int8' THEN -5"
+    + " WHEN left(external_type, 7) = 'decimal' THEN 2"
+    + " WHEN external_type = 'real' THEN 7"
+    + " WHEN external_type = 'float4' THEN 7"
+    + " WHEN external_type = '_float4' THEN 7"
+    + " WHEN external_type = 'double' THEN 8"
+    + " WHEN external_type = 'double precision' THEN 8"
+    + " WHEN external_type = 'float8' THEN 8"
+    + " WHEN external_type = '_float8' THEN 8"
+    + " WHEN external_type = 'float' THEN 6"
+    + " WHEN left(external_type, 7) = 'numeric' THEN 2"
+    + " WHEN external_type = 'bytea' THEN -2"
+    + " WHEN external_type = 'oid' THEN -5"
+    + " WHEN external_type = 'name' THEN 12"
+    + " WHEN external_type = 'ARRAY' THEN 2003"
     + " WHEN external_type = 'geometry' THEN -4"
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
     + " WHEN external_type = 'geography' THEN -4"
     + " WHEN external_type = 'intervaly2m' THEN 1111"
     + " WHEN external_type = 'intervald2s' THEN 1111"
-    + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE," 
-    + " CASE WHEN left(external_type, 17) = 'character varying' THEN 'varchar'" 
-    + " WHEN left(external_type, 7) = 'varchar' THEN 'varchar'" 
-    + " WHEN left(external_type, 4) = 'char' THEN 'char'" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN 'numeric'" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN 'numeric'" 
-    + " WHEN external_type = 'double' THEN 'double precision'" 
+    + " ELSE 1111 END AS SMALLINT) AS DATA_TYPE,"
+    + " CASE WHEN left(external_type, 17) = 'character varying' THEN 'varchar'"
+    + " WHEN left(external_type, 7) = 'varchar' THEN 'varchar'"
+    + " WHEN left(external_type, 4) = 'char' THEN 'char'"
+    + " WHEN left(external_type, 7) = 'decimal' THEN 'numeric'"
+    + " WHEN left(external_type, 7) = 'numeric' THEN 'numeric'"
+    + " WHEN external_type = 'double' THEN 'double precision'"
     + " WHEN external_type = 'time without time zone' THEN 'time'"
     + " WHEN external_type = 'time with time zone' THEN 'timetz'"
-    + " WHEN external_type = 'timestamp without time zone' THEN 'timestamp'" 
-    + " WHEN external_type = 'timestamp with time zone' THEN 'timestamptz'" 
-    + " ELSE external_type END AS TYPE_NAME," 
-    + " CASE WHEN external_type = 'int4' THEN 10" 
-    + " WHEN external_type = 'bit' THEN 1" 
-    + " WHEN external_type = 'bool' THEN 1" 
-    + " WHEN external_type = 'boolean' THEN 1" 
+    + " WHEN external_type = 'timestamp without time zone' THEN 'timestamp'"
+    + " WHEN external_type = 'timestamp with time zone' THEN 'timestamptz'"
+    + " ELSE external_type END AS TYPE_NAME,"
+    + " CASE WHEN external_type = 'int4' THEN 10"
+    + " WHEN external_type = 'bit' THEN 1"
+    + " WHEN external_type = 'bool' THEN 1"
+    + " WHEN external_type = 'boolean' THEN 1"
     + " WHEN left(external_type, 7) = 'varchar' "
     + "  THEN CASE "
     + "   WHEN regexp_instr(external_type, '\\\\(', 7) = 0 THEN '0' "
@@ -3350,120 +3454,120 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + " WHEN external_type = 'time without time zone' THEN 15 "
     + " WHEN external_type = 'timetz' THEN 21 "
     + " WHEN external_type = 'time with time zone' THEN 21 "
-    + " WHEN external_type = 'timestamp' THEN 29 " 
-    + " WHEN external_type = 'timestamp without time zone' THEN 29" 
-    + " WHEN external_type = 'timestamptz' THEN 35" 
-    + " WHEN external_type = 'timestamp with time zone' THEN 35" 
-    + " WHEN external_type = 'smallint' THEN 5" 
-    + " WHEN external_type = 'int2' THEN 5" 
-    + " WHEN external_type = 'integer' THEN 10" 
-    + " WHEN external_type = 'int' THEN 10" 
-    + " WHEN external_type = 'int4' THEN 10" 
-    + " WHEN external_type = 'bigint' THEN 19" 
-    + " WHEN external_type = 'int8' THEN 19" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer" 
-    + " WHEN external_type = 'real' THEN 8" 
-    + " WHEN external_type = 'float4' THEN 8" 
-    + " WHEN external_type = '_float4' THEN 8" 
-    + " WHEN external_type = 'double' THEN 17" 
-    + " WHEN external_type = 'double precision' THEN 17" 
-    + " WHEN external_type = 'float8' THEN 17" 
-    + " WHEN external_type = '_float8' THEN 17" 
-    + " WHEN external_type = 'float' THEN 17" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer" 
-    + " WHEN external_type = '_float4' THEN 8" 
-    + " WHEN external_type = 'oid' THEN 10" 
-    + " WHEN external_type = '_int4' THEN 10" 
-    + " WHEN external_type = '_int2' THEN 5" 
+    + " WHEN external_type = 'timestamp' THEN 29 "
+    + " WHEN external_type = 'timestamp without time zone' THEN 29"
+    + " WHEN external_type = 'timestamptz' THEN 35"
+    + " WHEN external_type = 'timestamp with time zone' THEN 35"
+    + " WHEN external_type = 'smallint' THEN 5"
+    + " WHEN external_type = 'int2' THEN 5"
+    + " WHEN external_type = 'integer' THEN 10"
+    + " WHEN external_type = 'int' THEN 10"
+    + " WHEN external_type = 'int4' THEN 10"
+    + " WHEN external_type = 'bigint' THEN 19"
+    + " WHEN external_type = 'int8' THEN 19"
+    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer"
+    + " WHEN external_type = 'real' THEN 8"
+    + " WHEN external_type = 'float4' THEN 8"
+    + " WHEN external_type = '_float4' THEN 8"
+    + " WHEN external_type = 'double' THEN 17"
+    + " WHEN external_type = 'double precision' THEN 17"
+    + " WHEN external_type = 'float8' THEN 17"
+    + " WHEN external_type = '_float8' THEN 17"
+    + " WHEN external_type = 'float' THEN 17"
+    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 7),''),'0')::integer"
+    + " WHEN external_type = '_float4' THEN 8"
+    + " WHEN external_type = 'oid' THEN 10"
+    + " WHEN external_type = '_int4' THEN 10"
+    + " WHEN external_type = '_int2' THEN 5"
     + " WHEN external_type = 'geometry' THEN NULL"
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
     + " WHEN external_type = 'geography' THEN NULL"
     + " WHEN external_type = 'intervaly2m' THEN 32"
     + " WHEN external_type = 'intervald2s' THEN 64"
-    + " ELSE 2147483647 END AS COLUMN_SIZE," 
-    + " NULL AS BUFFER_LENGTH," 
-    + " CASE WHEN external_type = 'real'THEN 8" 
-    + " WHEN external_type = 'float4' THEN 8" 
-    + " WHEN external_type = 'double' THEN 17" 
-    + " WHEN external_type = 'double precision' THEN 17" 
-    + " WHEN external_type = 'float8' THEN 17" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 11),''),'0')::integer" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 11),''),'0')::integer" 
+    + " ELSE 2147483647 END AS COLUMN_SIZE,"
+    + " NULL AS BUFFER_LENGTH,"
+    + " CASE WHEN external_type = 'real'THEN 8"
+    + " WHEN external_type = 'float4' THEN 8"
+    + " WHEN external_type = 'double' THEN 17"
+    + " WHEN external_type = 'double precision' THEN 17"
+    + " WHEN external_type = 'float8' THEN 17"
+    + " WHEN left(external_type, 7) = 'numeric' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 11),''),'0')::integer"
+    + " WHEN left(external_type, 7) = 'decimal' THEN isnull(nullif(regexp_substr(external_type, '[0-9]+', 11),''),'0')::integer"
     + " WHEN external_type = 'time' THEN 6 "
     + " WHEN external_type = 'time without time zone' THEN 6 "
     + " WHEN external_type = 'timetz' THEN 6 "
     + " WHEN external_type = 'time with time zone' THEN 6 "
-    + " WHEN external_type = 'timestamp' THEN 6" 
-    + " WHEN external_type = 'timestamp without time zone' THEN 6" 
-    + " WHEN external_type = 'timestamptz' THEN 6" 
-    + " WHEN external_type = 'timestamp with time zone' THEN 6" 
+    + " WHEN external_type = 'timestamp' THEN 6"
+    + " WHEN external_type = 'timestamp without time zone' THEN 6"
+    + " WHEN external_type = 'timestamptz' THEN 6"
+    + " WHEN external_type = 'timestamp with time zone' THEN 6"
     + " WHEN external_type = 'geometry' THEN NULL"
     + " WHEN external_type = 'super' THEN NULL"
     + " WHEN external_type = 'varbyte' THEN NULL"
     + " WHEN external_type = 'geography' THEN NULL"
     + " WHEN external_type = 'intervaly2m' THEN 0"
     + " WHEN external_type = 'intervald2s' THEN 6"
-    + " ELSE 0 END AS DECIMAL_DIGITS," 
+    + " ELSE 0 END AS DECIMAL_DIGITS,"
     + " CASE WHEN external_type = 'varbyte' THEN 2"
     + " WHEN external_type = 'geography' THEN 2"
     + " ELSE 10"
     + " END AS NUM_PREC_RADIX,"
     + " CAST(CASE is_nullable WHEN 'true' THEN 1 WHEN 'false' THEN 0 ELSE NULL END AS SMALLINT) AS NULLABLE,"
-    + " NULL AS REMARKS," 
-    + " NULL AS COLUMN_DEF," 
-    + " CAST(CASE WHEN external_type = 'text' THEN 12" 
-    + " WHEN external_type = 'bit' THEN -7" 
-    + " WHEN external_type = 'bool' THEN -7" 
-    + " WHEN external_type = 'boolean' THEN -7" 
-    + " WHEN left(external_type, 7) = 'varchar' THEN 12" 
-    + " WHEN left(external_type, 17) = 'character varying' THEN 12" 
-    + " WHEN left(external_type, 4) = 'char' THEN 1" 
-    + " WHEN left(external_type, 9) = 'character' THEN 1" 
-    + " WHEN left(external_type, 5) = 'nchar' THEN 1" 
-    + " WHEN left(external_type, 6) = 'bpchar' THEN 1" 
-    + " WHEN left(external_type, 8) = 'nvarchar' THEN 12" 
-    + " WHEN external_type = '\"char\"' THEN 1" 
-    + " WHEN external_type = 'date' THEN 91" 
+    + " NULL AS REMARKS,"
+    + " NULL AS COLUMN_DEF,"
+    + " CAST(CASE WHEN external_type = 'text' THEN 12"
+    + " WHEN external_type = 'bit' THEN -7"
+    + " WHEN external_type = 'bool' THEN -7"
+    + " WHEN external_type = 'boolean' THEN -7"
+    + " WHEN left(external_type, 7) = 'varchar' THEN 12"
+    + " WHEN left(external_type, 17) = 'character varying' THEN 12"
+    + " WHEN left(external_type, 4) = 'char' THEN 1"
+    + " WHEN left(external_type, 9) = 'character' THEN 1"
+    + " WHEN left(external_type, 5) = 'nchar' THEN 1"
+    + " WHEN left(external_type, 6) = 'bpchar' THEN 1"
+    + " WHEN left(external_type, 8) = 'nvarchar' THEN 12"
+    + " WHEN external_type = '\"char\"' THEN 1"
+    + " WHEN external_type = 'date' THEN 91"
     + " WHEN external_type = 'time' THEN 92 "
     + " WHEN external_type = 'time without time zone' THEN 92 "
     + " WHEN external_type = 'timetz' THEN 2013 "
     + " WHEN external_type = 'time with time zone' THEN 2013 "
-    + " WHEN external_type = 'timestamp' THEN 93" 
-    + " WHEN external_type = 'timestamp without time zone' THEN 93" 
-    + " WHEN external_type = 'timestamptz' THEN 2014" 
-    + " WHEN external_type = 'timestamp with time zone' THEN 2014" 
-    + " WHEN external_type = 'smallint' THEN 5" 
-    + " WHEN external_type = 'int2' THEN 5" 
-    + " WHEN external_type = '_int2' THEN 5" 
-    + " WHEN external_type = 'integer' THEN 4" 
-    + " WHEN external_type = 'int' THEN 4" 
-    + " WHEN external_type = 'int4' THEN 4" 
-    + " WHEN external_type = '_int4' THEN 4" 
-    + " WHEN external_type = 'bigint' THEN -5" 
-    + " WHEN external_type = 'int8' THEN -5" 
-    + " WHEN left(external_type, 7) = 'decimal' THEN 3" 
-    + " WHEN external_type = 'real' THEN 7" 
-    + " WHEN external_type = 'float4' THEN 7" 
-    + " WHEN external_type = '_float4' THEN 7" 
-    + " WHEN external_type = 'double' THEN 8" 
-    + " WHEN external_type = 'double precision' THEN 8" 
-    + " WHEN external_type = 'float8' THEN 8" 
-    + " WHEN external_type = '_float8' THEN 8" 
-    + " WHEN external_type = 'float' THEN 6" 
-    + " WHEN left(external_type, 7) = 'numeric' THEN 2" 
-    + " WHEN external_type = 'bytea' THEN -2" 
-    + " WHEN external_type = 'oid' THEN -5" 
-    + " WHEN external_type = 'name' THEN 12" 
-    + " WHEN external_type = 'ARRAY' THEN 2003" 
+    + " WHEN external_type = 'timestamp' THEN 93"
+    + " WHEN external_type = 'timestamp without time zone' THEN 93"
+    + " WHEN external_type = 'timestamptz' THEN 2014"
+    + " WHEN external_type = 'timestamp with time zone' THEN 2014"
+    + " WHEN external_type = 'smallint' THEN 5"
+    + " WHEN external_type = 'int2' THEN 5"
+    + " WHEN external_type = '_int2' THEN 5"
+    + " WHEN external_type = 'integer' THEN 4"
+    + " WHEN external_type = 'int' THEN 4"
+    + " WHEN external_type = 'int4' THEN 4"
+    + " WHEN external_type = '_int4' THEN 4"
+    + " WHEN external_type = 'bigint' THEN -5"
+    + " WHEN external_type = 'int8' THEN -5"
+    + " WHEN left(external_type, 7) = 'decimal' THEN 3"
+    + " WHEN external_type = 'real' THEN 7"
+    + " WHEN external_type = 'float4' THEN 7"
+    + " WHEN external_type = '_float4' THEN 7"
+    + " WHEN external_type = 'double' THEN 8"
+    + " WHEN external_type = 'double precision' THEN 8"
+    + " WHEN external_type = 'float8' THEN 8"
+    + " WHEN external_type = '_float8' THEN 8"
+    + " WHEN external_type = 'float' THEN 6"
+    + " WHEN left(external_type, 7) = 'numeric' THEN 2"
+    + " WHEN external_type = 'bytea' THEN -2"
+    + " WHEN external_type = 'oid' THEN -5"
+    + " WHEN external_type = 'name' THEN 12"
+    + " WHEN external_type = 'ARRAY' THEN 2003"
     + " WHEN external_type = 'geometry' THEN -4"
     + " WHEN external_type = 'super' THEN -16"
     + " WHEN external_type = 'varbyte' THEN -4"
     + " WHEN external_type = 'geography' THEN -4"
     + " WHEN external_type = 'intervaly2m' THEN 1111"
     + " WHEN external_type = 'intervald2s' THEN 1111"
-    + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE," 
-    + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB," 
+    + " ELSE 1111 END AS SMALLINT) AS SQL_DATA_TYPE,"
+    + " CAST(NULL AS SMALLINT) AS SQL_DATETIME_SUB,"
     + " CASE WHEN left(external_type, 7) = 'varchar' "
     + "  THEN CASE "
     + "   WHEN regexp_instr(external_type, '\\\\(', 7) = 0 THEN '0' "
@@ -3499,22 +3603,22 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     + "    WHEN regexp_instr(external_type, '\\\\(', 8) = 0 THEN '0' "
     + "    ELSE regexp_substr(external_type, '[0-9]+', 8) "
     + "  END::integer "
-    + " WHEN external_type = 'string' THEN 16383" 
-    + " ELSE NULL END AS CHAR_OCTET_LENGTH," 
+    + " WHEN external_type = 'string' THEN 16383"
+    + " ELSE NULL END AS CHAR_OCTET_LENGTH,"
     + " columnnum AS ORDINAL_POSITION,"
     + " CASE IS_NULLABLE WHEN 'true' THEN 'YES' WHEN 'false' THEN 'NO' ELSE NULL END AS IS_NULLABLE,"
-    + " NULL AS SCOPE_CATALOG," 
-    + " NULL AS SCOPE_SCHEMA," 
-    + " NULL AS SCOPE_TABLE," 
-    + " NULL AS SOURCE_DATA_TYPE," 
-    + " 'NO' AS IS_AUTOINCREMENT," 
-    + " 'NO' AS IS_GENERATEDCOLUMN" 
+    + " NULL AS SCOPE_CATALOG,"
+    + " NULL AS SCOPE_SCHEMA,"
+    + " NULL AS SCOPE_TABLE,"
+    + " NULL AS SOURCE_DATA_TYPE,"
+    + " 'NO' AS IS_AUTOINCREMENT,"
+    + " 'NO' AS IS_GENERATEDCOLUMN"
     + " FROM svv_external_columns");
-  	
+
 	  result.append( " WHERE true ");
-	  
+
 	  result.append(getCatalogFilterCondition(catalog));
-	  
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
     	result.append(" AND schemaname LIKE " + escapeQuotes(schemaPattern));
     }
@@ -3526,13 +3630,52 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     }
 
     result.append(" ORDER BY table_schem,table_name,ORDINAL_POSITION ");
-	  
+
 	  return result.toString();
   }
-  
 
   @Override
-  public ResultSet getColumnPrivileges(String catalog, String schema, String table,
+  public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schema, table, columnNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getColumnPrivilegesLegacyHardcodedQuery(catalog, schema, table, columnNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getColumnPrivileges with catalog = {0}, schema = {1},"
+                      + " table = {2}, columnNamePattern = {3}",
+              catalog, schema, table, columnNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schema.isEmpty() || table.isEmpty() || columnNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getColumnPrivilegesPostProcessing(null, columnNamePattern);
+    }
+
+    rs = metadataAPIPostProcessor.getColumnPrivilegesPostProcessing(
+            metadataServerProxy.getColumnPrivileges(catalog, schema, table, columnNamePattern,
+                    isSingleDatabaseMetaData()),
+            columnNamePattern
+    );
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getColumnPrivilegesLegacyHardcodedQuery(String catalog, String schema, String table,
       String columnNamePattern) throws SQLException {
     Field[] f = new Field[8];
     List<Tuple> v = new ArrayList<Tuple>();
@@ -3559,7 +3702,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
           + " AND a.attnum > 0 AND NOT a.attisdropped ";
 
     sql += getCatalogFilterCondition(catalog);
-    
+
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -3619,7 +3762,44 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getTablePrivileges(String catalog, String schemaPattern,
+  public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getTablePrivilegesLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getTablePrivileges with catalog = {0}, schemaPattern = {1},"
+                      + " tablePattern = {2}",
+              catalog, schemaPattern, tableNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || tableNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getTablePrivilegesPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getTablePrivilegesPostProcessing(
+            metadataServerProxy.getTablePrivileges(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getTablePrivilegesLegacyHardcodedQuery(String catalog, String schemaPattern,
       String tableNamePattern) throws SQLException {
     Field[] f = new Field[7];
     List<Tuple> v = new ArrayList<Tuple>();
@@ -3640,7 +3820,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
           + " AND c.relkind IN ('r','p','v','m','f') ";
 
     sql += getCatalogFilterCondition(catalog);
-    
+
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
       sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     }
@@ -3855,7 +4035,44 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return privileges;
   }
 
-  public ResultSet getBestRowIdentifier(String catalog, String schema, String table,
+  @Override
+  public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schema, table, scope);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getBestRowIdentifierLegacyHardcodedQuery(catalog, schema, table, scope, nullable);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getBestRowIdentifier with catalog = {0}, schema = {1}, table = {2}, scope = {3}",
+              catalog, schema, table, scope);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schema.isEmpty() || table.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getBestRowIdentifierPostProcessing(null, scope);
+    }
+
+    rs = metadataAPIPostProcessor.getBestRowIdentifierPostProcessing(
+            metadataServerProxy.getBestRowIdentifier(catalog, schema, table, isSingleDatabaseMetaData()), scope);
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getBestRowIdentifierLegacyHardcodedQuery(String catalog, String schema, String table,
       int scope, boolean nullable) throws SQLException {
     Field[] f = new Field[8];
     List<Tuple> v = new ArrayList<Tuple>(); // The new ResultSet tuple stuff
@@ -3875,7 +4092,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
      */
 
     String sql;
-    
+
     sql =
         "SELECT a.attname, a.atttypid, a.atttypmod " +
         "FROM  " +
@@ -3890,9 +4107,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
            "a.attrelid=ci.oid AND " +
            "i.indisprimary  AND " +
            "ct.relnamespace = n.oid ";
-    
+
     sql += getCatalogFilterCondition(catalog);
-    
+
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -3900,7 +4117,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (table != null && !table.isEmpty()) {
       sql += " AND ct.relname = " + escapeQuotes(table);
     }
-    
+
     sql += " ORDER BY a.attnum ";
 
     Statement stmt = connection.createStatement();
@@ -3974,10 +4191,48 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
 
-  public ResultSet getPrimaryKeys(String catalog, String schema, String table)
+  @Override
+  public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schema, table);
+    }
+
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getPrimaryKeysLegacyHardcodedQuery(catalog, schema, table);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getPrimaryKeys with catalog = {0}, schema = {1}, table = {2}",
+              catalog, schema, table);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schema.isEmpty() || table.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getPrimaryKeysPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getPrimaryKeysPostProcessing(
+            metadataServerProxy.getPrimaryKeys(catalog, schema, table, isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getPrimaryKeysLegacyHardcodedQuery(String catalog, String schema, String table)
       throws SQLException {
     String sql;
-    
+
     sql =
         "SELECT " +
            "current_database() AS TABLE_CAT, " +
@@ -4000,7 +4255,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
            "ct.relnamespace = n.oid ";
 
     sql += getCatalogFilterCondition(catalog);
-    
+
     if (schema != null && !schema.isEmpty()) {
       sql += " AND n.nspname = " + escapeQuotes(schema);
     }
@@ -4012,6 +4267,80 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     sql += " ORDER BY table_name, pk_name, key_seq";
 
     return createMetaDataStatement().executeQuery(sql);
+  }
+
+  @Override
+  public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schema, table);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getImportedKeysLegacyHardcodedQuery(catalog, schema, table);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getImportedKeys with catalog = {0}, schema = {1}, table = {2}",
+              catalog, schema, table);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schema.isEmpty() || table.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getForeignKeysPostProcessing(null, true);
+    }
+
+    rs = metadataAPIPostProcessor.getForeignKeysPostProcessing(
+            metadataServerProxy.getForeignKeys(catalog, schema, table, isSingleDatabaseMetaData(), true), true);
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  @Override
+  public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schema, table);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getExportedKeysLegacyHardcodedQuery(catalog, schema, table);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getExportedKeys with catalog = {0}, schema = {1}, table = {2}",
+              catalog, schema, table);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schema.isEmpty() || table.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getForeignKeysPostProcessing(null, false);
+    }
+
+    rs = metadataAPIPostProcessor.getForeignKeysPostProcessing(
+            metadataServerProxy.getForeignKeys(catalog, schema, table, isSingleDatabaseMetaData(), false), false);
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
   }
 
   /**
@@ -4086,7 +4415,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     } */
 
     sql += getCatalogFilterCondition(primaryCatalog);
-    
+
     if (primarySchema != null && !primarySchema.isEmpty()) {
       sql += " AND pkn.nspname = " + escapeQuotes(primarySchema);
     }
@@ -4109,12 +4438,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return createMetaDataStatement().executeQuery(sql);
   }
 
-  public ResultSet getImportedKeys(String catalog, String schema, String table)
+  public ResultSet getImportedKeysLegacyHardcodedQuery(String catalog, String schema, String table)
       throws SQLException {
     return getImportedExportedKeys(null, null, null, catalog, schema, table);
   }
 
-  public ResultSet getExportedKeys(String catalog, String schema, String table)
+  public ResultSet getExportedKeysLegacyHardcodedQuery(String catalog, String schema, String table)
       throws SQLException {
     return getImportedExportedKeys(catalog, schema, table, null, null, null);
   }
@@ -4128,9 +4457,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
   public ResultSet getTypeInfo() throws SQLException {
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true);
-  	
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true);
+    }
     Field[] f = new Field[18];
     List<Tuple> v = new ArrayList<Tuple>(); // The new ResultSet tuple stuff
 
@@ -4225,8 +4554,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       // 12 - LOCAL_TYPE_NAME is null
       // 15 & 16 are unused so we return null
 
-      // VARBYTE and GEOGRAPHY is base2,everything else is base 10      
-      tuple[17] = (typeOid == Oid.VARBYTE || typeOid == Oid.GEOGRAPHY) ? b2 : b10; 
+      // VARBYTE and GEOGRAPHY is base2,everything else is base 10
+      tuple[17] = (typeOid == Oid.VARBYTE || typeOid == Oid.GEOGRAPHY) ? b2 : b10;
       v.add(new Tuple(tuple));
 
       // add pseudo-type serial, bigserial
@@ -4256,12 +4585,12 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         return (i1 < i2) ? -1 : ((i1 == i2) ? 0 : 1);
       }
     });
-    
+
     ResultSet rc = ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
-    
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rc);
-    
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rc);
+    }
     return rc;
   }
 
@@ -4277,7 +4606,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
      * data to get the column the function operates on.
      */
     String sql;
-    
+
 /*    if (connection.haveMinimumServerVersion(ServerVersion.v8_3)) {
       sql = "SELECT NULL AS TABLE_CAT, n.nspname AS TABLE_SCHEM, "
             + "  ct.relname AS TABLE_NAME, NOT i.indisunique AS NON_UNIQUE, "
@@ -4344,7 +4673,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
                 + "FROM ("
                 + sql
                 + ") AS tmp";
-    } 
+    }
     else */
 /*    {
       String select;
@@ -4389,10 +4718,10 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     }
 
     sql += " ORDER BY NON_UNIQUE, TYPE, INDEX_NAME, ORDINAL_POSITION "; */
-    	
+
     //	Disable, Redshift doesn't do indexes...
     //	we'll just execute a dummy query to return an empty resultset
-    	
+
     sql =
 			"SELECT '' AS TABLE_CAT, " +
 			"'' AS TABLE_SCHEM, " +
@@ -4538,7 +4867,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     }
 
     toAdd.append(getCatalogFilterCondition(catalog));
-    
+
     // schemaPattern may have been modified above
     if (schemaPattern != null) {
       toAdd.append(" and n.nspname like ").append(escapeQuotes(schemaPattern));
@@ -4606,7 +4935,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       tuple[3] = connection
           .encodeString("The name of the application currently utilizing the connection.");
       v.add(new Tuple(tuple));
-    } 
+    }
 
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
   }
@@ -4622,12 +4951,50 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     throw new SQLException("Cannot unwrap to " + iface.getName());
   }
 
-  public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
+  @Override
+  public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getFunctionsLegacyHardcodedQuery(catalog, schemaPattern, functionNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getFunctions with catalog = {0}, schemaPattern = {1},"
+                      + " functionNamePattern = {2}",
+              catalog, schemaPattern, functionNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || tableNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getFunctionsPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getFunctionsPostProcessing(metadataServerProxy.getFunctions(catalog, schemaPattern, functionNamePattern,
+                    isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getFunctionsLegacyHardcodedQuery(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern);
-  	
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern);
+    }
     // The pg_get_function_result only exists 8.4 or later
 //    boolean pgFuncResultExists = connection.haveMinimumServerVersion(ServerVersion.v8_4);
 
@@ -4657,7 +5024,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + " specific_name AS SPECIFIC_NAME"
         + " FROM INFORMATION_SCHEMA.ROUTINES"
         + " WHERE routine_type LIKE 'FUNCTION' ";
-    
+
 /*    sql = "SELECT current_database() AS FUNCTION_CAT, n.nspname AS FUNCTION_SCHEM, p.proname AS FUNCTION_NAME, "
         + " d.description AS REMARKS, "
         + funcTypeSql + " AS FUNCTION_TYPE, "
@@ -4666,49 +5033,89 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
         + "INNER JOIN pg_catalog.pg_namespace n ON p.pronamespace=n.oid "
         + "LEFT JOIN pg_catalog.pg_description d ON p.prooid=d.objoid "
         + "WHERE true  "; */
-    
+
     sql += getCatalogFilterCondition(catalog);
-    
+
     /*
     if the user provides a schema then search inside the schema for it
      */
     if (schemaPattern != null && !schemaPattern.isEmpty()) {
 //      sql += " AND n.nspname LIKE " + escapeQuotes(schemaPattern);
     		sql += " AND  routine_schema LIKE " + escapeQuotes(schemaPattern);
-    } 
+    }
 /*    else {
-      // if no schema is provided then limit the search inside the search_path 
+      // if no schema is provided then limit the search inside the search_path
       sql += "and pg_function_is_visible(p.prooid)";
     } */
-    
+
     if (functionNamePattern != null && !functionNamePattern.isEmpty()) {
 //      sql += " AND p.proname LIKE " + escapeQuotes(functionNamePattern);
       sql += " AND  routine_name LIKE " + escapeQuotes(functionNamePattern);;
     }
-    
+
 /*    if (connection.getHideUnprivilegedObjects()) {
       sql += " AND has_function_privilege(p.prooid,'EXECUTE')";
     } */
-    
+
 //    sql += " ORDER BY FUNCTION_SCHEM, FUNCTION_NAME, p.prooid::text ";
      sql += " ORDER BY routine_catalog, routine_schema, routine_name ";
 
     ResultSet rs = createMetaDataStatement().executeQuery(sql);
-    
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rs);
-    
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
     return rs;
   }
 
-  public ResultSet getFunctionColumns(String catalog, String schemaPattern,
+  @Override
+  public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern,
+                                      String columnNamePattern) throws SQLException {
+    ResultSet rs = null;
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern, columnNamePattern);
+    }
+    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+      rs = getFunctionColumnsLegacyHardcodedQuery(catalog, schemaPattern, functionNamePattern, columnNamePattern);
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logFunction(false, rs);
+      }
+      return rs;
+    }
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logInfo("Support SHOW command getFunctionColumns with catalog = {0}, schemaPattern = {1},"
+                      + " functionNamePattern = {2}, columnNamePattern = {3}",
+              catalog, schemaPattern, functionNamePattern, columnNamePattern);
+    }
+
+    // Commented out the following line since the Driver will temporarily accept empty string but will block in near future
+    // Issue is tracked in SIM [Redshift-112709]
+    // return_empty = (catalog.isEmpty() || schemaPattern.isEmpty() || functionNamePattern.isEmpty() || columnNamePattern.isEmpty())
+    boolean returnEmpty = false;
+    if (returnEmpty) {
+      return metadataAPIPostProcessor.getFunctionColumnsPostProcessing(null);
+    }
+
+    rs = metadataAPIPostProcessor.getFunctionColumnsPostProcessing(
+            metadataServerProxy.getFunctionColumns(catalog, schemaPattern, functionNamePattern, columnNamePattern,
+                    isSingleDatabaseMetaData()));
+
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rs);
+    }
+    return rs;
+  }
+
+  public ResultSet getFunctionColumnsLegacyHardcodedQuery(String catalog, String schemaPattern,
       String functionNamePattern, String columnNamePattern)
       throws SQLException {
     int columns = 17;
 
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern, columnNamePattern);
-    
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(true, catalog, schemaPattern, functionNamePattern, columnNamePattern);
+    }
 /*    Field[] f = new Field[columns];
     List<Tuple> v = new ArrayList<Tuple>();
 
@@ -5315,9 +5722,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 //    ResultSet rc = ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
     	ResultSet rc = createMetaDataStatement().executeQuery(functionColumnQuery.toString());
     
-    if (RedshiftLogger.isEnable())
-    	connection.getLogger().logFunction(false, rc);
-    
+    if (RedshiftLogger.isEnable()) {
+      connection.getLogger().logFunction(false, rc);
+    }
     return rc;
   }
 
