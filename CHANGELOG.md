@@ -1,5 +1,9 @@
 Changelog
 =========
+v2.2.2 (2025-12-08)
+----------------------
+- Added support for IdP broker endpoint-based IAM Identity Center (IdC) authentication via IdpTokenUrlAuthPlugin, enabling the driver to fetch an IdC token from a configured token/broker URL with optional bearer authorization and JSON response handling
+
 
 v2.2.1 (2025-11-19)
 ----------------------
