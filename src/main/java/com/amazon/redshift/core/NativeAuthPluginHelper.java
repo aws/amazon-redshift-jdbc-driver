@@ -115,6 +115,16 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
           log.log(LogLevel.ERROR, err.toString());
 
         throw err;
+      } catch (IllegalArgumentException e) {
+        RedshiftException err = new RedshiftException(
+            GT.tr("Error initializing credentials provider: {0}", e.getMessage()),
+            RedshiftState.UNEXPECTED_ERROR, e);
+
+        if (RedshiftLogger.isEnable()) {
+          log.log(LogLevel.ERROR, err.toString());
+        }
+
+        throw err;
       }
     }
     else {
