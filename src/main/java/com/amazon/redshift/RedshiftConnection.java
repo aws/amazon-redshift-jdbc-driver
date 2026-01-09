@@ -91,20 +91,6 @@ public interface RedshiftConnection {
   Fastpath getFastpathAPI() throws SQLException;
 
   /**
-   * This allows client code to add a handler for one of com.amazon.redshift's more unique data types. It
-   * is approximately equivalent to <code>addDataType(type, Class.forName(name))</code>.
-   *
-   * @param type JDBC type name
-   * @param className class name
-   * @throws RuntimeException if the type cannot be registered (class not found, etc).
-   * @deprecated As of 8.0, replaced by {@link #addDataType(String, Class)}. This deprecated method
-   *             does not work correctly for registering classes that cannot be directly loaded by
-   *             the JDBC driver's classloader.
-   */
-  @Deprecated
-  void addDataType(String type, String className);
-
-  /**
    * <p>This allows client code to add a handler for one of com.amazon.redshift's more unique data types.</p>
    *
    * <p><b>NOTE:</b> This is not part of JDBC, but an extension.</p>

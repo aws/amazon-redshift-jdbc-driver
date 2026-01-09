@@ -861,15 +861,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   }
 
   @Override
-  public void addDataType(String type, String name) {
-    try {
-      addDataType(type, Class.forName(name).asSubclass(RedshiftObject.class));
-    } catch (Exception e) {
-      throw new RuntimeException("Cannot register new type: " + e);
-    }
-  }
-
-  @Override
   public void addDataType(String type, Class<? extends RedshiftObject> klass) throws SQLException {
     checkClosed();
     typeCache.addDataType(type, klass);
@@ -890,27 +881,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
     addDataType("interval", com.amazon.redshift.util.RedshiftInterval.class);
     // intervaly2m and intervald2s are not object types rather they are
     // binary types native to Redshift, hence they are added in TypeInfoCache.
-
-    Enumeration<?> e = info.propertyNames();
-    while (e.hasMoreElements()) {
-      String propertyName = (String) e.nextElement();
-      if (propertyName.startsWith("datatype.")) {
-        String typeName = propertyName.substring(9);
-        String className = info.getProperty(propertyName);
-        Class<?> klass;
-
-        try {
-          klass = Class.forName(className);
-        } catch (ClassNotFoundException cnfe) {
-          throw new RedshiftException(
-              GT.tr("Unable to load the class {0} responsible for the datatype {1}",
-                  className, typeName),
-              RedshiftState.SYSTEM_ERROR, cnfe);
-        }
-
-        addDataType(typeName, klass.asSubclass(RedshiftObject.class));
-      }
-    }
   }
 
   /**

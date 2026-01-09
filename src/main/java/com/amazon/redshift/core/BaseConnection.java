@@ -60,8 +60,7 @@ public interface BaseConnection extends RedshiftConnection, Connection {
 
   /**
    * <p>Construct and return an appropriate object for the given type and value. This only considers
-   * the types registered via {@link com.amazon.redshift.RedshiftConnection#addDataType(String, Class)} and
-   * {@link com.amazon.redshift.RedshiftConnection#addDataType(String, String)}.</p>
+   * the types registered via {@link com.amazon.redshift.RedshiftConnection#addDataType(String, Class)}.</p>
    *
    * <p>If no class is registered as handling the given type, then a generic
    * {@link com.amazon.redshift.util.RedshiftObject} instance is returned.</p>
