@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.2.2 (2026-01-08)
+----------------------
+- Upgraded SSL/TLS protocol requirements to TLS 1.2 or higher by default, with fallback support for legacy server configurations.
+- Removed unsupported datatype parameter processing
+
+
 v2.2.1 (2025-11-19)
 ----------------------
 - Removed unsupported PostgreSQL replication feature 
