@@ -122,7 +122,7 @@ public class SingleCertValidatingFactory extends WrappedFactory {
             "The sslfactoryarg property must start with the prefix file:, classpath:, env:, sys:, or -----BEGIN CERTIFICATE-----."));
       }
 
-      SSLContext ctx = SSLContext.getInstance("TLS");
+      SSLContext ctx = SSLUtil.createSecureSSLContext();
       ctx.init(null, new TrustManager[]{new SingleCertTrustManager(in)}, null);
       factory = ctx.getSocketFactory();
     } catch (RuntimeException e) {

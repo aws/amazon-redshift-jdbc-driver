@@ -28,7 +28,7 @@ public class NonValidatingFactory extends WrappedFactory {
    * @throws GeneralSecurityException if something goes wrong
    */
   public NonValidatingFactory(String arg) throws GeneralSecurityException {
-    SSLContext ctx = SSLContext.getInstance("TLS"); // or "SSL" ?
+    SSLContext ctx = SSLUtil.createSecureSSLContext();
 
     ctx.init(null, new TrustManager[]{new NonValidatingTM()}, null);
 

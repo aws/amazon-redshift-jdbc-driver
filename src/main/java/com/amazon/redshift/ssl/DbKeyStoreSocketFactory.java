@@ -43,7 +43,7 @@ public abstract class DbKeyStoreSocketFactory extends com.amazon.redshift.ssl.Wr
           TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
       trustfact.init(keys);
 
-      SSLContext ctx = SSLContext.getInstance("SSL");
+      SSLContext ctx = SSLUtil.createSecureSSLContext();
       ctx.init(keyfact.getKeyManagers(), trustfact.getTrustManagers(), null);
       factory = ctx.getSocketFactory();
     } catch (java.security.GeneralSecurityException gse) {

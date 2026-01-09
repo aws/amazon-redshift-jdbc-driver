@@ -105,7 +105,7 @@ public class LibPQFactory extends WrappedFactory {
    */
   public LibPQFactory(Properties info) throws RedshiftException {
     try {
-      SSLContext ctx = SSLContext.getInstance("TLS"); // or "SSL" ?
+      SSLContext ctx = SSLUtil.createSecureSSLContext();
 
       // Determining the default file location
       String pathsep = System.getProperty("file.separator");
