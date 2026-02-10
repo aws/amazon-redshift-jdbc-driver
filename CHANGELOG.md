@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.2.3 (2026-02-10)
+* Upgraded bundled ADFS Windows Integrated Authentication helper to .NET Framework 4.8 to resolve compatibility issues with ADFS servers requiring TLS 1.2/1.3
+* Removed deprecated SSLv3 and TLS 1.0 protocols from ADFS authentication helper
+* Changed driver license from Apache-2.0 to BSD-2-Clause to align with PostgreSQL licensing
+
+
 v2.2.2 (2026-01-08)
 ----------------------
 - Upgraded SSL/TLS protocol requirements to TLS 1.2 or higher by default, with fallback support for legacy server configurations.
