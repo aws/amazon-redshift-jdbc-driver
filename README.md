@@ -34,8 +34,8 @@ See [Amazon Redshift JDBC Driver Installation and Configuration Guide](https://d
 
 Here are download links for the latest release:
 
-* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.2.3/redshift-jdbc42-2.2.3.jar
-* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.2.3/redshift-jdbc42-2.2.3.zip
+* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.2.4/redshift-jdbc42-2.2.4.jar
+* https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.2.4/redshift-jdbc42-2.2.4.zip
 
 It also available on Maven Central, groupId: com.amazon.redshift and artifactId: redshift-jdbc42.
 
