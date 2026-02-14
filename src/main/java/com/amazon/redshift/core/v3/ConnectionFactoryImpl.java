@@ -398,6 +398,13 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
         tokenType = RedshiftProperty.TOKEN_TYPE.get(info);
         redshiftNativeAuth = true;
       }
+      else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDP_TOKEN_URL_PLUGIN))
+      {
+        idpType = IDP_TYPE_AWS_IDC;
+        identityNamepsace = RedshiftProperty.IDC_IDENTITY_NAMESPACE.get(info);
+        tokenType = RedshiftProperty.TOKEN_TYPE.get(info);
+        redshiftNativeAuth = true;
+      }
       else if(pluginName.equalsIgnoreCase(RedshiftConstants.IDC_PKCE_BROWSER_PLUGIN)) {
         idpType = IDP_TYPE_AWS_IDC;
         tokenType = TOKEN_TYPE_ACCESS_TOKEN;
