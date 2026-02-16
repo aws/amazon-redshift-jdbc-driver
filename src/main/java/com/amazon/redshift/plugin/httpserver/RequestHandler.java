@@ -107,7 +107,7 @@ public class RequestHandler implements HttpRequestHandler
                 m_log.logError("Received unknown HTTP request");
                 m_log.logInfo("{0}", request.getRequestLine());
                 for (Header header : request.getAllHeaders()) {
-                    m_log.logInfo(header.getName() + ":" + header.getValue());
+                    m_log.logInfo(header.getName() + ": " + header.getValue());
                 }
             }
             is_valid_result = false;
