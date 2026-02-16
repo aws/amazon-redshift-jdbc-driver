@@ -6,6 +6,8 @@ import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestHandler;
 
+import com.amazon.redshift.logger.RedshiftLogger;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Function;
@@ -61,6 +63,8 @@ public class RequestHandler implements HttpRequestHandler
      */
     private boolean is_valid_result = false;
 
+    protected RedshiftLogger m_log;
+
     /**
      * Constructor.
      *
@@ -73,23 +77,39 @@ public class RequestHandler implements HttpRequestHandler
         this.m_validRequestHandler = new ValidHttpRequestHandler();
     }
 
+    public RequestHandler(Function<List<NameValuePair>, Object> requestProcessLogic, RedshiftLogger logger)
+    {
+        this(requestProcessLogic);
+        this.m_log = logger;
+    }
+
     @Override
     public void handle(HttpRequest request, HttpResponse response, HttpContext context)
         throws HttpException, IOException
     {
         if (isRequestValid(request))
         {
+            if (m_log != null) m_log.logInfo("Received generic response");
             m_result = m_requestProcessLogic.apply(
                 URLEncodedUtils.parse(((BasicHttpEntityEnclosingRequest) request).getEntity()));
             is_valid_result = true;
             m_validRequestHandler.handle(request, response, context);
         } else if (isIdcRequestValid(request)) {
+            if (m_log != null) m_log.logInfo("Received IdC response");
             String query = extractQuery(request.toString());
             m_result = m_requestProcessLogic.apply(
                 URLEncodedUtils.parse(query, java.nio.charset.StandardCharsets.UTF_8));
             is_valid_result = true;
             m_validRequestHandler.handle(request, response, context);
         } else {
+            if (m_log != null)
+            {
+                m_log.logError("Received unknown HTTP request");
+                m_log.logInfo("{0}", request.getRequestLine());
+                for (Header header : request.getAllHeaders()) {
+                    m_log.logInfo(header.getName() + ":" + header.getValue());
+                }
+            }
             is_valid_result = false;
             m_invalidRequestHandler.handle(request, response, context);
         }
