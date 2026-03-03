@@ -9,6 +9,7 @@ import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.amazon.redshift.plugin.IdpTokenAuthPlugin;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -49,15 +50,30 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
       // Common code for IAM and Native Auth
       info = setAuthProperties(info, settings, log);
 
-      String idpToken = getNativeAuthPluginCredentials(settings, log, authProfile);
+      // Extract host from connection settings for potential use in identity-enhanced credentials flow
+      String host = RedshiftConnectionImpl.getOptionalConnSetting(RedshiftProperty.HOST.getName(), info);
+
+      String idpToken = getNativeAuthPluginCredentials(settings, log, authProfile, host);
       if (RedshiftLogger.isEnable())
         log.logInfo("NativeAuthPluginHelper: Obtained idp token of length={0}", idpToken != null ? idpToken.length() : -1);
       info.put(RedshiftProperty.WEB_IDENTITY_TOKEN.getName(), idpToken);
       
+      // Propagate token_type from plugin args to connection properties for startup packet
+      // This is especially needed for IdC enhanced credentials credentials with
+      // IdpTokenAuthPlugin since token_type is not passed in as an original connection
+      // property.
+      String tokenType = settings.m_pluginArgs.get("token_type");
+      if (!Utils.isNullOrEmpty(tokenType)) {
+        info.put(RedshiftProperty.TOKEN_TYPE.getName(), tokenType);
+        if (RedshiftLogger.isEnable()){
+          log.logDebug("Set token_type in connection properties: {0}", tokenType);
+        }
+      }
       return info;
     } catch (RedshiftException re) {
-      if (RedshiftLogger.isEnable())
+      if (RedshiftLogger.isEnable()){
         log.logError(re);
+      }
 
       throw re;
     }
@@ -69,7 +85,7 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
    * @throws RedshiftException
    *           If an unspecified error occurs.
    */
-  private static String getNativeAuthPluginCredentials(RedshiftJDBCSettings settings, RedshiftLogger log, String authProfile) throws RedshiftException {
+  private static String getNativeAuthPluginCredentials(RedshiftJDBCSettings settings, RedshiftLogger log, String authProfile, String host) throws RedshiftException {
     String idpToken = null;
     INativePlugin provider = null;
 
@@ -163,6 +179,30 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
     }
     else {
       idpToken = credentials.getAccessToken();
+    }
+
+    // For IdpTokenAuthPlugin, set token_type based on authentication method
+    // For direct token flow, use whatever token_type customer provided (or leave empty)
+    if (settings.m_credentialsProvider != null && 
+        settings.m_credentialsProvider.equals(IdpTokenAuthPlugin.class.getName())) {
+      
+        // Use the plugin's method to check if using identity-enhanced credentials
+        if (provider instanceof INativePlugin) {
+          INativePlugin nativePlugin = (INativePlugin) provider;
+          if (nativePlugin.isUsingIdentityEnhancedCredentials()) {
+            // Identity-enhanced credentials flow
+            settings.m_pluginArgs.put("token_type", "SUBJECT_TOKEN");
+            if (RedshiftLogger.isEnable()){
+              log.log(LogLevel.DEBUG, "Set token_type to SUBJECT_TOKEN for identity-enhanced credentials");
+            }
+            // Set Host only for identity-enhanced credentials flow (needed to extract cluster name)
+            if (!Utils.isNullOrEmpty(host)) {
+              settings.m_pluginArgs.put("Host", host);
+              if (RedshiftLogger.isEnable())
+                log.logDebug("Set Host for IdpTokenAuthPlugin identity-enhanced flow: {0}", host);
+            }
+          }
+        }
     }
     return idpToken;
   }

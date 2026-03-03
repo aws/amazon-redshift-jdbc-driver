@@ -39,7 +39,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'org.jsoup:jsoup:1.16.1'
 
-    implementation platform('software.amazon.awssdk:bom:2.31.2')
+    implementation platform('software.amazon.awssdk:bom:2.40.5')
     implementation 'software.amazon.awssdk:sdk-core'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:profiles'

@@ -13,5 +13,14 @@ public interface INativePlugin
     
     NativeTokenHolder getCredentials() throws RedshiftException;  
     void refresh() throws RedshiftException;
+    
+    /**
+     * Check if this plugin is using identity-enhanced credentials.
+     * Default implementation returns false for backward compatibility.
+     * @return true if using identity-enhanced credentials, false otherwise
+     */
+    default boolean isUsingIdentityEnhancedCredentials() {
+        return false;
+    }
 }
 
