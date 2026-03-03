@@ -1468,6 +1468,7 @@ public class MetadataAPIHelper {
     rsTypeMap.put("character varying", "varchar");
     rsTypeMap.put("\"char\"", "char");
     rsTypeMap.put("character", "char");
+    rsTypeMap.put("bpchar", "char");
     rsTypeMap.put("smallint", "int2");
     rsTypeMap.put("integer", "int4");
     rsTypeMap.put("bigint", "int8");
@@ -1520,9 +1521,9 @@ public class MetadataAPIHelper {
   protected String getColumnSize(String rsType, String character_maximum_length, String numeric_precision){
     switch (rsType) {
       case "decimal": case "numeric":
-        return numeric_precision;
+        return toNonNegativeString(numeric_precision);
       case "varchar": case "character varying": case "char": case "character": case "nchar": case "bpchar": case "nvarchar":
-        return character_maximum_length;
+        return toNonNegativeString(character_maximum_length);
       case "geometry": case "super": case "varbyte": case "geography":
         return null;
       default:
@@ -1617,7 +1618,7 @@ public class MetadataAPIHelper {
       case "geometry": case "super": case "varbyte": case "geography":
         return null;
       case "numeric":
-        return numeric_scale;
+        return toNonNegativeString(numeric_scale);
       default:
         return "0";
     }
@@ -1897,5 +1898,23 @@ public class MetadataAPIHelper {
       }
     }
     return "^" + regexPattern.toString() + "$";
+  }
+
+  /**
+   * Converts a string representation of a numeric metadata value to a non-negative string.
+   *
+   * @param value the string to normalize; may be {@code null}, a valid integer string, or a
+   *              non-numeric string
+   * @return a non-negative integer string, or {@code "0"} if the input is {@code null},
+   *         negative, or non-numeric
+   */
+  protected static String toNonNegativeString(String value) {
+    if (value == null) return "0";
+    try {
+      int parsed = Integer.parseInt(value);
+      return parsed < 0 ? "0" : value;
+    } catch (NumberFormatException e) {
+      return "0";
+    }
   }
 }
