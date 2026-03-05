@@ -34,7 +34,7 @@
         <maven.shade.plugin.version>3.5.1</maven.shade.plugin.version>
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
-        <jackson.version>2.16.0</jackson.version>
+        <jackson.version>2.18.6</jackson.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
