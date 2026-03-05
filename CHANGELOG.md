@@ -1,10 +1,17 @@
 Changelog
 =========
 
+v2.2.5 (2026-03-04)
+----------------------
+- Fixed metadata retrieval to sanitize invalid negative and null values in MetadataAPIHelper
+- Added support for Identity Enhanced Credentials Authentication
+
+
 v2.2.4 (2026-02-13)
 ----------------------
 - Added support for Kerberos authentication
 - Updated bundled ADFS Windows Integrated Authentication helper to support the Negotiate protocol for Kerberos-based ADFS authentication
+
 
 v2.2.3 (2026-02-10)
 ----------------------
