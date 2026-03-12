@@ -1,6 +1,7 @@
 package com.amazon.redshift.plugin.utils;
 
 import com.amazon.redshift.logger.RedshiftLogger;
+import com.fasterxml.jackson.databind.JsonNode;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.sts.StsClientBuilder;
 import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -143,5 +145,34 @@ public class RequestUtils
     public static boolean isCredentialExpired(Instant expiryTime) {
         // We preemptively conclude the credential as expired 1 minute before actual expiry.
         return expiryTime == null || expiryTime.isBefore(Instant.now().plusSeconds(60));
+    }
+
+    public static Date getExpirationFromJson(JsonNode json) {
+        if (json == null) return null;
+        JsonNode n = json.findValue("expires_in");
+        if (n != null && n.canConvertToLong()) {
+            long secs = n.asLong();
+            if (secs > 0) return new Date(System.currentTimeMillis() + secs * 1000L);
+        }
+        for (String k : new String[]{"expires_at", "expiresAt", "expires_on", "expiration", "exp"}) {
+            n = json.findValue(k);
+            if (n == null) continue;
+            if (n.isNumber()) {
+                long v = n.asLong();
+                if (v > 0) return new Date(v >= 1_000_000_000_000L ? v : v * 1000L);
+            }
+            if (n.isTextual()) {
+                String t = n.asText().trim();
+                if (t.isEmpty()) continue;
+                try {
+                    return new Date(Instant.parse(t).toEpochMilli());
+                } catch (DateTimeParseException ignored) {}
+                try {
+                    long v = Long.parseLong(t);
+                    if (v > 0) return new Date(v >= 1_000_000_000_000L ? v : v * 1000L);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return null;
     }
 }
