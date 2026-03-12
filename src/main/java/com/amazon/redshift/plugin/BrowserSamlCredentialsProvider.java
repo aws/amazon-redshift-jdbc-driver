@@ -164,7 +164,7 @@ public class BrowserSamlCredentialsProvider extends SamlCredentialsProvider
 
                     return findParameter(SAML_RESPONSE_PARAM_NAME, nameValuePairs);
                 }
-            });
+            }, m_log);
         Server server =
             new Server(m_listen_port, requestHandler, Duration.ofSeconds(m_idp_response_timeout), m_log);
         server.listen();
