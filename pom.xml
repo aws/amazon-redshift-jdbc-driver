@@ -34,7 +34,8 @@
         <maven.shade.plugin.version>3.5.1</maven.shade.plugin.version>
         <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
-        <jackson.version>2.16.0</jackson.version>
+        <jackson.version>2.20.0</jackson.version>
+        <jackson.annotations.version>2.20</jackson.annotations.version>
         <dependent_lib_dir>${basedir}/dependent_libs</dependent_lib_dir>
         <!-- Configuration for maven-surefire-plugin. Needs to be here for compatibility with jacoco -->
         <argLine>-Xmx512m</argLine>
@@ -843,7 +844,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
-                <version>${jackson.version}</version>
+                <version>${jackson.annotations.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.dataformat</groupId>
