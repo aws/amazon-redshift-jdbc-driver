@@ -104,7 +104,7 @@ public class RequestUtils
         }
 
         return ProxyConfiguration.builder()
-                .endpoint(URI.create("https://" + proxyHost + ":" + proxyPort))
+                .endpoint(URI.create("http://" + proxyHost + ":" + proxyPort))
                 .nonProxyHosts(nonProxyHosts)
                 .build();
     }
