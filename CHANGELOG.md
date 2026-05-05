@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v2.2.6 (2026-05-05)
+----------------------
+- Fixed an issue where the driver used HTTPS instead of HTTP for the proxy endpoint scheme in local proxy connections, which could cause proxy connection failures
+- Upgraded Jackson dependency from version 2.16 to 2.20
+- Added support for pg_catalog internal data types in the getFunctionColumns and getProcedureColumns metadata APIs
+- Fixed an issue where backslash characters in catalog names were incorrectly escaped in DatabaseMetaData queries, which could result in malformed queries 
+
+
 v2.2.5 (2026-03-04)
 ----------------------
 - Fixed metadata retrieval to sanitize invalid negative and null values in MetadataAPIHelper
