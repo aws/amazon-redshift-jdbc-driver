@@ -1274,12 +1274,6 @@ public class RedshiftConnectionImpl implements BaseConnection {
   }
 
   @Override
-  public String escapeOnlyQuotesString(String str) throws SQLException {
-    return Utils.escapeLiteral(null, str, queryExecutor.getStandardConformingStrings(),true)
-        .toString();
-  }
-  
-  @Override
   public boolean getStandardConformingStrings() {
     return queryExecutor.getStandardConformingStrings();
   }

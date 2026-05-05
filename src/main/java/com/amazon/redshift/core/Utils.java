@@ -63,24 +63,18 @@ public class Utils {
    * @param sbuf the string builder to append to; or {@code null}
    * @param value the string value
    * @param standardConformingStrings if standard conforming strings should be used
-   * @param onlyQuotes only escape quote and not the backslash for database name
    * @return the sbuf argument; or a new string builder for sbuf == null
    * @throws SQLException if the string contains a {@code \0} character
    */
   public static StringBuilder escapeLiteral(StringBuilder sbuf, String value,
-      boolean standardConformingStrings, boolean onlyQuotes) throws SQLException {
+      boolean standardConformingStrings) throws SQLException {
     if (sbuf == null) {
       sbuf = new StringBuilder((value.length() + 10) / 10 * 11); // Add 10% for escaping.
     }
-    doAppendEscapedLiteral(sbuf, value, standardConformingStrings, onlyQuotes);
+    doAppendEscapedLiteral(sbuf, value, standardConformingStrings);
     return sbuf;
   }
 
-  public static StringBuilder escapeLiteral(StringBuilder sbuf, String value,
-      boolean standardConformingStrings) throws SQLException {
-  	return escapeLiteral(sbuf, value, standardConformingStrings, false);
-  }
-  
   /**
    * Common part for {@link #escapeLiteral(StringBuilder, String, boolean)}.
    *
@@ -90,7 +84,7 @@ public class Utils {
    * @param standardConformingStrings if standard conforming strings should be used
    */
   private static void doAppendEscapedLiteral(Appendable sbuf, String value,
-      boolean standardConformingStrings, boolean onlyQuote) throws SQLException {
+      boolean standardConformingStrings) throws SQLException {
     try {
       if (standardConformingStrings) {
         // With standard_conforming_strings on, escape only single-quotes.
@@ -117,17 +111,9 @@ public class Utils {
             throw new RedshiftException(GT.tr("Zero bytes may not occur in string parameters."),
                 RedshiftState.INVALID_PARAMETER_VALUE);
           }
-          
-          if(onlyQuote) {
-            if (ch == '\'') {
-              sbuf.append(ch);
-            }
-          }
-          else
           if (ch == '\\' || ch == '\'') {
             sbuf.append(ch);
           }
-          
           sbuf.append(ch);
         }
       }

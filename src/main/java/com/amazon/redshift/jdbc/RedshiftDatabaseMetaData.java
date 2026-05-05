@@ -951,14 +951,73 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     return sb.toString();
   }
 
-  protected String escapeOnlyQuotes(String s) throws SQLException {
-    StringBuilder sb = new StringBuilder();
-/*    if (!connection.getStandardConformingStrings()) {
-      sb.append("E");
-    } */
-    sb.append("'");
-    sb.append(connection.escapeOnlyQuotesString(s));
-    sb.append("'");
+  /**
+   * Escape a catalog (database) name for use in an SQL equality comparison
+   * such as current_database() = '&lt;value&gt;'.
+   *
+   * This method doubles both backslashes and single quotes, then wraps the
+   * result in single quotes. It is intentionally self-contained and does not
+   * delegate to Utils.escapeLiteral() so that the security-critical escaping
+   * logic for catalog parameters is easy to audit in one place.
+   *
+   * Why backslashes must be doubled:
+   *
+   * Redshift's lexer (parser_scan.l, {@code <xq>} state) always treats backslash as
+   * an escape character inside string literals. There is no
+   * standard_conforming_strings parameter on Redshift — the behavior is
+   * unconditional. The dangerous sequence is \': the lexer interprets it as
+   * an escaped quote (keeping the string literal open), which allows an
+   * attacker to break out of the string and inject arbitrary SQL.
+   *
+   * For example:
+   *
+   *   catalog = "test\' OR 1=1 --"
+   *   SQL:    current_database() = 'test\'' OR 1=1 --'
+   *   lexer:  \' = escaped quote, string stays open
+   *           ' closes the string, OR 1=1 is live SQL
+   *
+   * Doubling backslashes neutralizes this: \' becomes \\', which the lexer
+   * parses as \\ (literal backslash) followed by ' (string terminator). The
+   * payload remains trapped inside the string literal.
+   *
+   * Difference from escapeQuotes():
+   *
+   * escapeQuotes() delegates to connection.escapeString(), which routes
+   * through Utils.escapeLiteral(). That method's behavior varies based on
+   * the standard_conforming_strings connection parameter. This method
+   * unconditionally doubles backslashes regardless of that setting, which is
+   * the correct behavior for Redshift where backslash is always an escape
+   * character. Both methods produce functionally identical output on Redshift
+   * (where standard_conforming_strings defaults to false), but this method
+   * makes the security invariant explicit.
+   *
+   * @param catalog the catalog name to escape; may be null
+   * @return the escaped catalog name wrapped in single quotes, or "NULL" if catalog is null
+   * @throws SQLException if the catalog name contains illegal characters
+   */
+  protected String escapeCatalogLiteral(String catalog) throws SQLException {
+    if (catalog == null) {
+      // getCatalogFilterCondition() guards against null before calling this method,
+      // so this branch is unreachable in normal operation. Return SQL NULL as a
+      // safe default rather than throwing NPE (the original pre-fix behavior) or
+      // producing the misleading string literal 'null'.
+      return "NULL";
+    }
+    StringBuilder sb = new StringBuilder(catalog.length() * 2 + 2);
+    sb.append('\'');
+    for (int i = 0; i < catalog.length(); i++) {
+      char ch = catalog.charAt(i);
+      if (ch == '\0') {
+        throw new com.amazon.redshift.util.RedshiftException(
+            com.amazon.redshift.util.GT.tr("Zero bytes may not occur in string parameters."),
+            com.amazon.redshift.util.RedshiftState.INVALID_PARAMETER_VALUE);
+      }
+      if (ch == '\\' || ch == '\'') {
+        sb.append(ch); // double the character
+      }
+      sb.append(ch);
+    }
+    sb.append('\'');
     return sb.toString();
   }
 
@@ -5901,13 +5960,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 		  if (isSingleDatabaseMetaData()
 		  		 || apiSupportedOnlyForConnectedDatabase) {
 		    	// Catalog parameter is not a pattern.
-		    	catalogFilter = " AND current_database() = " + escapeOnlyQuotes(catalog);
+		    	catalogFilter = " AND current_database() = " + escapeCatalogLiteral(catalog);
 		    }
 		  else {
 		  	if (databaseColName == null)
 		  		databaseColName = "database_name";
 		  	
-	    	catalogFilter = " AND " + databaseColName + " = " + escapeOnlyQuotes(catalog);
+	    	catalogFilter = " AND " + databaseColName + " = " + escapeCatalogLiteral(catalog);
 		  }
     }
     

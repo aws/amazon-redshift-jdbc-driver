@@ -119,16 +119,6 @@ public interface BaseConnection extends RedshiftConnection, Connection {
    * @throws SQLException if the string contains a {@code \0} character
    */
   String escapeString(String str) throws SQLException;
-
-  /**
-   * Escapes only quotes in string for catalog name. The method chooses the
-   * applicable escaping rules based on the value of {@link #getStandardConformingStrings()}.
-   *
-   * @param str a string value
-   * @return the escaped representation of the string
-   * @throws SQLException if the string contains a {@code \0} character
-   */
-  String escapeOnlyQuotesString(String str) throws SQLException;
   
   /**
    * Returns whether the server treats string-literals according to the SQL standard or if it uses
