@@ -1,6 +1,7 @@
 package com.amazon.redshift.plugin;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.regions.Region;
@@ -22,9 +23,10 @@ import java.util.Date;
 /**
  * A basic credential provider class.
  * This plugin class allows clients to directly provide any auth token that is handled by Redshift.
- * It supports two authentication flows:
+ * It supports three authentication flows:
  * 1. Direct token flow: token_type and token parameters
  * 2. Identity-enhanced credentials flow: AccessKeyID, SecretAccessKey, and SessionToken parameters
+ * 3. DefaultCredentialProvider flow: none of credentail is given, fall back to DefaultCredntialProvider
  */
 public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
 
@@ -37,6 +39,28 @@ public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
     private static final String KEY_HOST = "Host";
     private static final String KEY_ENDPOINT_URL = "EndpointUrl";
     private static final String KEY_REGION = "Region";
+
+    /**
+     * Lazy-initialized holder for the shared DefaultCredentialsProvider instance.
+     * Uses the initialization-on-demand holder idiom to avoid building the credential chain
+     * at class-load time. Only triggered when a customer actually uses the default-creds flow.
+     *
+     * Lifecycle: The instance lives for the duration of the JVM. No explicit close() is needed
+     * because the AWS SDK's internal refresh threads (if any) are daemon threads that do not
+     * prevent JVM shutdown or classloader garbage collection.
+     */
+    private static class DefaultCredsHolder {
+        static final DefaultCredentialsProvider INSTANCE =
+            DefaultCredentialsProvider.builder().build();
+    }
+
+    /**
+     * Returns the DefaultCredentialsProvider to use for the default credentials flow.
+     * Protected to allow test subclasses to inject mocks.
+     */
+    protected AwsCredentialsProvider getDefaultCredentialsProvider() {
+        return DefaultCredsHolder.INSTANCE;
+    }
 
     private String token;
     private String token_type;
@@ -77,44 +101,59 @@ public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
     protected NativeTokenHolder getAuthToken() throws IOException {
         checkRequiredParameters();
 
-        if (isUsingIdentityEnhancedCredentials()) {
-            // Identity-enhanced credentials flow: make GetIdentityCenterAuthToken call to get subject token
+        if (isUsingIdentityEnhancedCredentials() || isUsingDefaultCredentials()) {
+            // Identity-enhanced credentials flow: make GetIdentityCenterAuthToken call to get subject token.
+            // When no explicit IAM credentials are provided, DefaultCredentialsProvider is used.
             return getSubjectToken();
-	    } else {
+        } else {
             // Direct token flow: use provided token directly
             Date expiration = new Date(System.currentTimeMillis() + DEFAULT_IDP_TOKEN_EXPIRY_IN_SEC * 1000L);
             return NativeTokenHolder.newInstance(token, expiration);
-	    }
+        }
     }
 
     /**
      * This function will check to ensure that we are using one of the valid sets of parameters for authentication with
-     * IdPTokenAuthPlugin. There are two valid parameter combinations.
+     * IdPTokenAuthPlugin. There are three valid parameter combinations.
      * 1. token and token_type
      * 2. IdC enhanced credentials containing access key, secret access key, and session token
+     * 3. No credential parameters — falls back to the default AWS credential chain (DefaultCredentialsProvider)
      */ 
     private void checkRequiredParameters() throws IOException {
         boolean hasTokenParams = !Utils.isNullOrEmpty(token) && !Utils.isNullOrEmpty(token_type);
         boolean hasIamParams = isUsingIdentityEnhancedCredentials();
+        boolean hasAnyIamParam = !Utils.isNullOrEmpty(accessKeyId) ||
+                !Utils.isNullOrEmpty(secretAccessKey) ||
+                !Utils.isNullOrEmpty(sessionToken);
+        boolean hasAnyTokenParam = !Utils.isNullOrEmpty(token) || !Utils.isNullOrEmpty(token_type);
 
-        if (!hasTokenParams && !hasIamParams) {
-            throw new IOException("IdC authentication failed: Either (token and token_type) or " +
-                    "(AccessKeyID, SecretAccessKey, and SessionToken) must be provided in the connection parameters.");
-        }
-
-        // Do not support both types of parameters at once
-        if (hasTokenParams && hasIamParams) {
+        // Reject conflicting auth methods — any mix of token and IAM params
+        if (hasAnyTokenParam && hasAnyIamParam) {
             throw new IOException("IdC authentication failed: Cannot provide both token parameters " +
                     "(token, token_type) and IAM credential parameters (AccessKeyID, SecretAccessKey, SessionToken) " +
                     "at the same time. Please use only one authentication method.");
-    }
+        }
 
-        if (hasIamParams) {
-            // For identity-enhanced credentials, we need the host URL to extract cluster and region
-            if (Utils.isNullOrEmpty(host)) {
-                throw new IOException("IdC authentication failed: Host URL must be provided " +
+        // Reject partial IAM credentials
+        if (hasAnyIamParam && !hasIamParams) {
+            throw new IOException("IdC authentication failed: Incomplete IAM credentials. " +
+                    "When providing explicit credentials, all three parameters " +
+                    "(AccessKeyID, SecretAccessKey, SessionToken) must be specified together.");
+        }
+
+        // Reject partial token params
+        if (hasAnyTokenParam && !hasTokenParams) {
+            throw new IOException("IdC authentication failed: Incomplete token credentials. " +
+                    "When providing token parameters, both token and token_type must be specified together.");
+        }
+
+        // For credential-based flows (explicit IAM or default chain), require Host.
+        // Reaching here means: hasTokenParams=true (direct token flow, no Host needed),
+        // OR hasIamParams=true (all 3 IAM creds provided), OR neither token nor IAM params
+        // are set (DefaultCredentialsProvider fallback). The latter two need Host.
+        if (!hasTokenParams && Utils.isNullOrEmpty(host)) {
+            throw new IOException("IdC authentication failed: Host URL must be provided " +
                     "to extract cluster identifier and region for identity-enhanced credentials.");
-            }
         }
     }
     
@@ -281,10 +320,21 @@ public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
                     clusterInfo.identifier, clusterInfo.region);
             }
 
-            // Initialize AWS credentials with identity-enhanced credentials
-            AwsSessionCredentials credentials = AwsSessionCredentials.create(
-                accessKeyId, secretAccessKey, sessionToken);
-            AwsCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
+            // Initialize AWS credentials with identity-enhanced credentials or fall back to DefaultCredentialsProvider
+            AwsCredentialsProvider credentialsProvider;
+            if (isUsingIdentityEnhancedCredentials()) {
+                AwsSessionCredentials credentials = AwsSessionCredentials.create(
+                    accessKeyId, secretAccessKey, sessionToken);
+                credentialsProvider = StaticCredentialsProvider.create(credentials);
+                if (RedshiftLogger.isEnable()) {
+                    m_log.logDebug("Using explicit IAM credentials for GetIdentityCenterAuthToken");
+                }
+            } else {
+                credentialsProvider = getDefaultCredentialsProvider();
+                if (RedshiftLogger.isEnable()) {
+                    m_log.logDebug("Using DefaultCredentialsProvider for GetIdentityCenterAuthToken");
+                }
+            }
 
             String subjectToken;
             if (clusterInfo.isServerless) {
@@ -362,10 +412,27 @@ public class IdpTokenAuthPlugin extends CommonCredentialsProvider {
      * access key, secret access key, and session token provided
      * @return true if using identity-enhanced credentials, false if using direct token
      */
+    @Override
     public boolean isUsingIdentityEnhancedCredentials() {
         return !Utils.isNullOrEmpty(accessKeyId) &&
             !Utils.isNullOrEmpty(secretAccessKey) &&
             !Utils.isNullOrEmpty(sessionToken);
+    }
+
+    /**
+     * Check if this plugin should use DefaultCredentialsProvider.
+     * This is the case when plugin_name is IdpTokenAuthPlugin but neither explicit IAM credentials
+     * (AccessKeyID, SecretAccessKey, SessionToken) nor direct token params (token, token_type) are provided.
+     * @return true if DefaultCredentialsProvider should be used
+     */
+    @Override
+    public boolean isUsingDefaultCredentials() {
+        return !isUsingIdentityEnhancedCredentials() &&
+            Utils.isNullOrEmpty(token) &&
+            Utils.isNullOrEmpty(token_type) &&
+            Utils.isNullOrEmpty(accessKeyId) &&
+            Utils.isNullOrEmpty(secretAccessKey) &&
+            Utils.isNullOrEmpty(sessionToken);
     }
 
 }

@@ -187,10 +187,11 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
         settings.m_credentialsProvider.equals(IdpTokenAuthPlugin.class.getName())) {
       
         // Use the plugin's method to check if using identity-enhanced credentials
+        // or DefaultCredentialProvider path
         if (provider instanceof INativePlugin) {
           INativePlugin nativePlugin = (INativePlugin) provider;
-          if (nativePlugin.isUsingIdentityEnhancedCredentials()) {
-            // Identity-enhanced credentials flow
+          if (nativePlugin.isUsingIdentityEnhancedCredentials() || nativePlugin.isUsingDefaultCredentials()) {
+            // Identity-enhanced credentials flow (explicit IAM params or DefaultCredentialsProvider)
             settings.m_pluginArgs.put("token_type", "SUBJECT_TOKEN");
             if (RedshiftLogger.isEnable()){
               log.log(LogLevel.DEBUG, "Set token_type to SUBJECT_TOKEN for identity-enhanced credentials");

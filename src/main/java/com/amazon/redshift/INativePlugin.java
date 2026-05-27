@@ -22,5 +22,14 @@ public interface INativePlugin
     default boolean isUsingIdentityEnhancedCredentials() {
         return false;
     }
+
+    /**
+     * Check if this plugin should use DefaultCredentialsProvider.
+     * Default implementation returns false for backward compatibility.
+     * @return true if DefaultCredentialsProvider should be used, false otherwise
+     */
+    default boolean isUsingDefaultCredentials() {
+        return false;
+    }
 }
 
