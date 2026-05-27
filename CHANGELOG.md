@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.2.7 (2026-05-27)
+----------------------
+- Added support for the default AWS credential provider chain in Identity Enhanced Credentials Authentication
+- Added driver_discovery_version parameter to the startup packet, enabling SHOW SCHEMAS to return pg_catalog in its results
+
+
 v2.2.6 (2026-05-05)
 ----------------------
 - Fixed an issue where the driver used HTTPS instead of HTTP for the proxy endpoint scheme in local proxy connections, which could cause proxy connection failures
