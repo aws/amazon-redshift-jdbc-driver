@@ -85,6 +85,9 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   public static int EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION = 3; // Case sensitivity via COLLATION_INFORMATION
   public static int DEFAULT_SERVER_PROTOCOL_VERSION = EXTENDED2_RESULT_METADATA_SERVER_PROTOCOL_VERSION;
 
+  // Driver discovery version sent to server in startup packet
+  public static int DRIVER_DISCOVERY_VERSION = 1;
+
   private static final String IDP_TYPE_AWS_IDC = "AwsIdc";
   private static final String IDP_TYPE_OKTA = "Okta";
   private static final String IDP_TYPE_AZUREAD = "AzureAD";
@@ -470,6 +473,9 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 	    // Send protocol version as 2, so server can support Binary protocol (v2), send optimized extended RSMD (v1).
 	    String clientProtocolVersion = info.getProperty("client_protocol_version", Integer.toString(DEFAULT_SERVER_PROTOCOL_VERSION)); // Undocumented property to lower the protocol version.
 	    paramList.add(new String[]{"client_protocol_version",clientProtocolVersion}); 
+
+	    // Driver discovery version
+	    paramList.add(new String[]{"driver_discovery_version", String.valueOf(DRIVER_DISCOVERY_VERSION)});
     } // New parameters
     
     // Redshift Native Auth values
