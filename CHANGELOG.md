@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Unreleased
+----------------------
+- Fixed a race where an interrupted wait for the fetch ring-buffer reader could allow another query to start on the same connection before the prior query fully drained
+
+
 v2.2.7 (2026-05-27)
 ----------------------
 - Added support for the default AWS credential provider chain in Identity Enhanced Credentials Authentication
@@ -402,5 +407,4 @@ v2.0.0.0 (2020-11-03)
 - Added link of open issues and close issues. [ilesh Garish]
 - Initial version. [Ilesh Garish]
 - Initial commit. [Amazon GitHub Automation]
-
 
