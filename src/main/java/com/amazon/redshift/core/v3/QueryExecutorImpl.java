@@ -319,6 +319,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
+    throwIfInterrupted();
     
     synchronized(this) {
 	  	waitOnLock();
@@ -531,6 +532,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	// Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
+    throwIfInterrupted();
   	
     synchronized(this) {
 	    waitOnLock();
@@ -2428,6 +2430,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     // Wait for current ring buffer thread to finish, if any.
   	// Shouldn't call from synchronized method, which can cause dead-lock.
     waitForRingBufferThreadToFinish(false, false, false, null, null);
+    throwIfInterrupted();
   	
     synchronized(this) {
 	    waitOnLock();
@@ -2876,16 +2879,17 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   	synchronized(m_ringBufferThreadLock) {
   		try {
 	  		m_executingLock.lock();
-				// Wait for full read of any executing command
-				if(m_ringBufferThread != null)
-				{
-					try
+					// Wait for full read of any executing command
+					Thread activeRingBufferThread = m_ringBufferThread;
+					if(activeRingBufferThread != null)
+					{
+						try
 					{
 						if(calledFromConnectionClose)
 						{
 							// Interrupt the current thread
 							m_ringBufferStopThread = true;
-							m_ringBufferThread.interrupt();
+							activeRingBufferThread.interrupt();
 							return;
 						}
 						else
@@ -2897,7 +2901,7 @@ public class QueryExecutorImpl extends QueryExecutorBase {
 							
 							// Wait for thread associated with result to terminate.
 							if (ringBufferThread != null) {
-								ringBufferThread.join();
+								joinUninterruptibly(ringBufferThread);
 							}
 							
 							if (queueRows != null)
@@ -2909,12 +2913,12 @@ public class QueryExecutorImpl extends QueryExecutorBase {
                             if (queueRows != null)
                                 queueRows.setSkipRows();
 
-                            m_ringBufferThread.join();
+                            joinUninterruptibly(activeRingBufferThread);
                         }
 						else {
 							// Application is trying to execute another SQL on same connection.
 							// Wait for current thread to terminate.
-							m_ringBufferThread.join(); // joinWaitTime
+							joinUninterruptibly(activeRingBufferThread);
 						}
 					}
 					catch(Throwable th)
@@ -2933,7 +2937,34 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   		}
   	}
   }
-  
+
+  private static void joinUninterruptibly(Thread thread) {
+    boolean interrupted = false;
+    try {
+      while (true) {
+        try {
+          thread.join();
+          return;
+        } catch (InterruptedException e) {
+          interrupted = true;
+        }
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private static void throwIfInterrupted() throws RedshiftException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new RedshiftException(
+          GT.tr("Interrupted while waiting to obtain lock on database connection"),
+          RedshiftState.OBJECT_NOT_IN_STATE,
+          new InterruptedException());
+    }
+  }
+
   private final Deque<SimpleQuery> pendingParseQueue = new ArrayDeque<SimpleQuery>();
   private final Deque<Portal> pendingBindQueue = new ArrayDeque<Portal>();
   private final Deque<ExecuteRequest> pendingExecuteQueue = new ArrayDeque<ExecuteRequest>();

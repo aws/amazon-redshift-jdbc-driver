@@ -72,6 +72,10 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
+test {
+    useJUnitPlatform()
+}
+
 processResources {
     filesMatching('redshift_jdbc_driver.properties') {
         expand project.properties
