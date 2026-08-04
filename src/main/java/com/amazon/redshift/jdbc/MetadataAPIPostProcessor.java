@@ -174,7 +174,7 @@ public class MetadataAPIPostProcessor extends MetadataAPIHelper {
             tuple[GetColumns_Metadata.TABLE_NAME.getIndex()] = encodeStr(resultSet.getTableName());
             tuple[GetColumns_Metadata.COLUMN_NAME.getIndex()] = encodeStr(resultSet.getColumnName());
             tuple[GetColumns_Metadata.DATA_TYPE.getIndex()] = encodeStr(sqlType);
-            tuple[GetColumns_Metadata.TYPE_NAME.getIndex()] = encodeStr(rsType);
+            tuple[GetColumns_Metadata.TYPE_NAME.getIndex()] = encodeStr(getColumnTypeName(rsType));
             tuple[GetColumns_Metadata.COLUMN_SIZE.getIndex()] = encodeStr(getColumnSize(
                     rsType,
                     resultSet.getCharacterMaximumLength(),

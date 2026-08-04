@@ -1590,6 +1590,45 @@ public class MetadataAPIHelper {
     rsColumnSizeMap.put("intervald2s", 64);
   }
 
+  /**
+   * Column size reported for a text column when the server provides no
+   * character maximum length. text carries no length modifier; it is reported
+   * as a character type sized at 256, matching the documented Redshift
+   * conversion of TEXT to VARCHAR(256). Once the server types these columns
+   * as character varying(256) directly, this handling acts as defense in
+   * depth for older clusters and may no longer be exercised on new ones.
+   */
+  protected static final int TEXT_COLUMN_SIZE = 256;
+
+  /**
+   * Resolves the effective character maximum length for a text column
+   * @param character_maximum_length The length reported by the server, if any
+   * @return TEXT_COLUMN_SIZE when the server supplies no positive length;
+   *         otherwise the server supplied value unchanged
+   */
+  protected String resolveTextCharMaxLength(String character_maximum_length) {
+    try {
+      if (character_maximum_length == null
+          || Integer.parseInt(character_maximum_length) <= 0) {
+        return Integer.toString(TEXT_COLUMN_SIZE);
+      }
+    } catch (NumberFormatException e) {
+      return Integer.toString(TEXT_COLUMN_SIZE);
+    }
+    return character_maximum_length;
+  }
+
+  /**
+   * Resolves the type name reported for a column
+   * @param rsType The Redshift data type
+   * @return varchar for a text column, since text is represented as a
+   *         character type sized at TEXT_COLUMN_SIZE; otherwise rsType
+   *         unchanged
+   */
+  protected String getColumnTypeName(String rsType) {
+    return "text".equals(rsType) ? "varchar" : rsType;
+  }
+
   // Helper function to get Column size from given Redshift type
   // Copy from existing query
   // character_maximum_length and numeric_precision are returned from Server API SHOW COLUMNS
@@ -1599,6 +1638,8 @@ public class MetadataAPIHelper {
         return toNonNegativeString(numeric_precision);
       case "varchar": case "character varying": case "char": case "character": case "nchar": case "bpchar": case "nvarchar":
         return toNonNegativeString(character_maximum_length);
+      case "text":
+        return resolveTextCharMaxLength(character_maximum_length);
       case "geometry": case "super": case "varbyte": case "geography":
         return null;
       default:
