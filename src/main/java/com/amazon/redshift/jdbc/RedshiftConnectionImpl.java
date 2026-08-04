@@ -158,6 +158,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
   private Integer overrideSchemaPatternType ;
   // Filter out database objects for which the current user has no privileges granted from the DatabaseMetaData
   private boolean  hideUnprivilegedObjects ;
+  // Report detailed server table types (true) or collapse them to TABLE/VIEW (false) in DatabaseMetaData
+  private boolean enableTableTypes = true;
   // Bind String to UNSPECIFIED or VARCHAR?
   private final boolean bindStringAsVarchar;
 
@@ -357,6 +359,8 @@ public class RedshiftConnectionImpl implements BaseConnection {
     this.databaseMetadataCurrentDbOnly = RedshiftProperty.DATABASE_METADATA_CURRENT_DB_ONLY.getBoolean(info);
 
     this.hideUnprivilegedObjects = RedshiftProperty.HIDE_UNPRIVILEGED_OBJECTS.getBoolean(info);
+
+    this.enableTableTypes = RedshiftProperty.ENABLE_TABLE_TYPES.getBoolean(info);
 
     this.overrideSchemaPatternType = RedshiftProperty.OVERRIDE_SCHEMA_PATTERN_TYPE.getInteger(info);
 
@@ -1182,6 +1186,10 @@ public class RedshiftConnectionImpl implements BaseConnection {
 
   public boolean getHideUnprivilegedObjects() {
     return hideUnprivilegedObjects;
+  }
+
+  public boolean getEnableTableTypes() {
+    return enableTableTypes;
   }
 
   /**

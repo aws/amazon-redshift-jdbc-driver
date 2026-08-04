@@ -863,6 +863,48 @@ public class MetadataAPIHelper {
   public static final String SHOW_TABLES_DIST_STYLE = "dist_style";
   public static final String SHOW_TABLES_TABLE_SUBTYPE = "table_subtype";
 
+  // The generalized list of table types reported by getTableTypes() when
+  // EnableTableTypes is disabled, sorted by TABLE_TYPE.
+  private static final String[] GENERALIZED_TABLE_TYPE_LIST = { "TABLE", "VIEW" };
+
+  /**
+   * Returns a fresh copy of the generalized {@code {TABLE, VIEW}} type list
+   * reported by getTableTypes() when EnableTableTypes is disabled. A copy is
+   * returned so callers cannot mutate the shared backing array.
+   *
+   * @return a new array containing the generalized table types
+   */
+  public static String[] getGeneralizedTableTypeList() {
+    return GENERALIZED_TABLE_TYPE_LIST.clone();
+  }
+
+  /**
+   * Collapses a detailed SHOW TABLES table type into the generic TABLE/VIEW
+   * bucket: any value containing TABLE becomes TABLE, any value containing VIEW
+   * becomes VIEW, otherwise the value is returned unchanged. Used when
+   * EnableTableTypes is disabled so that detailed server types (EXTERNAL TABLE,
+   * SYSTEM TABLE, MATERIALIZED VIEW, LOCAL TEMPORARY, ...) map to TABLE or VIEW.
+   *
+   * @param tableType the server-provided table type, may be null
+   * @return the generalized TABLE/VIEW value, or the input unchanged
+   */
+  public static String generalizeTableType(String tableType) {
+    if (tableType == null) {
+      return null;
+    }
+    String upper = tableType.toUpperCase(Locale.ROOT);
+    if (upper.contains("TABLE")) {
+      return "TABLE";
+    } else if (upper.contains("VIEW")) {
+      return "VIEW";
+    } else if (upper.contains("TEMPORARY")) {
+      // LOCAL/GLOBAL TEMPORARY objects are tables.
+      return "TABLE";
+    }
+    // Unknown type: leave it unchanged rather than guessing.
+    return tableType;
+  }
+
   /**
    * Data container for table metadata returned by the SHOW TABLES command.
    *

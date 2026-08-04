@@ -2238,7 +2238,16 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    String[] types = tableTypeClauses.keySet().toArray(new String[0]);
+    String[] types;
+    // Faithful to the SHOW-path-only scope of EnableTableTypes: only collapse
+    // to TABLE/VIEW when the option is disabled AND the cluster uses the
+    // server-side SHOW path. Legacy (pre-V4) clusters keep the full list.
+    if (!connection.getEnableTableTypes()
+        && supportSHOWDiscovery() >= MIN_SHOW_DISCOVERY_VERSION_V4) {
+      types = MetadataAPIHelper.getGeneralizedTableTypeList();
+    } else {
+      types = tableTypeClauses.keySet().toArray(new String[0]);
+    }
     Arrays.sort(types);
 
     Field[] f = new Field[1];

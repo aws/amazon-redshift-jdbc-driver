@@ -266,6 +266,18 @@ public enum RedshiftProperty {
   ENABLE_STATEMENT_CACHE("enablestatementcache",
   							"false",
   							"The Redshift statement cache using SQL as key"),
+
+  /**
+   * Controls the granularity of the TABLE_TYPE values reported by
+   * {@code DatabaseMetaData.getTables} and {@code getTableTypes} on the
+   * server-side SHOW path.
+   * "true" (the default) reports the detailed server table types
+   * (for example EXTERNAL TABLE, SYSTEM TABLE, TEMPORARY VIEW).
+   * "false" collapses every type into the generic TABLE or VIEW buckets.
+   */
+  ENABLE_TABLE_TYPES("enabletabletypes",
+  							"true",
+  							"Report detailed server table types (true) or collapse them to TABLE/VIEW (false) in DatabaseMetaData"),
   
   
   

@@ -100,16 +100,26 @@ public class MetadataAPIPostProcessor extends MetadataAPIHelper {
             typeSet = new HashSet<>(Arrays.asList((types)));
         }
 
+        // When EnableTableTypes is disabled, collapse detailed server types
+        // (EXTERNAL TABLE, SYSTEM TABLE, MATERIALIZED VIEW, ...) to the generic
+        // TABLE/VIEW buckets. Generalize BEFORE the requested-type filter so a
+        // client filtering on "TABLE" still matches external tables, etc.
+        boolean enableTableTypes = connection.getEnableTableTypes();
+
         // Loop through all the ResultSet received from Server API call and apply post-processing to match the JDBC metadata API spec
         for (ShowTablesInfo resultSet : serverResultSets) {
-            if (types == null || typeSet.contains(resultSet.getTableType())) {
+            String tableType = resultSet.getTableType();
+            if (!enableTableTypes) {
+                tableType = generalizeTableType(tableType);
+            }
+            if (types == null || typeSet.contains(tableType)) {
                 byte[][] tuple = getEmptyTuple(GET_TABLES_COLS, GET_TABLES_COLS.length);
 
                 // Apply the post-processing
                 tuple[GetTables_Metadata.TABLE_CAT.getIndex()] = encodeStr(resultSet.getDatabaseName());
                 tuple[GetTables_Metadata.TABLE_SCHEM.getIndex()] = encodeStr(resultSet.getSchemaName());
                 tuple[GetTables_Metadata.TABLE_NAME.getIndex()] = encodeStr(resultSet.getTableName());
-                tuple[GetTables_Metadata.TABLE_TYPE.getIndex()] = encodeStr(resultSet.getTableType());
+                tuple[GetTables_Metadata.TABLE_TYPE.getIndex()] = encodeStr(tableType);
                 tuple[GetTables_Metadata.REMARKS.getIndex()] = encodeStr(resultSet.getRemarks());
                 tuple[GetTables_Metadata.OWNER.getIndex()] = encodeStr(resultSet.getOwner());
                 tuple[GetTables_Metadata.LAST_ALTERED_TIME.getIndex()] = encodeStr(resultSet.getLastAlteredTime());
