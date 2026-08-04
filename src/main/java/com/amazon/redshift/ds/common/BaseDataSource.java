@@ -558,6 +558,22 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   }
 
   /**
+   * @param seconds statement close timeout
+   * @see RedshiftProperty#STATEMENT_CLOSE_TIMEOUT
+   */
+  public void setStatementCloseTimeout(int seconds) {
+    RedshiftProperty.STATEMENT_CLOSE_TIMEOUT.set(properties, seconds);
+  }
+
+  /**
+   * @return statement close timeout
+   * @see RedshiftProperty#STATEMENT_CLOSE_TIMEOUT
+   */
+  public int getStatementCloseTimeout() {
+    return RedshiftProperty.STATEMENT_CLOSE_TIMEOUT.getIntNoCheck(properties);
+  }
+
+  /**
    * @param seconds timeout that is used for sending cancel command
    * @see RedshiftProperty#CANCEL_SIGNAL_TIMEOUT
    */

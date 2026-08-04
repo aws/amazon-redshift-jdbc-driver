@@ -138,8 +138,13 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   private SQLException transactionFailCause;
   
   private boolean enableFetchRingBuffer;
-  
+
   private long fetchRingBufferSize;
+
+  // Timeout in milliseconds applied while waiting for the server to acknowledge a statement close.
+  // A value of 0 (the default) disables the timeout and preserves the legacy behavior of waiting
+  // indefinitely. Derived from the statementCloseTimeout connection property (specified in seconds).
+  private final int statementCloseTimeoutMs;
   
   // Last running ring buffer thread.
   private RingBufferThread m_ringBufferThread = null;
@@ -169,6 +174,10 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     															: 0;
 
     this.enableStatementCache = RedshiftProperty.ENABLE_STATEMENT_CACHE.getBoolean(info);
+    // Convert seconds to milliseconds using long arithmetic to avoid int overflow, then clamp to
+    // Integer.MAX_VALUE so a large configured value still yields a positive (enabled) timeout.
+    long statementCloseTimeoutMsLong = (long) RedshiftProperty.STATEMENT_CLOSE_TIMEOUT.getInt(info) * 1000L;
+    this.statementCloseTimeoutMs = (int) Math.min(statementCloseTimeoutMsLong, Integer.MAX_VALUE);
     this.serverProtocolVersion = 0;
     readStartupMessages();
   }
@@ -1635,30 +1644,70 @@ public class QueryExecutorImpl extends QueryExecutorBase {
   }
 
   public void closeStatementAndPortal() {
-      synchronized(this) {
-	    // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
-	    try {
-			processDeadParsedQueries();
-		    processDeadPortals();
-	//	    sendCloseStatement(null);
-	//	    sendClosePortal("unnamed");
-		    sendFlush();
-		    sendSync(false);
-		    
-		    // Read SYNC response
-		    processSyncOnClose();
-			} catch (IOException e) {
-				// Ignore the error
-		    if (RedshiftLogger.isEnable()) {
-	    		logger.logError(e);
-		    }
-			}	catch (SQLException sqe) {
-				// Ignore the error
-		    if (RedshiftLogger.isEnable()) {
-		  		logger.logError(sqe);
-		    }
-			}
-   	} // synchronized
+    synchronized (this) {
+      // First, send CloseStatements for finalized SimpleQueries that had statement names assigned.
+      try {
+        processDeadParsedQueries();
+        processDeadPortals();
+        sendFlush();
+        sendSync(false);
+
+        if (statementCloseTimeoutMs > 0) {
+          // When statementCloseTimeout is configured, apply a bounded timeout before reading the
+          // Sync response so that statement.close() cannot block indefinitely if the backend is
+          // unresponsive. Restore the original timeout afterward. Opt-in: a value of 0 preserves
+          // the legacy behavior of waiting indefinitely.
+          int oldTimeout = pgStream.getSocket().getSoTimeout();
+          try {
+            pgStream.setNetworkTimeout(statementCloseTimeoutMs);
+            processSyncOnClose();
+          } finally {
+            // Restore the original timeout because SO_TIMEOUT is a connection-wide setting, not
+            // scoped to this close. If we left statementCloseTimeout in place, it would leak onto
+            // every subsequent read on this connection (e.g. query result fetches), effectively
+            // shrinking the user's socketTimeout to the close timeout. Restoring only matters on
+            // the success path — on a timeout we abort() below and the socket is discarded anyway.
+            // Swallow any exception from the restore itself so it
+            // cannot mask an in-flight SocketTimeoutException from processSyncOnClose() — otherwise
+            // the SocketTimeoutException would be replaced, control would fall to catch(IOException),
+            // and abort() would be skipped, leaving a desynced connection reusable.
+            try {
+              pgStream.setNetworkTimeout(oldTimeout);
+            } catch (IOException restoreEx) {
+              if (RedshiftLogger.isEnable()) {
+                logger.logError(restoreEx);
+              }
+            }
+          }
+        } else {
+          processSyncOnClose();
+        }
+      } catch (SocketTimeoutException ste) {
+        if (statementCloseTimeoutMs > 0) {
+          // Our configured statementCloseTimeout fired: the wire protocol is now inconsistent
+          // (Close+Flush+Sync sent, ReadyForQuery never consumed), so abort the connection.
+          if (RedshiftLogger.isEnable()) {
+            logger.log(LogLevel.DEBUG, "Timeout waiting for server response during statement close", ste);
+          }
+          abort();
+        } else {
+          // Legacy path (timeout disabled): a SocketTimeoutException can only originate from a
+          // user-configured socketTimeout. Preserve the historical behavior of logging and
+          // ignoring it rather than aborting the connection.
+          if (RedshiftLogger.isEnable()) {
+            logger.logError(ste);
+          }
+        }
+      } catch (IOException e) {
+        if (RedshiftLogger.isEnable()) {
+          logger.logError(e);
+        }
+      } catch (SQLException sqe) {
+        if (RedshiftLogger.isEnable()) {
+          logger.logError(sqe);
+        }
+      }
+    } // synchronized
   }
   
   private void processDeadParsedQueries() throws IOException {

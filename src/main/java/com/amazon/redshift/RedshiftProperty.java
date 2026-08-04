@@ -679,6 +679,21 @@ public enum RedshiftProperty {
     "The timeout value used for socket read operations."),
 
   /**
+   * The timeout, in whole seconds, applied while waiting for the server to acknowledge a
+   * {@code statement.close()} (the Close/Flush/Sync round-trip). Accepts a non-negative integer;
+   * a value of zero (the default) disables the timeout and preserves the legacy behavior of waiting
+   * indefinitely. When set to a positive value and the server does not respond within that window,
+   * the close returns and the connection is aborted, since the wire protocol is left in an
+   * inconsistent state. The effective value is capped so that seconds*1000 does not exceed
+   * {@link Integer#MAX_VALUE} milliseconds (~24.8 days).
+   */
+  STATEMENT_CLOSE_TIMEOUT(
+    "statementclosetimeout",
+    "0",
+    "The timeout, in whole seconds, used while waiting for the server to acknowledge a statement close. "
+        + "Accepts a non-negative integer; 0 (the default) disables the timeout."),
+
+  /**
    * Control use of SSL: empty or {@code true} values imply {@code sslmode==verify-full}
    */
   SSL(
