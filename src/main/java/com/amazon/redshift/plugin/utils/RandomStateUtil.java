@@ -1,6 +1,6 @@
 package com.amazon.redshift.plugin.utils;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 /**
  * Random state string generating util.
@@ -27,7 +27,7 @@ public class RandomStateUtil
      */
     private static String generateRandomString()
     {
-        Random random = new Random(System.currentTimeMillis());
+        SecureRandom random = new SecureRandom();
         StringBuilder buffer = new StringBuilder(DEFAULT_STATE_STRING_LENGTH);
         for (int i = 0; i < DEFAULT_STATE_STRING_LENGTH; i++)
         {
