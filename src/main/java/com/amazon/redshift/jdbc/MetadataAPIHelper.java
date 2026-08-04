@@ -1567,14 +1567,23 @@ public class MetadataAPIHelper {
   /**
    * Gets the column length for a given Redshift data type
    * @param rsType The Redshift data type
+   * @param character_maximum_length The length for character data type
    * @return The column length as a string, or null if not found
    */
-  protected String getColumnLength(String rsType) {
+  protected String getColumnLength(String rsType, String character_maximum_length) {
     if (rsType == null) {
       return null;
     }
 
     switch (rsType) {
+      case "varchar":
+      case "character varying":
+      case "char":
+      case "character":
+      case "nchar":
+      case "bpchar":
+      case "nvarchar":
+        return toNonNegativeString(character_maximum_length);
       case "bool":
       case "bit":
       case "boolean":

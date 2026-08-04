@@ -625,7 +625,7 @@ public class MetadataAPIPostProcessor extends MetadataAPIHelper {
                         rsType,
                         paramInfo.getCharacterMaximumLength(),
                         paramInfo.getNumericPrecision()));
-                tuple[GetProceduresColumns_Metadata.LENGTH.getIndex()] = encodeStr(getColumnLength(rsType));
+                tuple[GetProceduresColumns_Metadata.LENGTH.getIndex()] = encodeStr(getColumnLength(rsType, paramInfo.getCharacterMaximumLength()));
                 tuple[GetProceduresColumns_Metadata.SCALE.getIndex()] = encodeStr(getDecimalDigit(
                         rsType,
                         paramInfo.getNumericScale(),
@@ -738,7 +738,7 @@ public class MetadataAPIPostProcessor extends MetadataAPIHelper {
                         rsType,
                         paramInfo.getCharacterMaximumLength(),
                         paramInfo.getNumericPrecision()));
-                tuple[GetFunctionsColumns_Metadata.LENGTH.getIndex()] = encodeStr(getColumnLength(rsType));
+                tuple[GetFunctionsColumns_Metadata.LENGTH.getIndex()] = encodeStr(getColumnLength(rsType, paramInfo.getCharacterMaximumLength()));
                 tuple[GetFunctionsColumns_Metadata.SCALE.getIndex()] = encodeStr(getDecimalDigit(
                         rsType,
                         paramInfo.getNumericScale(),
