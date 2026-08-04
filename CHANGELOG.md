@@ -1,6 +1,17 @@
 Changelog
 =========
 
+v2.2.8 (2026-08-05)
+----------------------
+- Added post-quantum hybrid TLS key exchange (X25519MLKEM768) via BouncyCastle, along with the preferPQ connection property (default: true) to control group advertising per connection
+- Added EnableTableTypes connection option to generalize getTableTypes to TABLE / VIEW when disabled 
+- Add opt-in statementCloseTimeout to bound statement.close() 
+- Hardened OAuth 2.0 CSRF protection in BrowserAzureCredentialsProvider by using a cryptographically secure random generator for the state parameter
+- Upgraded jackson-databind to 2.21.4 to address CVE-2026-54513 and CVE-2026-54512 (CVSS 8.1)
+- Fixed getColumns to report TEXT columns as VARCHAR with size 256  
+- Fixed getProcedureColumns and getFunctionColumns returning incorrect column length values
+
+
 v2.2.7 (2026-05-27)
 ----------------------
 - Added support for the default AWS credential provider chain in Identity Enhanced Credentials Authentication
