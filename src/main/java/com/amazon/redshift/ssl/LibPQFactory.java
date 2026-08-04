@@ -61,6 +61,14 @@ public class LibPQFactory extends WrappedFactory {
     KeyManager km;
   boolean defaultfile;
 
+  /**
+   * Trust managers built from the connection properties (sslMode, sslrootcert,
+   * sslTrustStorePath, etc.). Captured after {@code ctx.init()} so they are
+   * reusable by {@link MakeSSL} when routing through the BouncyCastle JSSE
+   * provider for post-quantum support via {@link #getTrustManagers()}.
+   */
+  private TrustManager[] trustManagers;
+
   private CallbackHandler getCallbackHandler(Properties info) throws RedshiftException {
     // Determine the callback handler
     CallbackHandler cbh;
@@ -213,6 +221,10 @@ public class LibPQFactory extends WrappedFactory {
         throw new RedshiftException(GT.tr("Could not initialize SSL context."),
             RedshiftState.CONNECTION_FAILURE, ex);
       }
+
+      // Capture for reuse by the BCJSSE-backed PQ path in MakeSSL. Stored
+      // after ctx.init() so we know they are valid TrustManagers.
+      this.trustManagers = tm;
 
       factory = ctx.getSocketFactory();
     } catch (NoSuchAlgorithmException ex) {
@@ -574,6 +586,34 @@ public class LibPQFactory extends WrappedFactory {
       return getTrustManager(keystore);
   }
   
+
+  /**
+   * Returns the {@link KeyManager} configured from the connection properties
+   * (LazyKeyManager for PEM/PK8, PKCS12KeyManager for P12, or {@code null}
+   * when no client cert is configured), suitable for handing to a fresh
+   * {@link SSLContext}. Package-private; reused by {@link MakeSSL} when
+   * routing through the BouncyCastle JSSE provider for post-quantum
+   * support so that mTLS continues to work.
+   *
+   * @return the configured {@link KeyManager}, or {@code null}
+   */
+  KeyManager getKeyManager() {
+    return km;
+  }
+
+  /**
+   * Returns the {@link TrustManager}s built from the connection properties
+   * (honouring sslMode, sslrootcert, sslTrustStorePath, and the cacerts
+   * fallback chain). Package-private; reused by {@link MakeSSL} when
+   * routing through the BouncyCastle JSSE provider for post-quantum
+   * support so verify-ca / verify-full semantics are preserved.
+   *
+   * @return the configured trust managers (never {@code null} after the
+   *         constructor completes successfully)
+   */
+  TrustManager[] getTrustManagers() {
+    return trustManagers;
+  }
 
   /**
    * A CallbackHandler that reads the password from the console or returns the password given to its

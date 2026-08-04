@@ -75,6 +75,40 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>ssooidc</artifactId>
         </dependency>
+        <!--
+            BouncyCastle: source of post-quantum hybrid TLS groups and ML-KEM
+            primitives. PQ advertising is on by default (preferPQ=true);
+            per-connection opt-out via preferPQ=false.
+
+            All three artifacts are required at runtime when preferPQ=true:
+              - bcprov-jdk18on : BouncyCastle JCE provider (BCPROV)
+              - bctls-jdk18on  : BouncyCastle JSSE provider (BCJSSE)
+              - bcutil-jdk18on : ASN.1 / OID utilities (e.g.
+                                 org.bouncycastle.asn1.oiw.OIWObjectIdentifiers)
+                                 referenced by BCJSSE's TlsUtils. Without it,
+                                 SSLContext.getInstance("TLSv1.3", "BCJSSE")
+                                 throws NoClassDefFoundError on ASN.1 OID
+                                 lookups during context init, the BCJSSE
+                                 swap silently fails, and the connection
+                                 falls back to SunJSSE - which on Java 20-26
+                                 silently drops X25519MLKEM768 from the
+                                 ClientHello supported_groups extension.
+        -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.84</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bctls-jdk18on</artifactId>
+            <version>1.84</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcutil-jdk18on</artifactId>
+            <version>1.84</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>

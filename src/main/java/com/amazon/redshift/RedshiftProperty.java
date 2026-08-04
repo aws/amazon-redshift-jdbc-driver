@@ -732,6 +732,23 @@ public enum RedshiftProperty {
     "The location of the client's PKCS#8 SSL key"),
 
   /**
+   * Controls whether the driver advertises post-quantum hybrid key-exchange
+   * groups (ML-KEM-based) in the TLS 1.3 ClientHello. When {@code true}
+   * (default), PQ groups are offered where the runtime supports them and the
+   * server selects one if it also supports PQ; otherwise the handshake falls
+   * back to classical ECDHE transparently. Set to {@code false} to disable
+   * PQ advertising on a per-connection basis — for example, when a network
+   * middlebox rejects TLS ClientHello messages containing unrecognized
+   * named-group codepoints.
+   */
+  PREFER_PQ(
+    "preferpq",
+    "true",
+    "Advertise post-quantum hybrid TLS key-exchange groups when supported "
+        + "by the runtime. Best-effort: the handshake falls back to classical "
+        + "ECDHE if PQ is unavailable end-to-end."),
+
+  /**
    * Parameter governing the use of SSL. The allowed values are {@code disable}, {@code allow},
    * {@code prefer}, {@code require}, {@code verify-ca}, {@code verify-full}.
    * If {@code ssl} property is empty or set to {@code true} it implies {@code verify-full}.

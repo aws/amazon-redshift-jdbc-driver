@@ -51,6 +51,10 @@ dependencies {
     implementation 'software.amazon.awssdk:secretsmanager'
     implementation 'software.amazon.awssdk:ssooidc'
 
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.84'
+    implementation 'org.bouncycastle:bctls-jdk18on:1.84'
+    implementation 'org.bouncycastle:bcutil-jdk18on:1.84'
+
     compileOnly 'com.ongres.scram:client:2.1'
     compileOnly 'com.github.waffle:waffle-jna:1.9.1', withoutslf4jSupport
     compileOnly 'org.osgi:org.osgi.enterprise:4.2.0'
