@@ -12,7 +12,9 @@ def localBuildVersion = project.hasProperty("buildVersion") ? buildVersion : "2.
 group = 'com.amazon.redshift'
 version = localBuildVersion
 description = 'Redshift JDBC Driver - JDBC 4.2'
-sourceCompatibility = '1.8'
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
 
 repositories {
     flatDir {
@@ -38,7 +40,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'org.jsoup:jsoup:1.16.1'
 
-    implementation platform('software.amazon.awssdk:bom:2.40.5')
+    implementation platform('software.amazon.awssdk:bom:2.49.6')
     implementation 'software.amazon.awssdk:sdk-core'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:profiles'
@@ -50,9 +52,9 @@ dependencies {
     implementation 'software.amazon.awssdk:secretsmanager'
     implementation 'software.amazon.awssdk:ssooidc'
 
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.84'
-    implementation 'org.bouncycastle:bctls-jdk18on:1.84'
-    implementation 'org.bouncycastle:bcutil-jdk18on:1.84'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.85'
+    implementation 'org.bouncycastle:bctls-jdk18on:1.85'
+    implementation 'org.bouncycastle:bcutil-jdk18on:1.85'
 
     compileOnly 'com.ongres.scram:client:2.1'
     compileOnly 'org.osgi:org.osgi.enterprise:4.2.0'
