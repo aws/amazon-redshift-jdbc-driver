@@ -2763,7 +2763,9 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     String value = pgStream.receiveString();
 
     if (RedshiftLogger.isEnable()) {
-      logger.log(LogLevel.DEBUG, " <=BE ParameterStatus({0} = {1})", new Object[]{name, value});
+      // The driver_token value must not reach log files.
+      String loggedValue = "driver_token".equals(name) ? "[REDACTED]" : value;
+      logger.log(LogLevel.DEBUG, " <=BE ParameterStatus({0} = {1})", new Object[]{name, loggedValue});
     }
 
     /* Update client-visible parameter status map for getParameterStatuses() */

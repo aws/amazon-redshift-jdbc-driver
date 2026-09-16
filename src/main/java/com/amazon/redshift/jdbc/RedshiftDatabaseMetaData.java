@@ -36,6 +36,7 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
   // get_column_privileges, get_table_privileges,
   // get_procedures, get_procedure_columns, get_functions, get_function_columns
   private final int MIN_SHOW_DISCOVERY_VERSION_V4 = 4;
+  private final int MIN_SHOW_DISCOVERY_VERSION_V5 = 5;
 
   public RedshiftDatabaseMetaData(RedshiftConnectionImpl conn) throws SQLException {
     this.connection = conn;
@@ -1729,7 +1730,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, types);
     }
-    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+    int showDiscoveryVersion = supportSHOWDiscovery();
+    if (showDiscoveryVersion < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getTablesLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, types);
       if (RedshiftLogger.isEnable()) {
         connection.getLogger().logFunction(false, rs);
@@ -1749,7 +1751,11 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       return metadataAPIPostProcessor.getTablesPostProcessing(null, types);
     }
 
-    rs = metadataAPIPostProcessor.getTablesPostProcessing(metadataServerProxy.getTables(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()), types);
+    if (canUseBatchShow(showDiscoveryVersion)) {
+      rs = metadataAPIPostProcessor.getTablesPostProcessing(metadataServerProxy.getTablesV5(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()), types);
+    } else {
+      rs = metadataAPIPostProcessor.getTablesPostProcessing(metadataServerProxy.getTables(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()), types);
+    }
 
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(false, rs);
@@ -2270,7 +2276,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern, columnNamePattern);
     }
-    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+    int showDiscoveryVersion = supportSHOWDiscovery();
+    if (showDiscoveryVersion < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getColumnsLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern, columnNamePattern);
       if (RedshiftLogger.isEnable()) {
         connection.getLogger().logFunction(false, rs);
@@ -2290,8 +2297,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       return metadataAPIPostProcessor.getColumnsPostProcessing(null);
     }
 
-    rs = metadataAPIPostProcessor.getColumnsPostProcessing(metadataServerProxy.getColumns(catalog, schemaPattern, tableNamePattern,
-            columnNamePattern, isSingleDatabaseMetaData()));
+    if (canUseBatchShow(showDiscoveryVersion)) {
+      rs = metadataAPIPostProcessor.getColumnsPostProcessing(metadataServerProxy.getColumnsV5(catalog, schemaPattern, tableNamePattern,
+              columnNamePattern, isSingleDatabaseMetaData()));
+    } else {
+      rs = metadataAPIPostProcessor.getColumnsPostProcessing(metadataServerProxy.getColumns(catalog, schemaPattern, tableNamePattern,
+              columnNamePattern, isSingleDatabaseMetaData()));
+    }
 
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(false, rs);
@@ -3836,7 +3848,8 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(true, catalog, schemaPattern, tableNamePattern);
     }
-    if (supportSHOWDiscovery() < MIN_SHOW_DISCOVERY_VERSION_V4){
+    int showDiscoveryVersion = supportSHOWDiscovery();
+    if (showDiscoveryVersion < MIN_SHOW_DISCOVERY_VERSION_V4){
       rs = getTablePrivilegesLegacyHardcodedQuery(catalog, schemaPattern, tableNamePattern);
       if (RedshiftLogger.isEnable()) {
         connection.getLogger().logFunction(false, rs);
@@ -3858,8 +3871,13 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       return metadataAPIPostProcessor.getTablePrivilegesPostProcessing(null);
     }
 
-    rs = metadataAPIPostProcessor.getTablePrivilegesPostProcessing(
-            metadataServerProxy.getTablePrivileges(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()));
+    if (canUseBatchShow(showDiscoveryVersion)) {
+      rs = metadataAPIPostProcessor.getTablePrivilegesPostProcessing(
+              metadataServerProxy.getTablePrivilegesV5(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()));
+    } else {
+      rs = metadataAPIPostProcessor.getTablePrivilegesPostProcessing(
+              metadataServerProxy.getTablePrivileges(catalog, schemaPattern, tableNamePattern, isSingleDatabaseMetaData()));
+    }
 
     if (RedshiftLogger.isEnable()) {
       connection.getLogger().logFunction(false, rs);
@@ -5990,6 +6008,34 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     tuple[0] = connection.encodeString(connection.getCatalog());
     v.add(new Tuple(tuple));
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+  }
+
+  /**
+   * Helper function to decide whether the batch SHOW ... FROM DATABASE path (V5) can be used.
+   *
+   * <p>The server must support the batch commands. Beyond that, the driver token only rules the batch path
+   * out when the server sent a token we cannot use: a non-empty value that is not a well-formed UUID would
+   * be sent in a DRIVER_TOKEN clause the server does not recognize, and the batch command would be
+   * rejected. A server that sends no token at all is not gating batch SHOW, so the batch path stays
+   * available and the DRIVER_TOKEN clause is simply omitted. Keeping the decision that way means the batch
+   * path keeps working unchanged if the server later stops issuing tokens.
+   *
+   * @param showDiscoveryVersion the show_discovery version reported by the server
+   * @return true if the batch SHOW path can be used
+   */
+  protected boolean canUseBatchShow(int showDiscoveryVersion) {
+    if (showDiscoveryVersion < MIN_SHOW_DISCOVERY_VERSION_V5) {
+      return false;
+    }
+    if (metadataServerProxy.hasMalformedDriverToken()) {
+      if (RedshiftLogger.isEnable()) {
+        connection.getLogger().logInfo(
+                "driver_token is not a well-formed UUID; falling back to loop-based SHOW commands instead of batch SHOW. "
+                        + "Metadata calls will be slower than expected.");
+      }
+      return false;
+    }
+    return true;
   }
 
   // Helper function to check the show discovery version of current connected cluster

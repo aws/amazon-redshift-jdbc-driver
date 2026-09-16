@@ -1458,8 +1458,19 @@ public class MetadataAPIHelper {
   protected final String SQL_PREP_SHOWPARAMETERSPROCEDURE = "SHOW PARAMETERS OF PROCEDURE ?.?.?";
   protected final String SQL_PREP_SHOWPARAMETERSFUNCTION = "SHOW PARAMETERS OF FUNCTION ?.?.?";
 
+  // Batch SHOW commands at database level (V5+)
+  protected final String SQL_PREP_SHOWTABLES_FROM_DB = "SHOW TABLES FROM DATABASE ?";
+  protected final String SQL_PREP_SHOWCOLUMNS_FROM_DB = "SHOW COLUMNS FROM DATABASE ?";
+  protected final String SQL_PREP_SHOWGRANTS_ON_TABLES_FROM_DB = "SHOW GRANTS ON TABLES FROM DATABASE ?";
+
+  // WHERE clause filter keywords for batch SHOW commands
+  protected static final String FILTER_SCHEMA_NAME = "SCHEMA_NAME";
+  protected static final String FILTER_TABLE_NAME = "TABLE_NAME";
+  protected static final String FILTER_COLUMN_NAME = "COLUMN_NAME";
+  protected static final String SQL_LIKE_PLACEHOLDER = " LIKE ?";
+
   protected final String SQL_SEMICOLON = ";";
-  protected final String SQL_LIKE = " LIKE ?;";
+  protected final String SQL_LIKE = SQL_LIKE_PLACEHOLDER + SQL_SEMICOLON;
 
   //Custom precision from DATETIME/INTERVAL data type
   protected static final String DATETIME_PRECISION_PATTERN = "(time|timetz|timestamp|timestamptz)\\(\\d+\\).*";
@@ -1495,6 +1506,67 @@ public class MetadataAPIHelper {
     map.put("TABLE", DatabaseMetaData.functionColumnResult);
     map.put("RETURN", DatabaseMetaData.functionReturn);
       FUNCTION_COLUMN_TYPE_MAP = Collections.unmodifiableMap(map);
+  }
+
+  /**
+   * The server-generated driver token is a UUID (36 characters). The token is embedded in the SQL as a
+   * string literal because the server grammar does not accept a bind parameter in that position, so any
+   * value that is not a well-formed UUID is rejected rather than concatenated.
+   */
+  private static final Pattern DRIVER_TOKEN_PATTERN = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+
+  /**
+   * Returns the driver token supplied by the server during connection startup, or null if the server
+   * did not send one or sent a value that is not a well-formed UUID.
+   * @return the validated driver token, or null if no usable token is available
+   */
+  protected String getValidatedDriverToken() {
+    String driverToken = connection.getParameterStatus("driver_token");
+    if (!Utils.isNullOrEmpty(driverToken) && DRIVER_TOKEN_PATTERN.matcher(driverToken).matches()) {
+      return driverToken;
+    }
+    return null;
+  }
+
+  /**
+   * Indicates whether the server sent a driver token that we cannot use, that is, a non-empty value that
+   * is not a well-formed UUID.
+   *
+   * <p>A server that sends no token at all is not gating batch SHOW, so the batch commands are still
+   * usable in that case and this returns false. Only a token that is present but malformed indicates the
+   * batch command would be rejected, since the server would compare the clause we send against a token it
+   * does not recognize.
+   *
+   * @return true if the server sent a driver token that failed validation
+   */
+  protected boolean hasMalformedDriverToken() {
+    String driverToken = connection.getParameterStatus("driver_token");
+    return !Utils.isNullOrEmpty(driverToken) && getValidatedDriverToken() == null;
+  }
+
+  /**
+   * Builds a batch SHOW SQL statement with optional WHERE filters and DRIVER_TOKEN clause.
+   * @param baseSql the base SQL (e.g., "SHOW TABLES FROM DATABASE ?")
+   * @param filters list of filter clauses (e.g., "SCHEMA_NAME LIKE ?")
+   * @return the complete SQL string with WHERE clause, DRIVER_TOKEN, and semicolon
+   */
+  protected String buildBatchShowSql(String baseSql, List<String> filters) {
+    if (baseSql == null) {
+      throw new IllegalArgumentException("baseSql must not be null");
+    }
+    StringBuilder sb = new StringBuilder(baseSql);
+    String driverToken = getValidatedDriverToken();
+    if (driverToken != null) {
+      sb.append(" DRIVER_TOKEN '");
+      sb.append(driverToken);
+      sb.append("'");
+    }
+    if (filters != null && !filters.isEmpty()) {
+      sb.append(" WHERE ");
+      sb.append(String.join(" AND ", filters));
+    }
+    sb.append(SQL_SEMICOLON);
+    return sb.toString();
   }
 
   // Create statement for executing query

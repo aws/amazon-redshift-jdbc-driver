@@ -120,6 +120,11 @@ public class QuerySanitizer {
             Pattern.compile(ENCRYPT_KEY_REGEX_STR, Pattern.CASE_INSENSITIVE);
     private static final String ENCRYPT_KEY_REPLACEMENT_REGEX = "$1***";
 
+    private static final String DRIVER_TOKEN_REGEX_STR = "(DRIVER_TOKEN\\s+)'[^']*('+'[^']*)*'";
+    private static final Pattern DRIVER_TOKEN_REGEX =
+            Pattern.compile(DRIVER_TOKEN_REGEX_STR, Pattern.CASE_INSENSITIVE);
+    private static final String DRIVER_TOKEN_REPLACEMENT_REGEX = "$1'***'";
+
     public static String filterCredentials(final String queryText) {
         String sanitizedText = processPassword(queryText);
         sanitizedText = processCreds(sanitizedText);
@@ -131,7 +136,12 @@ public class QuerySanitizer {
         sanitizedText = processSessionToken(sanitizedText);
         sanitizedText = processLingeringSecrets(sanitizedText);
         sanitizedText = processEncryptKey(sanitizedText);
+        sanitizedText = processDriverToken(sanitizedText);
         return sanitizedText;
+    }
+
+    protected static String processDriverToken(final String queryText) {
+        return processQueryText(queryText, DRIVER_TOKEN_REGEX, DRIVER_TOKEN_REPLACEMENT_REGEX);
     }
 
     protected static String processPassword(final String queryText) {

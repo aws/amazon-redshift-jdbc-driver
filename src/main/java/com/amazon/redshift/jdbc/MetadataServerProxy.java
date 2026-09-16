@@ -1149,4 +1149,236 @@ public class MetadataServerProxy extends MetadataAPIHelper {
             throw new RedshiftException("callShowFunctions: " + e.getMessage(), e);
         }
     }
+
+    // ==================== V5 Batch SHOW methods (database-level) ====================
+
+    /**
+     * A match-all pattern — a non-empty run of only {@code '%'} wildcards ({@code "%"},
+     * {@code "%%"}, {@code "%%%"}, …) — is semantically equivalent to no filter: it matches every
+     * row. Normalizing such a pattern to {@code null} lets the existing null/empty guards omit the
+     * redundant {@code LIKE} clause. Correctness-neutral — the returned rows are unchanged. An
+     * escaped literal percent (e.g. {@code "\%"}) contains a non-{@code '%'} char and is left
+     * intact, since it is a real filter.
+     */
+    private static String normalizeMatchAllPattern(String pattern) {
+        if (pattern == null || pattern.isEmpty()) {
+            return pattern;
+        }
+        for (int i = 0; i < pattern.length(); i++) {
+            if (pattern.charAt(i) != '%') {
+                return pattern;
+            }
+        }
+        return null;  // all '%' -> match-all no-op
+    }
+
+    /**
+     * Returns a list of intermediate result set for SHOW GRANTS ON TABLES FROM DATABASE (V5).
+     * Replaces the nested loop of SHOW SCHEMAS + SHOW TABLES + SHOW GRANTS per table
+     * with a single call per database.
+     */
+    protected List<ShowGrantsInfo> getTablePrivilegesV5(String catalog, String schemaPattern, String tableNamePattern,
+                                                        boolean isSingleDatabaseMetaData) throws SQLException {
+        // Drop redundant match-all ("%") filters — semantically equivalent to no filter.
+        schemaPattern = normalizeMatchAllPattern(schemaPattern);
+        tableNamePattern = normalizeMatchAllPattern(tableNamePattern);
+        List<ShowGrantsInfo> intermediateRs = new ArrayList<>();
+
+        try {
+            List<String> catalogList = fetchCatalogNames(catalog, isSingleDatabaseMetaData);
+
+            for (String curCat : catalogList) {
+                List<String> filters = new ArrayList<>();
+                if (!Utils.isNullOrEmpty(schemaPattern)) {
+                    filters.add(FILTER_SCHEMA_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+                if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                    filters.add(FILTER_TABLE_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+
+                String sql = buildBatchShowSql(SQL_PREP_SHOWGRANTS_ON_TABLES_FROM_DB, filters);
+
+                try (PreparedStatement stmt = createMetaDataPreparedStatement(sql)) {
+                    int paramIndex = 1;
+                    stmt.setString(paramIndex++, curCat);
+                    if (!Utils.isNullOrEmpty(schemaPattern)) {
+                        stmt.setString(paramIndex++, schemaPattern);
+                    }
+                    if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                        stmt.setString(paramIndex++, tableNamePattern);
+                    }
+
+                    stmt.execute();
+                    try (ResultSet rs = stmt.getResultSet()) {
+                        while (rs.next()) {
+                            intermediateRs.add(new ShowGrantsInfo(
+                                    rs.getString(SHOW_GRANT_DATABASE_NAME),
+                                    rs.getString(SHOW_GRANT_SCHEMA_NAME),
+                                    rs.getString(SHOW_GRANT_OBJECT_NAME),
+                                    null,
+                                    null,
+                                    rs.getString(SHOW_GRANT_GRANTOR),
+                                    rs.getString(SHOW_GRANT_IDENTITY_NAME),
+                                    rs.getString(SHOW_GRANT_PRIVILEGE_TYPE),
+                                    rs.getBoolean(SHOW_GRANT_ADMIN_OPTION)
+                            ));
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RedshiftException("MetadataServerProxy.getTablePrivilegesV5: " + e.getMessage(), e);
+        }
+
+        if (RedshiftLogger.isEnable()) {
+            connection.getLogger().logDebug("V5 batch SHOW GRANTS ON TABLES FROM DATABASE for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}",
+                    catalog, schemaPattern, tableNamePattern);
+        }
+        return intermediateRs;
+    }
+
+    /**
+     * Returns a list of intermediate result set for SHOW COLUMNS FROM DATABASE (V5).
+     * Replaces the nested loop of SHOW SCHEMAS + SHOW TABLES + SHOW COLUMNS per table
+     * with a single call per database.
+     */
+    protected List<ShowColumnsInfo> getColumnsV5(String catalog, String schemaPattern, String tableNamePattern,
+                                                 String columnNamePattern, boolean isSingleDatabaseMetaData) throws SQLException {
+        // Drop redundant match-all ("%") filters — semantically equivalent to no filter.
+        schemaPattern = normalizeMatchAllPattern(schemaPattern);
+        tableNamePattern = normalizeMatchAllPattern(tableNamePattern);
+        columnNamePattern = normalizeMatchAllPattern(columnNamePattern);
+        List<ShowColumnsInfo> intermediateRs = new ArrayList<>();
+
+        try {
+            List<String> catalogList = fetchCatalogNames(catalog, isSingleDatabaseMetaData);
+
+            for (String curCat : catalogList) {
+                List<String> filters = new ArrayList<>();
+                if (!Utils.isNullOrEmpty(schemaPattern)) {
+                    filters.add(FILTER_SCHEMA_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+                if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                    filters.add(FILTER_TABLE_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+                if (!Utils.isNullOrEmpty(columnNamePattern)) {
+                    filters.add(FILTER_COLUMN_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+
+                String sql = buildBatchShowSql(SQL_PREP_SHOWCOLUMNS_FROM_DB, filters);
+
+                try (PreparedStatement stmt = createMetaDataPreparedStatement(sql)) {
+                    int paramIndex = 1;
+                    stmt.setString(paramIndex++, curCat);
+                    if (!Utils.isNullOrEmpty(schemaPattern)) {
+                        stmt.setString(paramIndex++, schemaPattern);
+                    }
+                    if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                        stmt.setString(paramIndex++, tableNamePattern);
+                    }
+                    if (!Utils.isNullOrEmpty(columnNamePattern)) {
+                        stmt.setString(paramIndex++, columnNamePattern);
+                    }
+
+                    stmt.execute();
+                    try (ResultSet rs = stmt.getResultSet()) {
+                        while (rs.next()) {
+                            intermediateRs.add(new ShowColumnsInfo(
+                                    rs.getString(SHOW_COLUMNS_DATABASE_NAME),
+                                    rs.getString(SHOW_COLUMNS_SCHEMA_NAME),
+                                    rs.getString(SHOW_COLUMNS_TABLE_NAME),
+                                    rs.getString(SHOW_COLUMNS_COLUMN_NAME),
+                                    rs.getString(SHOW_COLUMNS_ORDINAL_POSITION),
+                                    rs.getString(SHOW_COLUMNS_COLUMN_DEFAULT),
+                                    rs.getString(SHOW_COLUMNS_IS_NULLABLE),
+                                    rs.getString(SHOW_COLUMNS_DATA_TYPE),
+                                    rs.getString(SHOW_COLUMNS_CHARACTER_MAXIMUM_LENGTH),
+                                    rs.getString(SHOW_COLUMNS_NUMERIC_PRECISION),
+                                    rs.getString(SHOW_COLUMNS_NUMERIC_SCALE),
+                                    rs.getString(SHOW_COLUMNS_REMARKS),
+                                    rs.getString(SHOW_COLUMNS_SORT_KEY_TYPE),
+                                    rs.getString(SHOW_COLUMNS_SORT_KEY),
+                                    rs.getString(SHOW_COLUMNS_DIST_KEY),
+                                    rs.getString(SHOW_COLUMNS_ENCODING),
+                                    rs.getString(SHOW_COLUMNS_COLLATION)
+                            ));
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RedshiftException("MetadataServerProxy.getColumnsV5: " + e.getMessage(), e);
+        }
+
+        if (RedshiftLogger.isEnable()) {
+            connection.getLogger().logDebug("V5 batch SHOW COLUMNS FROM DATABASE for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}, columnNamePattern = {3}",
+                    catalog, schemaPattern, tableNamePattern, columnNamePattern);
+        }
+        return intermediateRs;
+    }
+
+    /**
+     * Returns a list of intermediate result set for SHOW TABLES FROM DATABASE (V5).
+     * Replaces the nested loop of SHOW SCHEMAS + SHOW TABLES per schema with a single call per database.
+     */
+    protected List<ShowTablesInfo> getTablesV5(String catalog, String schemaPattern, String tableNamePattern,
+                                               boolean isSingleDatabaseMetaData) throws SQLException {
+        // Drop redundant match-all ("%") filters — semantically equivalent to no filter.
+        schemaPattern = normalizeMatchAllPattern(schemaPattern);
+        tableNamePattern = normalizeMatchAllPattern(tableNamePattern);
+        List<ShowTablesInfo> intermediateRs = new ArrayList<>();
+
+        try {
+            List<String> catalogList = fetchCatalogNames(catalog, isSingleDatabaseMetaData);
+
+            for (String curCat : catalogList) {
+                List<String> filters = new ArrayList<>();
+                if (!Utils.isNullOrEmpty(schemaPattern)) {
+                    filters.add(FILTER_SCHEMA_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+                if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                    filters.add(FILTER_TABLE_NAME + SQL_LIKE_PLACEHOLDER);
+                }
+
+                String sql = buildBatchShowSql(SQL_PREP_SHOWTABLES_FROM_DB, filters);
+
+                try (PreparedStatement stmt = createMetaDataPreparedStatement(sql)) {
+                    int paramIndex = 1;
+                    stmt.setString(paramIndex++, curCat);
+                    if (!Utils.isNullOrEmpty(schemaPattern)) {
+                        stmt.setString(paramIndex++, schemaPattern);
+                    }
+                    if (!Utils.isNullOrEmpty(tableNamePattern)) {
+                        stmt.setString(paramIndex++, tableNamePattern);
+                    }
+
+                    stmt.execute();
+                    try (ResultSet rs = stmt.getResultSet()) {
+                        while (rs.next()) {
+                            intermediateRs.add(new ShowTablesInfo(
+                                    rs.getString(SHOW_TABLES_DATABASE_NAME),
+                                    rs.getString(SHOW_TABLES_SCHEMA_NAME),
+                                    rs.getString(SHOW_TABLES_TABLE_NAME),
+                                    rs.getString(SHOW_TABLES_TABLE_TYPE),
+                                    rs.getString(SHOW_TABLES_REMARKS),
+                                    rs.getString(SHOW_TABLES_OWNER),
+                                    rs.getString(SHOW_TABLES_LAST_ALTERED_TIME),
+                                    rs.getString(SHOW_TABLES_LAST_MODIFIED_TIME),
+                                    rs.getString(SHOW_TABLES_DIST_STYLE),
+                                    rs.getString(SHOW_TABLES_TABLE_SUBTYPE)
+                            ));
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RedshiftException("MetadataServerProxy.getTablesV5: " + e.getMessage(), e);
+        }
+
+        if (RedshiftLogger.isEnable()) {
+            connection.getLogger().logDebug("V5 batch SHOW TABLES FROM DATABASE for catalog = {0}, schemaPattern = {1}, tableNamePattern = {2}",
+                    catalog, schemaPattern, tableNamePattern);
+        }
+        return intermediateRs;
+    }
 }
