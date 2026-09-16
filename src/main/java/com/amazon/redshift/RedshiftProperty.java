@@ -316,21 +316,6 @@ public enum RedshiftProperty {
     "Specifies the maximum number warning objects allowed to be kept in memory per connection, statement, and result set. (\"-1\" being unlimited)"),
 
     /**
-   * Force one of
-   * <ul>
-   * <li>SSPI (Windows transparent single-sign-on)</li>
-   * <li>GSSAPI (Kerberos, via JSSE)</li>
-   * </ul>
-   * to be used when the server requests Kerberos or SSPI authentication.
-   */
-  GSS_LIB(
-    "gsslib",
-    "auto",
-    "Force SSSPI or GSSAPI",
-    false,
-    new String[] {"auto", "sspi", "gssapi"}),
-
-  /**
    * Enable mode to filter out the names of database objects for which the current user has no privileges
    * granted from appearing in the DatabaseMetaData returned by the driver.
    */
@@ -359,33 +344,6 @@ public enum RedshiftProperty {
   					null,
   					"The JDBC INI file section name."),
   
-  /**
-   * Specifies the name of the JAAS system or application login configuration.
-   */
-  JAAS_APPLICATION_NAME(
-    "jaasapplicationname",
-    null,
-    "Specifies the name of the JAAS system or application login configuration."),
-
-  /**
-   * Flag to enable/disable obtaining a GSS credential via JAAS login before authenticating.
-   * Useful if setting system property javax.security.auth.useSubjectCredsOnly=false
-   * or using native GSS with system property sun.security.jgss.native=true
-   */
-  JAAS_LOGIN(
-    "jaaslogin",
-    "true",
-    "Login with JAAS before doing GSSAPI authentication"),
-
-  /**
-   * The Kerberos service name to use when authenticating with GSSAPI. This is equivalent to libpq's
-   * PGKRBSRVNAME environment variable.
-   */
-  KERBEROS_SERVER_NAME(
-    "kerberosservername",
-    null,
-    "The Kerberos service name to use when authenticating with GSSAPI."),
-
   LOAD_BALANCE_HOSTS(
     "loadbalancehosts",
     "false",
@@ -831,15 +789,6 @@ public enum RedshiftProperty {
     "The SSL Truststore password key."),
   
   /**
-   * Specifies the name of the SSPI service class that forms the service class part of the SPN. The
-   * default, {@code REDSHIFT}, is almost always correct.
-   */
-  SSPI_SERVICE_CLASS(
-    "sspiserviceclass",
-    "REDSHIFT",
-    "The Windows SSPI service class for SPN"),
-
-  /**
    * Bind String to either {@code unspecified} or {@code varchar}. Default is {@code varchar} for
    * 8.0+ backends.
    */
@@ -890,14 +839,6 @@ public enum RedshiftProperty {
     null,
     "Username to connect to the database as.",
     true),
-  
-  /**
-   * Use SPNEGO in SSPI authentication requests.
-   */
-  USE_SPNEGO(
-    "usespnego",
-    "false",
-    "Use SPNEGO in SSPI authentication requests"),
   
   // IAM properties
   /**

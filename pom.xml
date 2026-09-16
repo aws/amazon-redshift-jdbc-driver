@@ -32,7 +32,6 @@
         <skip.assembly>false</skip.assembly>
 
         <maven.shade.plugin.version>3.5.1</maven.shade.plugin.version>
-        <waffle-jna.version>1.9.1</waffle-jna.version>
         <checkstyle.version>8.29</checkstyle.version>
         <jackson.version>2.21.4</jackson.version>
         <jackson.annotations.version>2.21</jackson.annotations.version>
@@ -242,33 +241,6 @@
             </build>
         </profile>
         <profile>
-            <id>excludeWaffleFiles</id>
-            <activation>
-                <property>
-                    <name>waffleEnabled</name>
-                    <value>false</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration>
-                            <excludes combine.children="append">
-                                <exclude>com/amazon/redshift/sspi/NTDSAPI.java</exclude>
-                                <exclude>com/amazon/redshift/sspi/NTDSAPIWrapper.java</exclude>
-                                <exclude>com/amazon/redshift/sspi/SSPIClient.java</exclude>
-                            </excludes>
-                            <testExcludes>
-                                <exclude>com/amazon/redshift/test/sspi/*.java</exclude>
-                            </testExcludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>excludeOsgiFiles</id>
             <activation>
                 <property>
@@ -301,27 +273,6 @@
                 </plugins>
             </build>
         </profile>
-        <profile>
-            <id>waffle-deps</id>
-            <activation>
-                <property>
-                    <name>waffleEnabled</name>
-                    <value>!false</value>
-                </property>
-            </activation>
-            <properties>
-                <waffleEnabled>true</waffleEnabled>
-            </properties>
-            <dependencies>
-                <dependency>
-                    <groupId>com.github.waffle</groupId>
-                    <artifactId>waffle-jna</artifactId>
-                    <scope>compile</scope>
-                    <optional>true</optional>
-                </dependency>
-            </dependencies>
-        </profile>
-
         <profile>
             <id>osgi-deps</id>
             <activation>
@@ -890,37 +841,6 @@
                 <artifactId>classloader-leak-test-framework</artifactId>
                 <version>1.1.1</version>
                 <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.github.waffle</groupId>
-                <artifactId>waffle-jna</artifactId>
-                <version>${waffle-jna.version}</version>
-                <!--
-                 We want to force most of Waffle's transitive dependencies to runtime
-                 dependencies so we can't accidentally depend on their contents at
-                 compile time. So exclude them from the compile dependencies, then
-                 declare another runtime dependency on waffle-jna without these
-                 exclusions later.
-                -->
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.guava</groupId>
-                        <artifactId>guava</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-simple</artifactId>
-                    </exclusion>
-                </exclusions>
-                <!--
-                 Note that we do NOT exclude net.java.dev.jna:jna or
-                 net.java.dev.jna:jna-platform since we intentionally use the one
-                 Waffle exposes.
-                -->
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>

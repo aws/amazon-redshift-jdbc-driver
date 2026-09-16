@@ -1018,100 +1018,122 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
     RedshiftProperty.ASSUME_MIN_SERVER_VERSION.set(properties, minVersion);
   }
 
+  /*
+   * The accessors below configured PostgreSQL wire-protocol GSSAPI / SSPI / JAAS
+   * authentication, which Redshift does not support and which the driver no
+   * longer implements. They are retained, deprecated and inert, so that existing
+   * DataSource configurations (including bean containers that resolve setters
+   * reflectively by name, e.g. Spring XML or Tomcat JNDI resources) keep working
+   * instead of failing at startup. Setters have no effect and getters report the
+   * historical defaults.
+   */
+
   /**
    * @return JAAS application name
-   * @see RedshiftProperty#JAAS_APPLICATION_NAME
+   * @deprecated GSSAPI/JAAS authentication is not supported. Has no effect.
    */
+  @Deprecated
   public String getJaasApplicationName() {
-    return RedshiftProperty.JAAS_APPLICATION_NAME.get(properties);
+    return null;
   }
 
   /**
    * @param name JAAS application name
-   * @see RedshiftProperty#JAAS_APPLICATION_NAME
+   * @deprecated GSSAPI/JAAS authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setJaasApplicationName(String name) {
-    RedshiftProperty.JAAS_APPLICATION_NAME.set(properties, name);
+    // no-op: JAAS authentication is not supported
   }
 
   /**
    * @return true if perform JAAS login before GSS authentication
-   * @see RedshiftProperty#JAAS_LOGIN
+   * @deprecated GSSAPI/JAAS authentication is not supported. Has no effect.
    */
+  @Deprecated
   public boolean getJaasLogin() {
-    return RedshiftProperty.JAAS_LOGIN.getBoolean(properties);
+    return true;
   }
 
   /**
    * @param doLogin true if perform JAAS login before GSS authentication
-   * @see RedshiftProperty#JAAS_LOGIN
+   * @deprecated GSSAPI/JAAS authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setJaasLogin(boolean doLogin) {
-    RedshiftProperty.JAAS_LOGIN.set(properties, doLogin);
+    // no-op: JAAS authentication is not supported
   }
 
   /**
    * @return Kerberos server name
-   * @see RedshiftProperty#KERBEROS_SERVER_NAME
+   * @deprecated GSSAPI/Kerberos wire authentication is not supported. Has no effect.
    */
+  @Deprecated
   public String getKerberosServerName() {
-    return RedshiftProperty.KERBEROS_SERVER_NAME.get(properties);
+    return null;
   }
 
   /**
    * @param serverName Kerberos server name
-   * @see RedshiftProperty#KERBEROS_SERVER_NAME
+   * @deprecated GSSAPI/Kerberos wire authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setKerberosServerName(String serverName) {
-    RedshiftProperty.KERBEROS_SERVER_NAME.set(properties, serverName);
+    // no-op: GSSAPI/Kerberos wire authentication is not supported
   }
 
   /**
    * @return true if use SPNEGO
-   * @see RedshiftProperty#USE_SPNEGO
+   * @deprecated SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public boolean getUseSpNego() {
-    return RedshiftProperty.USE_SPNEGO.getBoolean(properties);
+    return false;
   }
 
   /**
    * @param use true if use SPNEGO
-   * @see RedshiftProperty#USE_SPNEGO
+   * @deprecated SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setUseSpNego(boolean use) {
-    RedshiftProperty.USE_SPNEGO.set(properties, use);
+    // no-op: SSPI authentication is not supported
   }
 
   /**
    * @return GSS mode: auto, sspi, or gssapi
-   * @see RedshiftProperty#GSS_LIB
+   * @deprecated GSSAPI/SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public String getGssLib() {
-    return RedshiftProperty.GSS_LIB.get(properties);
+    return "auto";
   }
 
   /**
    * @param lib GSS mode: auto, sspi, or gssapi
-   * @see RedshiftProperty#GSS_LIB
+   * @deprecated GSSAPI/SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setGssLib(String lib) {
-    RedshiftProperty.GSS_LIB.set(properties, lib);
+    // no-op: GSSAPI/SSPI authentication is not supported
   }
 
   /**
    * @return SSPI service class
-   * @see RedshiftProperty#SSPI_SERVICE_CLASS
+   * @deprecated SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public String getSspiServiceClass() {
-    return RedshiftProperty.SSPI_SERVICE_CLASS.get(properties);
+    return "REDSHIFT";
   }
 
   /**
    * @param serviceClass SSPI service class
-   * @see RedshiftProperty#SSPI_SERVICE_CLASS
+   * @deprecated SSPI authentication is not supported. Has no effect.
    */
+  @Deprecated
   public void setSspiServiceClass(String serviceClass) {
-    RedshiftProperty.SSPI_SERVICE_CLASS.set(properties, serviceClass);
+    // no-op: SSPI authentication is not supported
   }
 
   /**

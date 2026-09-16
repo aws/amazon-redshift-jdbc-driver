@@ -25,7 +25,6 @@ import com.amazon.redshift.hostchooser.HostStatus;
 import com.amazon.redshift.jdbc.SslMode;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
-import com.amazon.redshift.sspi.ISSPIClient;
 import com.amazon.redshift.util.DriverInfo;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.HostSpec;
@@ -65,9 +64,12 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
   private static final int AUTH_REQ_CRYPT = 4;
   private static final int AUTH_REQ_MD5 = 5;
   private static final int AUTH_REQ_SCM = 6;
-  private static final int AUTH_REQ_GSS = 7;
-  private static final int AUTH_REQ_GSS_CONTINUE = 8;
-  private static final int AUTH_REQ_SSPI = 9;
+  /*
+   * Request types 7, 8 and 9 (GSSAPI / GSSAPI continue / SSPI in the upstream
+   * PostgreSQL protocol) are not supported. Redshift never requests them, so
+   * they intentionally have no handler and fall through to the default case in
+   * doAuthentication(), which rejects the connection.
+   */
   private static final int AUTH_REQ_SASL = 10;
   private static final int AUTH_REQ_SASL_CONTINUE = 11;
   private static final int AUTH_REQ_SASL_FINAL = 12;
@@ -94,21 +96,6 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 
   private static final String TOKEN_TYPE_ACCESS_TOKEN = "ACCESS_TOKEN";
   
-  private ISSPIClient createSSPI(RedshiftStream pgStream,
-      String spnServiceClass,
-      boolean enableNegotiate) {
-    try {
-      @SuppressWarnings("unchecked")
-      Class<ISSPIClient> c = (Class<ISSPIClient>) Class.forName("com.amazon.redshift.sspi.SSPIClient");
-      return c.getDeclaredConstructor(RedshiftStream.class, String.class, boolean.class)
-          .newInstance(pgStream, spnServiceClass, enableNegotiate);
-    } catch (Exception e) {
-      // This catched quite a lot exceptions, but until Java 7 there is no ReflectiveOperationException
-      throw new IllegalStateException("Unable to load com.amazon.redshift.sspi.SSPIClient."
-          + " Please check that SSPIClient is included in your pgjdbc distribution.", e);
-    }
-  }
-
   private RedshiftStream tryConnect(String user, String database,
       Properties info, SocketFactory socketFactory, HostSpec hostSpec,
       SslMode sslMode)
@@ -680,289 +667,201 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
       password = RedshiftProperty.PWD.get(info);
     }
 
-    /* SSPI negotiation state, if used */
-    ISSPIClient sspiClient = null;
-
     //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
     /* SCRAM authentication state, if used */
     //com.amazon.redshift.jre7.sasl.ScramAuthenticator scramAuthenticator =
     // null;
     //JCP! endif
 
-    try {
-      authloop: while (true) {
-        int beresp = pgStream.receiveChar();
+    authloop: while (true) {
+      int beresp = pgStream.receiveChar();
 
-        switch (beresp) {
-          case 'E':
-            // An error occurred, so pass the error message to the
-            // user.
-            //
-            // The most common one to be thrown here is:
-            // "User authentication failed"
-            //
-            int elen = pgStream.receiveInteger4();
+      switch (beresp) {
+        case 'E':
+          // An error occurred, so pass the error message to the
+          // user.
+          //
+          // The most common one to be thrown here is:
+          // "User authentication failed"
+          //
+          int elen = pgStream.receiveInteger4();
 
-            ServerErrorMessage errorMsg =
-                new ServerErrorMessage(pgStream.receiveErrorString(elen - 4));
+          ServerErrorMessage errorMsg =
+              new ServerErrorMessage(pgStream.receiveErrorString(elen - 4));
+          
+          if(RedshiftLogger.isEnable())
+          	logger.log(LogLevel.DEBUG, " <=BE ErrorMessage({0})", errorMsg);
+          throw new RedshiftException(errorMsg, RedshiftProperty.LOG_SERVER_ERROR_DETAIL.getBoolean(info));
+
+        case 'R':
+          // Authentication request.
+          // Get the message length
+          int msgLen = pgStream.receiveInteger4();
+
+          // Get the type of request
+          int areq = pgStream.receiveInteger4();
+
+          // Process the request.
+          switch (areq) {
+            case AUTH_REQ_MD5: {
+              byte[] md5Salt = pgStream.receive(4);
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqMD5");
+              }
+
+              if (password == null) {
+                throw new RedshiftException(
+                    GT.tr(
+                        "The server requested password-based authentication, but no password was provided."),
+                    RedshiftState.CONNECTION_REJECTED);
+              }
+
+              byte[] digest =
+                  MD5Digest.encode(user.getBytes("UTF-8"), password.getBytes("UTF-8"), md5Salt);
+
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " FE=> Password(md5digest)");
+              }
+              
+              pgStream.sendChar('p');
+              pgStream.sendInteger4(4 + digest.length + 1);
+              pgStream.send(digest);
+              pgStream.sendChar(0);
+              pgStream.flush();
+
+              break;
+            }
+
+            case AUTH_REQ_DIGEST: {
+            	// Extensible user password hashing algorithm constant value 
+              int algo = pgStream.receiveInteger4();
+              String[] algoNames = { "SHA-256" };
+            	
+              int saltLen = pgStream.receiveInteger4();
+              byte[] salt = pgStream.receive(saltLen);
+              int serverNonceLen = pgStream.receiveInteger4();
+              byte[] serverNonce = pgStream.receive(serverNonceLen);
+              
+              String dateTimeString = Long.toString(new Date().getTime());
+              byte[] clientNonce = dateTimeString.getBytes();                
+              
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqDigest: Algo:" + algo);
+              }
+              
+
+              if (password == null) {
+                throw new RedshiftException(
+                    GT.tr(
+                        "The server requested password-based authentication, but no password was provided."),
+                    RedshiftState.CONNECTION_REJECTED);
+              }
+
+              if (algo > algoNames.length) {
+                throw new RedshiftException(
+                    GT.tr(
+                        "The server requested password-based authentication, but requested algorithm " + algo + " is not supported."),
+                    RedshiftState.CONNECTION_REJECTED);
+              }
+              
+              byte[] digest =
+                  ExtensibleDigest.encode(clientNonce, 
+                  								password.getBytes("UTF-8"), 
+                  								salt,
+                  								algoNames[algo],
+                  								serverNonce);
+
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " FE=> Password(extensible digest)");
+              }
+              
+              pgStream.sendChar('d');
+              pgStream.sendInteger4(4 + 4 + digest.length + 4 + clientNonce.length);
+              pgStream.sendInteger4(digest.length);
+              pgStream.send(digest);
+              pgStream.sendInteger4(clientNonce.length);
+              pgStream.send(clientNonce);
+              pgStream.flush();
+
+              break;
+            }
             
-            if(RedshiftLogger.isEnable())
-            	logger.log(LogLevel.DEBUG, " <=BE ErrorMessage({0})", errorMsg);
-            throw new RedshiftException(errorMsg, RedshiftProperty.LOG_SERVER_ERROR_DETAIL.getBoolean(info));
+            case AUTH_REQ_IDP: {
+              String idpToken = RedshiftProperty.WEB_IDENTITY_TOKEN.get(info);
 
-          case 'R':
-            // Authentication request.
-            // Get the message length
-            int msgLen = pgStream.receiveInteger4();
-
-            // Get the type of request
-            int areq = pgStream.receiveInteger4();
-
-            // Process the request.
-            switch (areq) {
-              case AUTH_REQ_MD5: {
-                byte[] md5Salt = pgStream.receive(4);
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqMD5");
-                }
-
-                if (password == null) {
-                  throw new RedshiftException(
-                      GT.tr(
-                          "The server requested password-based authentication, but no password was provided."),
-                      RedshiftState.CONNECTION_REJECTED);
-                }
-
-                byte[] digest =
-                    MD5Digest.encode(user.getBytes("UTF-8"), password.getBytes("UTF-8"), md5Salt);
-
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " FE=> Password(md5digest)");
-                }
-                
-                pgStream.sendChar('p');
-                pgStream.sendInteger4(4 + digest.length + 1);
-                pgStream.send(digest);
-                pgStream.sendChar(0);
-                pgStream.flush();
-
-                break;
-              }
-
-              case AUTH_REQ_DIGEST: {
-              	// Extensible user password hashing algorithm constant value 
-                int algo = pgStream.receiveInteger4();
-                String[] algoNames = { "SHA-256" };
-              	
-                int saltLen = pgStream.receiveInteger4();
-                byte[] salt = pgStream.receive(saltLen);
-                int serverNonceLen = pgStream.receiveInteger4();
-                byte[] serverNonce = pgStream.receive(serverNonceLen);
-                
-                String dateTimeString = Long.toString(new Date().getTime());
-                byte[] clientNonce = dateTimeString.getBytes();                
-                
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqDigest: Algo:" + algo);
-                }
-                
-
-                if (password == null) {
-                  throw new RedshiftException(
-                      GT.tr(
-                          "The server requested password-based authentication, but no password was provided."),
-                      RedshiftState.CONNECTION_REJECTED);
-                }
-
-                if (algo > algoNames.length) {
-                  throw new RedshiftException(
-                      GT.tr(
-                          "The server requested password-based authentication, but requested algorithm " + algo + " is not supported."),
-                      RedshiftState.CONNECTION_REJECTED);
-                }
-                
-                byte[] digest =
-                    ExtensibleDigest.encode(clientNonce, 
-                    								password.getBytes("UTF-8"), 
-                    								salt,
-                    								algoNames[algo],
-                    								serverNonce);
-
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " FE=> Password(extensible digest)");
-                }
-                
-                pgStream.sendChar('d');
-                pgStream.sendInteger4(4 + 4 + digest.length + 4 + clientNonce.length);
-                pgStream.sendInteger4(digest.length);
-                pgStream.send(digest);
-                pgStream.sendInteger4(clientNonce.length);
-                pgStream.send(clientNonce);
-                pgStream.flush();
-
-                break;
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqIDP");
               }
               
-              case AUTH_REQ_IDP: {
-                String idpToken = RedshiftProperty.WEB_IDENTITY_TOKEN.get(info);
+              if (idpToken == null || idpToken.length() == 0) {
+                throw new RedshiftException(
+                    GT.tr(
+                        "The server requested IDP token-based authentication, but no token was provided."),
+                    RedshiftState.CONNECTION_REJECTED);
+              }
 
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " <=BE AuthenticationReqIDP");
-                }
-                
-                if (idpToken == null || idpToken.length() == 0) {
-                  throw new RedshiftException(
-                      GT.tr(
-                          "The server requested IDP token-based authentication, but no token was provided."),
-                      RedshiftState.CONNECTION_REJECTED);
-                }
-
-                if(RedshiftLogger.isEnable()) {
-                  logger.log(LogLevel.DEBUG, " FE=> IDP(IDP Token)");
-                }
-                
-                byte[] token = idpToken.getBytes("UTF-8");
-                pgStream.sendChar('i');
-                pgStream.sendInteger4(4 + token.length + 1);
-                pgStream.send(token);
-                pgStream.sendChar(0);
-                pgStream.flush();
-                
-                break;
+              if(RedshiftLogger.isEnable()) {
+                logger.log(LogLevel.DEBUG, " FE=> IDP(IDP Token)");
               }
               
-              case AUTH_REQ_PASSWORD: {
-                if(RedshiftLogger.isEnable()) {
+              byte[] token = idpToken.getBytes("UTF-8");
+              pgStream.sendChar('i');
+              pgStream.sendInteger4(4 + token.length + 1);
+              pgStream.send(token);
+              pgStream.sendChar(0);
+              pgStream.flush();
+              
+              break;
+            }
+            
+            case AUTH_REQ_PASSWORD: {
+              if(RedshiftLogger.isEnable()) {
 	                logger.log(LogLevel.DEBUG, "<=BE AuthenticationReqPassword");
 	                logger.log(LogLevel.DEBUG, " FE=> Password(password=<not shown>)");
-                }
-
-                if (password == null) {
-                  throw new RedshiftException(
-                      GT.tr(
-                          "The server requested password-based authentication, but no password was provided."),
-                      RedshiftState.CONNECTION_REJECTED);
-                }
-
-                byte[] encodedPassword = password.getBytes("UTF-8");
-
-                pgStream.sendChar('p');
-                pgStream.sendInteger4(4 + encodedPassword.length + 1);
-                pgStream.send(encodedPassword);
-                pgStream.sendChar(0);
-                pgStream.flush();
-
-                break;
               }
 
-              case AUTH_REQ_GSS:
-              case AUTH_REQ_SSPI:
-                /*
-                 * Use GSSAPI if requested on all platforms, via JSSE.
-                 *
-                 * For SSPI auth requests, if we're on Windows attempt native SSPI authentication if
-                 * available, and if not disabled by setting a kerberosServerName. On other
-                 * platforms, attempt JSSE GSSAPI negotiation with the SSPI server.
-                 *
-                 * Note that this is slightly different to libpq, which uses SSPI for GSSAPI where
-                 * supported. We prefer to use the existing Java JSSE Kerberos support rather than
-                 * going to native (via JNA) calls where possible, so that JSSE system properties
-                 * etc continue to work normally.
-                 *
-                 * Note that while SSPI is often Kerberos-based there's no guarantee it will be; it
-                 * may be NTLM or anything else. If the client responds to an SSPI request via
-                 * GSSAPI and the other end isn't using Kerberos for SSPI then authentication will
-                 * fail.
-                 */
-                final String gsslib = RedshiftProperty.GSS_LIB.get(info);
-                final boolean usespnego = RedshiftProperty.USE_SPNEGO.getBoolean(info);
+              if (password == null) {
+                throw new RedshiftException(
+                    GT.tr(
+                        "The server requested password-based authentication, but no password was provided."),
+                    RedshiftState.CONNECTION_REJECTED);
+              }
 
-                boolean useSSPI = false;
+              byte[] encodedPassword = password.getBytes("UTF-8");
 
-                /*
-                 * Use SSPI if we're in auto mode on windows and have a request for SSPI auth, or if
-                 * it's forced. Otherwise use gssapi. If the user has specified a Kerberos server
-                 * name we'll always use JSSE GSSAPI.
-                 */
-                if (gsslib.equals("gssapi")) {
-                  if(RedshiftLogger.isEnable())
-                  	logger.log(LogLevel.DEBUG, "Using JSSE GSSAPI, param gsslib=gssapi");
-                } else if (areq == AUTH_REQ_GSS && !gsslib.equals("sspi")) {
-                  	if(RedshiftLogger.isEnable())
-                  		logger.log(LogLevel.DEBUG,
-                      "Using JSSE GSSAPI, gssapi requested by server and gsslib=sspi not forced");
-                } else {
-                  /* Determine if SSPI is supported by the client */
-                  sspiClient = createSSPI(pgStream, RedshiftProperty.SSPI_SERVICE_CLASS.get(info),
-                      /* Use negotiation for SSPI, or if explicitly requested for GSS */
-                      areq == AUTH_REQ_SSPI || (areq == AUTH_REQ_GSS && usespnego));
+              pgStream.sendChar('p');
+              pgStream.sendInteger4(4 + encodedPassword.length + 1);
+              pgStream.send(encodedPassword);
+              pgStream.sendChar(0);
+              pgStream.flush();
 
-                  useSSPI = sspiClient.isSSPISupported();
-                  
-                  if(RedshiftLogger.isEnable())
-                  	logger.log(LogLevel.DEBUG, "SSPI support detected: {0}", useSSPI);
+              break;
+            }
 
-                  if (!useSSPI) {
-                    /* No need to dispose() if no SSPI used */
-                    sspiClient = null;
+            case AUTH_REQ_SASL:
+            	
+              if(RedshiftLogger.isEnable())
+              	logger.log(LogLevel.DEBUG, " <=BE AuthenticationSASL");
 
-                    if (gsslib.equals("sspi")) {
-                      throw new RedshiftException(
-                          "SSPI forced with gsslib=sspi, but SSPI not available; set loglevel=2 for details",
-                          RedshiftState.CONNECTION_UNABLE_TO_CONNECT);
-                    }
-                  }
-
-                  if(RedshiftLogger.isEnable()) {
-                    logger.log(LogLevel.DEBUG, "Using SSPI: {0}, gsslib={1} and SSPI support detected", new Object[]{useSSPI, gsslib});
-                  }
-                }
-
-                if (useSSPI) {
-                  /* SSPI requested and detected as available */
-                  sspiClient.startSSPI();
-                } else {
-                  /* Use JGSS's GSSAPI for this request */
-                  com.amazon.redshift.gss.MakeGSS.authenticate(pgStream, host, user, password,
-                      RedshiftProperty.JAAS_APPLICATION_NAME.get(info),
-                      RedshiftProperty.KERBEROS_SERVER_NAME.get(info), usespnego,
-                      RedshiftProperty.JAAS_LOGIN.getBoolean(info),
-                      RedshiftProperty.LOG_SERVER_ERROR_DETAIL.getBoolean(info),
-                      logger);
-                }
-                break;
-
-              case AUTH_REQ_GSS_CONTINUE:
-                /*
-                 * Only called for SSPI, as GSS is handled by an inner loop in MakeGSS.
-                 */
-                sspiClient.continueSSPI(msgLen - 8);
-                break;
-
-              case AUTH_REQ_SASL:
-              	
-                if(RedshiftLogger.isEnable())
-                	logger.log(LogLevel.DEBUG, " <=BE AuthenticationSASL");
-
-                //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
 //                scramAuthenticator = new com.amazon.redshift.jre7.sasl.ScramAuthenticator(user, password, pgStream);
 //                scramAuthenticator.processServerMechanismsAndInit();
 //                scramAuthenticator.sendScramClientFirstMessage();
-                // This works as follows:
-                // 1. When tests is run from IDE, it is assumed SCRAM library is on the classpath
-                // 2. In regular build for Java < 8 this `if` is deactivated and the code always throws
-                if (false) {
-                  //JCP! else
+              // This works as follows:
+              // 1. When tests is run from IDE, it is assumed SCRAM library is on the classpath
+              // 2. In regular build for Java < 8 this `if` is deactivated and the code always throws
+              if (false) {
+                //JCP! else
 //JCP>                   throw new RedshiftException(GT.tr(
 //JCP>                           "SCRAM authentication is not supported by this driver. You need JDK >= 8 and pgjdbc >= 42.2.0 (not \".jre\" versions)",
 //JCP>                           areq), RedshiftState.CONNECTION_REJECTED);
-                  //JCP! endif
-                  //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
-                }
-                break;
                 //JCP! endif
+                //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+              }
+              break;
+              //JCP! endif
 
-              //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
+            //JCP! if mvn.project.property.redshift.jdbc.spec >= "JDBC4.1"
 //              case AUTH_REQ_SASL_CONTINUE:
 //                scramAuthenticator.processServerFirstMessage(msgLen - 4 - 4);
 //                break;
@@ -970,40 +869,28 @@ public class ConnectionFactoryImpl extends ConnectionFactory {
 //              case AUTH_REQ_SASL_FINAL:
 //                scramAuthenticator.verifyServerSignature(msgLen - 4 - 4);
 //                break;
-              //JCP! endif
+            //JCP! endif
 
-              case AUTH_REQ_OK:
-                /* Cleanup after successful authentication */
-                if(RedshiftLogger.isEnable())
-                	logger.log(LogLevel.DEBUG, " <=BE AuthenticationOk");
-                break authloop; // We're done.
+            case AUTH_REQ_OK:
+              /* Cleanup after successful authentication */
+              if(RedshiftLogger.isEnable())
+              	logger.log(LogLevel.DEBUG, " <=BE AuthenticationOk");
+              break authloop; // We're done.
 
-              default:
-                if(RedshiftLogger.isEnable())
-                	logger.log(LogLevel.DEBUG, " <=BE AuthenticationReq (unsupported type {0})", areq);
-                
-                throw new RedshiftException(GT.tr(
-                    "The authentication type {0} is not supported. Check that you have configured the pg_hba.conf file to include the client''s IP address or subnet, and that it is using an authentication scheme supported by the driver.",
-                    areq), RedshiftState.CONNECTION_REJECTED);
-            }
+            default:
+              if(RedshiftLogger.isEnable())
+              	logger.log(LogLevel.DEBUG, " <=BE AuthenticationReq (unsupported type {0})", areq);
+              
+              throw new RedshiftException(GT.tr(
+                  "The authentication type {0} is not supported. Check that you have configured the pg_hba.conf file to include the client''s IP address or subnet, and that it is using an authentication scheme supported by the driver.",
+                  areq), RedshiftState.CONNECTION_REJECTED);
+          }
 
-            break;
+          break;
 
-          default:
-            throw new RedshiftException(GT.tr("Protocol error.  Session setup failed."),
-                RedshiftState.PROTOCOL_VIOLATION);
-        }
-      }
-    } finally {
-      /* Cleanup after successful or failed authentication attempts */
-      if (sspiClient != null) {
-        try {
-          sspiClient.dispose();
-        } catch (RuntimeException ex) {
-          if(RedshiftLogger.isEnable())
-          	logger.log(LogLevel.DEBUG, ex, "Unexpected error during SSPI context disposal");
-        }
-
+        default:
+          throw new RedshiftException(GT.tr("Protocol error.  Session setup failed."),
+              RedshiftState.PROTOCOL_VIOLATION);
       }
     }
 

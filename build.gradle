@@ -29,7 +29,6 @@ dependencies {
     def withoutjmespathSupport = { 
         exclude group: 'software.amazon.ion', module: 'ion-java'
     }
-    def withoutslf4jSupport = { exclude group: 'org.slf4j', module: 'slf4j-api' }
     
     implementation 'org.apache.httpcomponents:httpclient:4.5.14'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'
@@ -56,7 +55,6 @@ dependencies {
     implementation 'org.bouncycastle:bcutil-jdk18on:1.84'
 
     compileOnly 'com.ongres.scram:client:2.1'
-    compileOnly 'com.github.waffle:waffle-jna:1.9.1', withoutslf4jSupport
     compileOnly 'org.osgi:org.osgi.enterprise:4.2.0'
     compileOnly 'org.osgi:org.osgi.core:4.3.1'
     
@@ -121,11 +119,9 @@ javadoc {
     exclude 'com/amazon/redshift/util/**'
     exclude 'com/amazon/redshift/translation/**'
     exclude 'com/amazon/redshift/ds/common/**'
-    exclude 'com/amazon/redshift/gss/**'
     exclude 'com/amazon/redshift/hostchooser/**'
     exclude 'com/amazon/redshift/httpclient/log/**'
     exclude 'com/amazon/redshift/logger/**'
-    exclude 'com/amazon/redshift/sspi/**'
     exclude 'com/amazon/redshift/ssl/**'
     exclude 'com/amazon/redshift/jdbc2/**'
     exclude 'com/amazon/redshift/jdbc3/**'

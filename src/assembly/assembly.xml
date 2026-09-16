@@ -9,7 +9,6 @@
     <dependencySets>
         <dependencySet>
             <excludes>
-                <exclude>com.github.waffle:*</exclude>
                 <exclude>org.osgi:*</exclude>
                 <exclude>com.ongres.scram:*</exclude>
                 <exclude>com.ongres.stringprep:*</exclude>
