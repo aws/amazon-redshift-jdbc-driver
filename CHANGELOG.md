@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v2.2.9 (2026-09-16)
+----------------------
+- Added batch metadata retrieval using SHOW commands (SHOW TABLES / SHOW COLUMNS / SHOW GRANTS ON TABLES FROM DATABASE) to improve the performance of the getTables, getColumns, and getTablePrivileges metadata APIs
+- Removed unsupported GSSAPI/SSPI/JAAS authentication
+
+
 v2.2.8 (2026-08-05)
 ----------------------
 - Added post-quantum hybrid TLS key exchange (X25519MLKEM768) via BouncyCastle, along with the preferPQ connection property (default: true) to control group advertising per connection
