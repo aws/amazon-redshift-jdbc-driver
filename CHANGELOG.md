@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v2.2.10 (2026-09-17)
+----------------------
+- Upgraded software.amazon.awssdk:bom to 2.49.6 to address CVE-2026-42581 (CVSS 9.8) and CVE-2026-42584 (CVSS 9.1)
+- Upgraded org.bouncycastle deps to 1.85 to address CVE-2026-59646 (CVSS 8.7)
+- Fixed build.gradle (sourceCompatibility usage) to support Gradle 9.7+
+
+
 v2.2.9 (2026-09-16)
 ----------------------
 - Added batch metadata retrieval using SHOW commands (SHOW TABLES / SHOW COLUMNS / SHOW GRANTS ON TABLES FROM DATABASE) to improve the performance of the getTables, getColumns, and getTablePrivileges metadata APIs
