@@ -10,7 +10,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class JdbcBlackHole {
+public final class JdbcBlackHole {
+  private JdbcBlackHole() {
+  }
+
   public static void close(Connection con) {
     try {
       if (con != null) {
