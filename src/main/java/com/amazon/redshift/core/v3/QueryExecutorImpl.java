@@ -179,6 +179,16 @@ public class QueryExecutorImpl extends QueryExecutorBase {
     long statementCloseTimeoutMsLong = (long) RedshiftProperty.STATEMENT_CLOSE_TIMEOUT.getInt(info) * 1000L;
     this.statementCloseTimeoutMs = (int) Math.min(statementCloseTimeoutMsLong, Integer.MAX_VALUE);
     this.serverProtocolVersion = 0;
+
+    // TLS setup may have tolerated a certificate that does not name the host, when
+    // the caller named no sslmode. That happens before this executor exists, so the
+    // text is carried on the stream and adopted here -- SQLSTATE 01000, the generic
+    // warning class. An application reaches it through Connection.getWarnings().
+    String hostnameMismatchWarning = pgStream.getHostnameMismatchWarning();
+    if (hostnameMismatchWarning != null) {
+      addWarning(new SQLWarning(hostnameMismatchWarning, "01000"));
+    }
+
     readStartupMessages();
   }
 

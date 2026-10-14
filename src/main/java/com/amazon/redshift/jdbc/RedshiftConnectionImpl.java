@@ -2276,7 +2276,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
           if (Boolean.parseBoolean(ssl) || ssl.equals(""))
           {
               sslExplicitlyEnabled = true;
-              m_settings.m_authMech = AuthMech.VERIFY_CA;
+              m_settings.m_authMech = SslMode.DEFAULT.authMech;
           }
           else if (!Boolean.parseBoolean(ssl))
           {
@@ -2355,7 +2355,7 @@ public class RedshiftConnectionImpl implements BaseConnection {
       // If none of above is set, default to enable SSL
       if (!sslExplicitlyEnabled && !sslExplicitlyDisabled && !sslFactorySet && !sslModeSet)
       {
-          m_settings.m_authMech = AuthMech.VERIFY_CA;
+          m_settings.m_authMech = SslMode.DEFAULT.authMech;
       }
       
       return sslExplicitlyDisabled;

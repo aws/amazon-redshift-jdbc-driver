@@ -83,8 +83,27 @@ public class MakeSSL extends ObjectFactory {
     }
 
     SslMode sslMode = SslMode.of(info);
-    if (sslMode.verifyPeerName()) {
-      verifyPeerName(stream, info, newConnection);
+    // NonValidatingFactory opts out of validation, so the name is skipped too --
+    // but only for a driver-chosen mode, or an explicit verify-full is weakened.
+    final boolean optedOutOfValidation =
+        originalFactory instanceof NonValidatingFactory
+            && SslMode.wasModeChosenByDriver(info);
+    if (sslMode.verifyPeerName() && !optedOutOfValidation) {
+      if (!verifyPeerName(stream, info, newConnection)) {
+        String host = stream.getHostSpec().getHost();
+        if (!SslMode.wasModeChosenByDriver(info)) {
+          throw new RedshiftException(
+              GT.tr("The hostname {0} could not be verified by hostnameverifier {1}.",
+                  host, hostnameVerifierName(info)),
+              RedshiftState.CONNECTION_FAILURE);
+        }
+        // Driver picked the mode, so warn rather than fail. Chain still checked.
+        // Carried on the stream because no QueryExecutor exists yet to hold a
+        // SQLWarning; QueryExecutorImpl adopts it when it is constructed.
+        String message = hostnameMismatchMessage(host);
+        logHostnameMismatch(message);
+        stream.setHostnameMismatchWarning(message);
+      }
     }
 
     stream.changeSocket(newConnection, false, info);
@@ -193,13 +212,16 @@ public class MakeSSL extends ObjectFactory {
     }
   }
 
-  private static void verifyPeerName(RedshiftStream stream, Properties info, SSLSocket newConnection)
-      throws RedshiftException {
+  /**
+   * Returns whether the certificate names the host. A mismatch is left to the
+   * caller to judge; a broken verifier config still throws.
+   */
+  private static boolean verifyPeerName(RedshiftStream stream, Properties info,
+      SSLSocket newConnection) throws RedshiftException {
     HostnameVerifier hvn;
     String sslhostnameverifier = RedshiftProperty.SSL_HOSTNAME_VERIFIER.get(info);
     if (sslhostnameverifier == null) {
       hvn = RedshiftjdbcHostnameVerifier.INSTANCE;
-      sslhostnameverifier = "RedshiftjdbcHostnameVerifier";
     } else {
       try {
         hvn = instantiate(HostnameVerifier.class, sslhostnameverifier, info, false, null);
@@ -211,14 +233,47 @@ public class MakeSSL extends ObjectFactory {
       }
     }
 
-    if (hvn.verify(stream.getHostSpec().getHost(), newConnection.getSession())) {
-      return;
-    }
+    return hvn.verify(stream.getHostSpec().getHost(), newConnection.getSession());
+  }
 
-    throw new RedshiftException(
-        GT.tr("The hostname {0} could not be verified by hostnameverifier {1}.",
-            stream.getHostSpec().getHost(), sslhostnameverifier),
-        RedshiftState.CONNECTION_FAILURE);
+  /** Name of the verifier in use, for diagnostics. */
+  private static String hostnameVerifierName(Properties info) {
+    String configured = RedshiftProperty.SSL_HOSTNAME_VERIFIER.get(info);
+    return configured == null ? "RedshiftjdbcHostnameVerifier" : configured;
+  }
+
+  /**
+   * Byte-identical to the ODBC and Python drivers' text apart from the host
+   * placeholder, so one search finds it whichever driver produced it.
+   */
+  private static String hostnameMismatchMessage(String host) {
+    return GT.tr(
+        "Server certificate does not name host \"{0}\". The connection was allowed "
+        + "because sslmode was not set. A future release will require the "
+        + "certificate to name the host being connected to; if you connect through "
+        + "a name the certificate does not carry, set sslmode=verify-ca.", host);
+  }
+
+  /**
+   * Logs every tolerated mismatch, not the first per host: the count is what shows
+   * how many connections rely on the allowance.
+   *
+   * <p>Logged at ERROR even though the connection succeeded. This logger has no WARN
+   * level (order: OFF &lt; ERROR &lt; INFO &lt; FUNCTION &lt; DEBUG), so ERROR is the
+   * only level a deployment that has enabled logging at a non-verbose threshold will
+   * see -- and this is the signal that a connection depends on an allowance a later
+   * release removes. The tradeoff is that a successful connection shows up at ERROR,
+   * which error-rate monitoring may flag; the SQLWarning raised alongside (SQLSTATE
+   * 01000) is the primary, correctly-typed channel, so this log line is a secondary
+   * operator signal. Nothing goes to System.err either way.
+   */
+  private static void logHostnameMismatch(String message) {
+    if (RedshiftLogger.isEnable()) {
+      RedshiftLogger logger = RedshiftLogger.getDriverLogger();
+      if (logger != null) {
+        logger.log(LogLevel.ERROR, message);
+      }
+    }
   }
 
 }

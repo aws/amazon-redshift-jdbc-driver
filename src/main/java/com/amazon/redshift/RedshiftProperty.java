@@ -725,7 +725,7 @@ public enum RedshiftProperty {
    * Parameter governing the use of SSL. The allowed values are {@code disable}, {@code allow},
    * {@code prefer}, {@code require}, {@code verify-ca}, {@code verify-full}.
    * If {@code ssl} property is empty or set to {@code true} it implies {@code verify-full}.
-   * Default mode is "require"
+   * Default mode is {@code verify-full}.
    */
   SSL_MODE(
     "sslmode",

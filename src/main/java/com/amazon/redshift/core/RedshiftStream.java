@@ -68,6 +68,20 @@ public class RedshiftStream implements Closeable, Flushable {
   private RedshiftLogger logger;
 
   /**
+   * Set when TLS setup tolerated a certificate that does not name the host. Carried
+   * here because no QueryExecutor exists yet to hold a SQLWarning; null otherwise.
+   */
+  private String hostnameMismatchWarning;
+
+  public void setHostnameMismatchWarning(String message) {
+    hostnameMismatchWarning = message;
+  }
+
+  public String getHostnameMismatchWarning() {
+    return hostnameMismatchWarning;
+  }
+
+  /**
    * Constructor: Connect to the Redshift back end and return a stream connection.
    *
    * @param socketFactory socket factory to use when creating sockets
