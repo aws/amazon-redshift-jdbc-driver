@@ -315,8 +315,9 @@ public class RedshiftLogger {
 
     try
     {
-        // Dynamically look up the name of the class.
-        Class<?> originatingClass = Class.forName(element.getClassName());
+        // initialize=false: consistent with ClassUtils.forName safe-loading pattern.
+        Class<?> originatingClass = Class.forName(element.getClassName(),
+            false, RedshiftLogger.class.getClassLoader());
         names[1] = originatingClass.getSimpleName();
 
         // Get the package of the class.

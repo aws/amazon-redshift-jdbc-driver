@@ -24,6 +24,7 @@ import com.amazon.redshift.IPlugin;
 import com.amazon.redshift.RedshiftProperty;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
+import com.amazon.redshift.util.ClassUtils;
 
 public class PluginProfilesCredentialsProvider implements AwsCredentialsProvider {
     private static final String PROFILE_PREFIX = "profile ";
@@ -107,8 +108,9 @@ public class PluginProfilesCredentialsProvider implements AwsCredentialsProvider
                 .orElse(null);
         if (!Utils.isNullOrEmpty(pluginName)) {
             try {
-                Class<? extends AwsCredentialsProvider> clazz =
-                        (Class.forName(pluginName).asSubclass(AwsCredentialsProvider.class));
+                Class<? extends AwsCredentialsProvider> clazz = ClassUtils.forName(
+                        pluginName, AwsCredentialsProvider.class,
+                        PluginProfilesCredentialsProvider.class.getClassLoader());
 
                 AwsCredentialsProvider p = clazz.newInstance();
                 if (p instanceof IPlugin) {
@@ -149,6 +151,8 @@ public class PluginProfilesCredentialsProvider implements AwsCredentialsProvider
             } catch (IllegalAccessException e) {
                 throw SdkClientException.create("Invalid plugin: '" + pluginName + "'");
             } catch (ClassNotFoundException e) {
+                throw SdkClientException.create("Invalid plugin: '" + pluginName + "'");
+            } catch (ClassCastException e) {
                 throw SdkClientException.create("Invalid plugin: '" + pluginName + "'");
             }
         } else if (isProcessBasedProfile(profile)) {

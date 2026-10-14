@@ -7,6 +7,7 @@ import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.utils.RequestUtils;
+import com.amazon.redshift.util.ClassUtils;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftProperties;
@@ -407,8 +408,9 @@ public final class IamHelper extends IdpAuthHelper {
       }
 
       try {
-        Class<? extends AwsCredentialsProvider> clazz = (Class.forName(settings.m_credentialsProvider)
-                .asSubclass(AwsCredentialsProvider.class));
+        Class<? extends AwsCredentialsProvider> clazz = ClassUtils.forName(
+                settings.m_credentialsProvider, AwsCredentialsProvider.class,
+                IamHelper.class.getClassLoader());
 
         provider = clazz.newInstance();
         if (provider instanceof IPlugin) {
@@ -431,7 +433,8 @@ public final class IamHelper extends IdpAuthHelper {
               settings.m_dbGroupsFilter = entry.getValue();
           }
         }
-      } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | IllegalAccessException | ClassNotFoundException
+          | ClassCastException e) {
         RedshiftException err = new RedshiftException(
             GT.tr("Invalid credentials provider class {0}", settings.m_credentialsProvider),
             RedshiftState.UNEXPECTED_ERROR, e);

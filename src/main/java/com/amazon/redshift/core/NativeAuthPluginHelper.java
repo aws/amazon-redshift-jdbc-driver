@@ -10,6 +10,7 @@ import com.amazon.redshift.jdbc.RedshiftConnectionImpl;
 import com.amazon.redshift.logger.LogLevel;
 import com.amazon.redshift.logger.RedshiftLogger;
 import com.amazon.redshift.plugin.IdpTokenAuthPlugin;
+import com.amazon.redshift.util.ClassUtils;
 import com.amazon.redshift.util.GT;
 import com.amazon.redshift.util.RedshiftException;
 import com.amazon.redshift.util.RedshiftState;
@@ -91,8 +92,9 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
 
     if (!Utils.isNullOrEmpty(settings.m_credentialsProvider)) {
       try {
-        Class<? extends INativePlugin> clazz = (Class.forName(settings.m_credentialsProvider)
-            .asSubclass(INativePlugin.class));
+        Class<? extends INativePlugin> clazz = ClassUtils.forName(
+            settings.m_credentialsProvider, INativePlugin.class,
+            NativeAuthPluginHelper.class.getClassLoader());
 
         provider = clazz.newInstance();
         if (provider instanceof INativePlugin) {
@@ -114,7 +116,8 @@ public final class NativeAuthPluginHelper extends IdpAuthHelper {
 
           throw err;
         }
-      } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+      } catch (InstantiationException | IllegalAccessException | ClassNotFoundException
+          | ClassCastException e) {
         RedshiftException err = new RedshiftException(
             GT.tr("Invalid credentials provider class {0}", settings.m_credentialsProvider),
             RedshiftState.UNEXPECTED_ERROR, e);

@@ -42,7 +42,8 @@ public class ObjectFactory {
           InvocationTargetException {
     Object[] args = {info};
     Constructor<? extends T> ctor = null;
-    Class<? extends T> cls = Class.forName(classname).asSubclass(expectedClass);    
+    Class<? extends T> cls = ClassUtils.forName(classname, expectedClass,
+        ObjectFactory.class.getClassLoader());
     try {
       ctor = cls.getConstructor(Properties.class);
     } catch (NoSuchMethodException nsme) {
