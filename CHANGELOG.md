@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v2.3.0 (2026-10-12)
+----------------------
+- Behavior change: Changed Redshift DataSource serialization from Java's default object format to a plain primitive format. If you have DataSource objects stored by an earlier driver version, see the README for migration steps. No changes are needed if you configure connections through JDBC URLs, setter methods, connection properties, or JNDI references.
+- Behavior change: Changed the default value of sslmode from verify-ca to verify-full. In addition to validating the certificate chain, the driver now checks that the server certificate matches the host name it connected to. If sslmode is not set and the host name doesn't match, the driver logs a warning and still connects, so existing connections keep working while you migrate. If sslmode=verify-full is set explicitly, a mismatch still fails the connection. A future release will fail the connection on a mismatch in both cases.
+- Improved the safety of customer configured class loading by validating Java class names and checking the expected type before class initialization.
+- Corrected version reporting when the driver is repackaged inside another application or library, so it reports the actual release version instead of 2.0.0.0.
+
+
 v2.2.9 (2026-09-16)
 ----------------------
 - Improved the performance of the getTables, getColumns, and getTablePrivileges metadata APIs
