@@ -20,6 +20,7 @@ import com.amazon.redshift.util.RedshiftProperties;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
@@ -1452,23 +1453,202 @@ public abstract class BaseDataSource implements CommonDataSource, Referenceable 
   }
 
   protected void writeBaseObject(ObjectOutputStream out) throws IOException {
-    out.writeObject(serverNames);
-    out.writeObject(databaseName);
-    out.writeObject(user);
-    out.writeObject(password);
-    out.writeObject(portNumbers);
+    // Write the fields as block-data primitives only -- no writeObject.
+    // Because nothing is written as an object, readBaseObject can read it all back with
+    // readInt/readUTF directly and never calls readObject, so there is no
+    // deserialization sink on the read path. Field order is part of the format:
+    // marker, version, serverNames, databaseName, user, password, portNumbers,
+    // properties (string-keyed).
+    out.writeInt(DataSourceObjectInputFilter.FORMAT_MAGIC);
+    out.writeInt(DataSourceObjectInputFilter.FORMAT_VERSION);
 
-    out.writeObject(properties);
+    writeStringArray(out, serverNames);
+    writeNullableUTF(out, databaseName);
+    writeNullableUTF(out, user);
+    writeNullableUTF(out, password);
+
+    int[] ports = portNumbers == null ? new int[0] : portNumbers;
+    checkCount(ports.length, "portNumbers");
+    out.writeInt(ports.length);
+    for (int p : ports) {
+      out.writeInt(p);
+    }
+
+    // Write every properties entry, converting keys/values to their string form.
+    // DataSources built through setters hold only String values, but a DataSource
+    // reconstructed from an older stream during migration may carry a boxed value
+    // (e.g. an Integer put directly into the map). Iterate the full entry set rather
+    // than stringPropertyNames() so such a value is migrated (as its string form)
+    // instead of being silently dropped.
+    java.util.Map<Object, Object> entries = properties == null
+        ? java.util.Collections.emptyMap()
+        : properties;
+    checkCount(entries.size(), "properties");
+    out.writeInt(entries.size());
+    for (java.util.Map.Entry<Object, Object> e : entries.entrySet()) {
+      writeLongUTF(out, String.valueOf(e.getKey()));
+      writeLongUTF(out, String.valueOf(e.getValue()));
+    }
   }
 
   protected void readBaseObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-    serverNames = (String[]) in.readObject();
-    databaseName = (String) in.readObject();
-    user = (String) in.readObject();
-    password = (String) in.readObject();
-    portNumbers = (int[]) in.readObject();
+    if (DataSourceObjectInputFilter.isLegacyRead()) {
+      // Converter only (DataSourceMigration): `in` is a ValidatingObjectInputStream the
+      // converter built over caller-supplied bytes, so reading the old object layout is
+      // still type-checked against the allowlist. This branch is never taken on the
+      // normal JVM/JNDI read path.
+      Object[] v = DataSourceObjectInputFilter.readLegacyInline(in);
+      serverNames = expect(v[0], String[].class, "serverNames");
+      databaseName = expect(v[1], String.class, "databaseName");
+      user = expect(v[2], String.class, "user");
+      password = expect(v[3], String.class, "password");
+      portNumbers = expect(v[4], int[].class, "portNumbers");
+      properties = expect(v[5], Properties.class, "properties");
+      return;
+    }
+    // Normal path: read block-data primitives only. No readObject is ever called, so
+    // no class from the stream is instantiated.
+    final int magic;
+    try {
+      magic = in.readInt();
+    } catch (java.io.EOFException endOfOldStream) {
+      // An older object stream does not start these fields with our marker; trying to
+      // read the marker can hit end-of-stream. Signal "wrong format" so the converter
+      // can fall back to the old object read. (A genuine I/O error is not caught here
+      // and propagates as itself.)
+      throw new DataSourceObjectInputFilter.WrongFormatException(
+          "DataSource stream is not in the current format. Re-persist the DataSource "
+          + "with this driver version, or convert it with DataSourceMigration.");
+    }
+    if (magic != DataSourceObjectInputFilter.FORMAT_MAGIC) {
+      throw new DataSourceObjectInputFilter.WrongFormatException(
+          "DataSource stream is not in the current format. Re-persist the DataSource "
+          + "with this driver version, or convert it with DataSourceMigration.");
+    }
+    int version = in.readInt();
+    if (version != DataSourceObjectInputFilter.FORMAT_VERSION) {
+      throw new InvalidClassException(
+          "Unsupported DataSource format version: " + version);
+    }
 
-    properties = (Properties) in.readObject();
+    serverNames = readStringArray(in);
+    databaseName = readNullableUTF(in);
+    user = readNullableUTF(in);
+    password = readNullableUTF(in);
+
+    int portCount = readCount(in);
+    int[] ports = new int[portCount];
+    for (int i = 0; i < portCount; i++) {
+      ports[i] = in.readInt();
+    }
+    portNumbers = ports;
+
+    int propCount = readCount(in);
+    RedshiftProperties props = new RedshiftProperties();
+    for (int i = 0; i < propCount; i++) {
+      String key = readLongUTF(in);
+      String value = readLongUTF(in);
+      props.setProperty(key, value);
+    }
+    properties = props;
+  }
+
+  // ---- block-data primitive helpers (no object serialization) ----
+
+  /** Upper bound on any count read from the stream, to bound allocation from a bad length. */
+  private static final int MAX_ELEMENTS = 65536;
+
+  private static void writeStringArray(ObjectOutputStream out, String[] values)
+      throws IOException {
+    String[] v = values == null ? new String[0] : values;
+    checkCount(v.length, "serverNames");
+    out.writeInt(v.length);
+    for (String s : v) {
+      writeNullableUTF(out, s);
+    }
+  }
+
+  private static String[] readStringArray(ObjectInputStream in) throws IOException {
+    int n = readCount(in);
+    String[] v = new String[n];
+    for (int i = 0; i < n; i++) {
+      v[i] = readNullableUTF(in);
+    }
+    return v;
+  }
+
+  /** Reads a non-negative count and rejects an out-of-range value from a malformed stream. */
+  private static int readCount(ObjectInputStream in) throws IOException {
+    int n = in.readInt();
+    if (n < 0 || n > MAX_ELEMENTS) {
+      throw new InvalidClassException("DataSource stream has an invalid element count: " + n);
+    }
+    return n;
+  }
+
+  /** Rejects a write whose element count exceeds the read cap, so anything written can be read. */
+  private static void checkCount(int n, String what) throws InvalidClassException {
+    if (n > MAX_ELEMENTS) {
+      throw new InvalidClassException(
+          "DataSource has too many " + what + " to serialize: " + n + " (max " + MAX_ELEMENTS + ")");
+    }
+  }
+
+  /** Writes a boolean "present" flag then the string, so null round-trips. */
+  private static void writeNullableUTF(ObjectOutputStream out, String s) throws IOException {
+    out.writeBoolean(s != null);
+    if (s != null) {
+      writeLongUTF(out, s);
+    }
+  }
+
+  private static String readNullableUTF(ObjectInputStream in) throws IOException {
+    return in.readBoolean() ? readLongUTF(in) : null;
+  }
+
+  /**
+   * Writes a string as a 4-byte length followed by its UTF-8 bytes. Unlike
+   * {@code writeUTF}, this has no 64 KB limit, so an unusually long property value is
+   * handled.
+   */
+  private static void writeLongUTF(ObjectOutputStream out, String s) throws IOException {
+    byte[] bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    if (bytes.length > MAX_STRING_BYTES) {
+      throw new InvalidClassException(
+          "DataSource string value is too large to serialize: " + bytes.length
+          + " bytes (max " + MAX_STRING_BYTES + ")");
+    }
+    out.writeInt(bytes.length);
+    out.write(bytes);
+  }
+
+  private static String readLongUTF(ObjectInputStream in) throws IOException {
+    int len = in.readInt();
+    if (len < 0 || len > MAX_STRING_BYTES) {
+      throw new InvalidClassException("DataSource stream has an invalid string length: " + len);
+    }
+    byte[] bytes = new byte[len];
+    in.readFully(bytes);
+    return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+  }
+
+  /** Upper bound on a single string's byte length read from the stream. */
+  private static final int MAX_STRING_BYTES = 16 * 1024 * 1024;
+
+  /**
+   * Casts a value read from OLD object-format bytes (migration path only) to its
+   * field's type. On a wrong type, throws a checked {@link InvalidClassException} (not
+   * an unchecked {@code ClassCastException}), so a bad stored stream fails as an
+   * {@code IOException}.
+   */
+  private static <T> T expect(Object value, Class<T> type, String field)
+      throws InvalidClassException {
+    if (value == null || type.isInstance(value)) {
+      return type.cast(value);
+    }
+    throw new InvalidClassException(
+        "DataSource field '" + field + "' has unexpected type " + value.getClass().getName()
+        + " (expected " + type.getName() + ")");
   }
 
   public void initializeFrom(BaseDataSource source) throws IOException, ClassNotFoundException {
