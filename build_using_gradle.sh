@@ -19,7 +19,7 @@
      fi
  }
 
- FULL_VERSION="2.0.0.0"
+ FULL_VERSION="dev"
 
  if [ "$1" != "" ];
  then
@@ -28,6 +28,6 @@
     check_version 
  fi
 
- ./gradlew -PbuildVersion=$FULL_VERSION clean build javadoc
+ ./gradlew -PbuildVersion="$FULL_VERSION" clean build javadoc
 
 

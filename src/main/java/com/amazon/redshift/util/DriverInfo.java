@@ -5,10 +5,6 @@
 
 package com.amazon.redshift.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
-
 /**
  * Utility class with constants of Driver information.
  */
@@ -33,38 +29,45 @@ public final class DriverInfo {
 
 
   static {
-    String version = "2.0.0.0";
-    try (InputStream resourceAsStream = DriverInfo.class.getClassLoader().getResourceAsStream("redshift_jdbc_driver.properties")) {
-      Properties versionFromBuild = new Properties();
-      versionFromBuild.load(resourceAsStream);
-      version = versionFromBuild.getProperty("version");
-    } catch (IOException ex) {
-      // do nothing
-    }
-    String[] versionComponents = version.split("\\.");
+    // BuildInfo.DRIVER_VERSION is a compile-time constant generated from the
+    // project version by the build (see the generateBuildInfo Gradle task and
+    // the templating-maven-plugin execution in the POM).
+    DRIVER_VERSION = BuildInfo.DRIVER_VERSION;
+    int[] components = parseVersionComponents(DRIVER_VERSION);
+    MAJOR_VERSION = components[0];
+    MINOR_VERSION = components[1];
+    PATCH_VERSION = components[2];
+    DRIVER_FULL_NAME = DRIVER_NAME + " " + DRIVER_VERSION;
+  }
+
+  /**
+   * Parses the major, minor and patch numbers from a version string of the form
+   * {@code X.Y.Z} or {@code X.Y.Z.W}. Falls back to {@code {2, 0, 0}} when the
+   * version is null, has fewer than three components, or has a non-numeric
+   * major/minor/patch component.
+   *
+   * @param version the version string to parse (may be {@code null})
+   * @return a three-element array holding {major, minor, patch}
+   */
+  static int[] parseVersionComponents(String version) {
     int majorVersion = 2;
     int minorVersion = 0;
     int patchVersion = 0;
-    try {
-      if (versionComponents.length >= 3) {
+    String[] versionComponents = version == null ? new String[0] : version.split("\\.");
+    if (versionComponents.length >= 3) {
+      try {
         majorVersion = Integer.parseInt(versionComponents[0]);
         minorVersion = Integer.parseInt(versionComponents[1]);
         patchVersion = Integer.parseInt(versionComponents[2]);
+      } catch (NumberFormatException ex) {
+        majorVersion = 2;
+        minorVersion = 0;
+        patchVersion = 0;
       }
-      else {
-      	version = "2.0.0.0";      	
-      }
-    } catch (NumberFormatException ex) {
-      majorVersion = 2;
-      minorVersion = 0;
-      patchVersion = 0;
     }
-    MAJOR_VERSION = majorVersion;
-    MINOR_VERSION = minorVersion;
-    PATCH_VERSION = patchVersion;
-    DRIVER_VERSION = version;
-    DRIVER_FULL_NAME = DRIVER_NAME + " " + DRIVER_VERSION;
+    return new int[] {majorVersion, minorVersion, patchVersion};
   }
+
   private DriverInfo() {
   }
 

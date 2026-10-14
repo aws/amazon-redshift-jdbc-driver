@@ -7,7 +7,7 @@ plugins {
     id 'distribution'    
 }
 
-def localBuildVersion = project.hasProperty("buildVersion") ? buildVersion : "2.0.0.0"
+def localBuildVersion = project.hasProperty("buildVersion") ? buildVersion : "dev"
 
 group = 'com.amazon.redshift'
 version = localBuildVersion
@@ -80,6 +80,23 @@ processResources {
     }
 }
 
+// Filter the BuildInfo.java template in src/main/java-templates with the
+// project version, then compile it as part of the main source set so
+// BuildInfo.DRIVER_VERSION is a compile-time constant.
+def generatedBuildInfoDir = layout.buildDirectory.dir("generated/sources/buildinfo/java/main")
+
+task generateBuildInfo(type: Copy) {
+    inputs.property('version', version.toString())
+    from("src/main/java-templates") {
+        include 'com/amazon/redshift/util/BuildInfo.java'
+        expand(project: [version: version.toString()])
+    }
+    into generatedBuildInfoDir
+}
+
+sourceSets.main.java.srcDir generatedBuildInfoDir
+compileJava.dependsOn generateBuildInfo
+
 jar {
     manifest {
         attributes("Automatic-Module-Name": 'com.amazon.redshift.jdbc')
@@ -88,6 +105,17 @@ jar {
         attributes("Specification-Version": "4.2")
         attributes("Specification-Vendor": "Oracle Corporation")
         attributes("Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' '))
+    }
+}
+
+test {
+    // The test deps declared here are JUnit 5 (Jupiter); enable the platform
+    // engine so Jupiter tests run in this build path. Scoped to DriverInfoTest
+    // so the version guard executes in the external build while the rest of
+    // the unit-test suite continues to be exercised only by the Brazil build.
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'com.amazon.redshift.util.DriverInfoTest'
     }
 }
 
