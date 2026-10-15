@@ -11,7 +11,7 @@ The driver has many Redshift specific features such as,
 
 The driver supports JDBC 4.2 specification.
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.amazon.redshift/redshift-jdbc42)
+[![Maven Central](https://img.shields.io/maven-central/v/com.amazon.redshift/redshift-jdbc42)](https://central.sonatype.com/artifact/com.amazon.redshift/redshift-jdbc42)
 [![javadoc](https://javadoc.io/badge2/com.amazon.redshift/redshift-jdbc42/javadoc.svg)](https://javadoc.io/doc/com.amazon.redshift/redshift-jdbc42)
 
 ## Build Driver
