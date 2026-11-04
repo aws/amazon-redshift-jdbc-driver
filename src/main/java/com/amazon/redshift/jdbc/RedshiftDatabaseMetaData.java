@@ -2297,7 +2297,9 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
       return metadataAPIPostProcessor.getColumnsPostProcessing(null);
     }
 
-    if (canUseBatchShow(showDiscoveryVersion)) {
+    // SHOW COLUMNS FROM DATABASE returns no rows for a database other than the connected one,
+    // so use the per-table SHOW COLUMNS loop for cross-database requests.
+    if (canUseBatchShow(showDiscoveryVersion) && !isOtherDatabase(catalog)) {
       rs = metadataAPIPostProcessor.getColumnsPostProcessing(metadataServerProxy.getColumnsV5(catalog, schemaPattern, tableNamePattern,
               columnNamePattern, isSingleDatabaseMetaData()));
     } else {
@@ -6008,6 +6010,16 @@ public class RedshiftDatabaseMetaData implements DatabaseMetaData {
     tuple[0] = connection.encodeString(connection.getCatalog());
     v.add(new Tuple(tuple));
     return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
+  }
+
+  /**
+   * Whether the given catalog names a database other than the one the connection is using.
+   *
+   * @param catalog the catalog argument of a metadata call; null or empty means no catalog filter
+   * @return true if catalog is set and differs from the connected database
+   */
+  private boolean isOtherDatabase(String catalog) throws SQLException {
+    return !Utils.isNullOrEmpty(catalog) && !catalog.equals(connection.getCatalog());
   }
 
   /**
